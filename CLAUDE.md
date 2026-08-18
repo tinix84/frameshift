@@ -6,11 +6,17 @@ Canonical state lives in versioned JSON artifacts, not the transcript. Do not ex
 
 ## Agent skills
 
-Configuration the engineering skills rely on:
+### Issue tracker
 
-- `docs/agents/issue-tracker.md` — where issues live and how to read and write them.
-- `docs/agents/triage-labels.md` — the label strings behind the five triage roles.
-- `docs/agents/domain.md` — how to consume `CONTEXT.md` and `docs/adr/` before exploring.
+Issues, specs, and product requirements live as GitHub issues in `tinix84/frameshift`, worked through the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical roles keep their default names — `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix` — and all five exist on the repository. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` and `docs/adr/` at the repository root. See `docs/agents/domain.md`.
 
 ## Decision log
 
