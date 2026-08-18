@@ -4,14 +4,14 @@ FrameShift welcomes design notes, fixtures, documentation, adapters, and impleme
 
 ## Before opening a change
 
-- Search existing issues and ADRs.
+- Search existing issues and ADRs. Specifications are issues labelled `documentation` with a `[spec]` title prefix; there are no specification files in the repository.
 - For a substantial behavior or interface change, open a design issue before implementation.
 - Do not include confidential problem statements, proprietary engineering data, personal data, or model credentials in fixtures.
 
 ## Development workflow
 
 1. Fork or branch from `main` using `feat/<topic>`, `fix/<topic>`, `docs/<topic>`, or `chore/<topic>`.
-2. Keep the change focused and update the relevant specification, schema, example, and evaluation together.
+2. Keep the change focused and update the relevant issue, schema, example, and evaluation together.
 3. Run:
 
    ```sh
@@ -23,7 +23,7 @@ FrameShift welcomes design notes, fixtures, documentation, adapters, and impleme
 
 ## Architecture decisions
 
-Use `docs/adr/0000-template.md` for decisions that change domain boundaries, canonical contracts, persistence, security posture, or portability. Accepted ADRs are immutable; supersede them with a new ADR.
+Use `docs/adr/0000-template.md` for decisions that change domain boundaries, canonical contracts, persistence, security posture, or portability. Accepted ADRs are immutable; supersede them with a new ADR and add a row to the decision log in `CLAUDE.md`.
 
 ## Issue labels and priority
 
@@ -32,7 +32,7 @@ Use `docs/adr/0000-template.md` for decisions that change domain boundaries, can
 - `P2`: important after the core loop works.
 - `P3`: exploratory or optional.
 
-Use one type label (`type:feature`, `type:architecture`, `type:docs`, `type:security`, `type:test`) and one area label when possible.
+Use one type label (`type:feature`, `type:architecture`, `type:security`, `type:test`) and one area label when possible. Delivery sequencing uses the `M0`–`M4` milestones.
 
 ## Definition of done
 
