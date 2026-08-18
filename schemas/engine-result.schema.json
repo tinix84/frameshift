@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frameshift.dev/schemas/engine-result.schema.json",
+  "title": "FrameShift engine result",
+  "type": "object",
+  "required": ["schema_version", "execution_id", "engine", "input_revision", "status", "proposals", "rationale_summaries", "uncertainties", "conflicts", "missing_information", "requested_capabilities", "required_checkpoints"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "execution_id": {"$ref": "common.schema.json#/$defs/id"},
+    "engine": {"type": "string", "enum": ["problem_framing", "causal_reasoning", "solution_generation", "decision_validation"]},
+    "input_revision": {"type": "integer", "minimum": 0},
+    "status": {"type": "string", "enum": ["complete", "partial", "blocked", "invalid"]},
+    "proposals": {"type": "array", "items": {"$ref": "#/$defs/proposal"}},
+    "rationale_summaries": {"type": "array", "items": {"type": "string", "maxLength": 1000}},
+    "uncertainties": {"type": "array", "items": {"$ref": "#/$defs/note"}},
+    "conflicts": {"type": "array", "items": {"$ref": "#/$defs/note"}},
+    "missing_information": {"type": "array", "items": {"$ref": "#/$defs/note"}},
+    "requested_capabilities": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/id"}, "uniqueItems": true},
+    "required_checkpoints": {"type": "array", "items": {"type": "string", "enum": ["intake_correction", "frame_selection", "evidence_sufficiency", "option_set_acceptance", "criteria_confirmation", "decision_approval", "external_action", "knowledge_promotion"]}, "uniqueItems": true},
+    "warnings": {"type": "array", "items": {"type": "string", "maxLength": 1000}}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "proposal": {
+      "type": "object",
+      "required": ["id", "kind", "operation", "value", "provenance"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/id"},
+        "kind": {"type": "string", "maxLength": 100},
+        "operation": {"type": "string", "enum": ["add", "replace", "supersede", "remove"]},
+        "target_id": {"$ref": "common.schema.json#/$defs/id"},
+        "value": {"type": "object"},
+        "provenance": {"$ref": "common.schema.json#/$defs/provenance"}
+      },
+      "additionalProperties": false
+    },
+    "note": {
+      "type": "object",
+      "required": ["id", "summary"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/id"},
+        "summary": {"type": "string", "minLength": 1, "maxLength": 2000},
+        "source_ids": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/id"}, "uniqueItems": true}
+      },
+      "additionalProperties": false
+    }
+  }
+}

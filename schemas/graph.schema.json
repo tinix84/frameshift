@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frameshift.dev/schemas/graph.schema.json",
+  "title": "FrameShift reasoning graph",
+  "type": "object",
+  "required": ["schema_version", "nodes", "edges"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "nodes": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/node"}
+    },
+    "edges": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/edge"}
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "node": {
+      "type": "object",
+      "required": ["id", "type", "label", "status", "confidence", "provenance"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/id"},
+        "type": {"type": "string", "enum": ["outcome", "observation", "factor", "mechanism", "hypothesis", "evidence", "assumption", "constraint", "intervention", "risk", "decision"]},
+        "label": {"type": "string", "minLength": 1, "maxLength": 500},
+        "description": {"type": "string", "maxLength": 5000},
+        "status": {"type": "string", "enum": ["draft", "proposed", "approved", "rejected", "superseded", "archived"]},
+        "confidence": {"$ref": "common.schema.json#/$defs/confidence"},
+        "provenance": {"$ref": "common.schema.json#/$defs/provenance"},
+        "extensions": {"type": "object"}
+      },
+      "additionalProperties": false
+    },
+    "edge": {
+      "type": "object",
+      "required": ["id", "source", "target", "type", "status", "confidence", "provenance"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/id"},
+        "source": {"$ref": "common.schema.json#/$defs/id"},
+        "target": {"$ref": "common.schema.json#/$defs/id"},
+        "type": {"type": "string", "enum": ["causes", "contributes_to", "correlates_with", "enables", "constrains", "requires", "supports", "contradicts", "tests", "mitigates", "worsens", "addresses", "derived_from"]},
+        "status": {"type": "string", "enum": ["draft", "proposed", "approved", "rejected", "superseded", "archived"]},
+        "confidence": {"$ref": "common.schema.json#/$defs/confidence"},
+        "provenance": {"$ref": "common.schema.json#/$defs/provenance"},
+        "feedback_loop": {"type": "boolean", "default": false},
+        "delay": {"type": "string", "maxLength": 200},
+        "extensions": {"type": "object"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

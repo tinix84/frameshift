@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frameshift.dev/schemas/checkpoint.schema.json",
+  "title": "FrameShift portable checkpoint",
+  "type": "object",
+  "required": ["schema_version", "id", "session_id", "session_revision", "phase", "state", "event_cursor", "contracts", "capability_profile", "artifacts", "state_digest", "checkpoint_digest"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "id": {"$ref": "common.schema.json#/$defs/id"},
+    "session_id": {"$ref": "common.schema.json#/$defs/id"},
+    "session_revision": {"type": "integer", "minimum": 0},
+    "phase": {"type": "string", "enum": ["intake", "framing", "causal", "solutions", "decision", "monitoring"]},
+    "state": {"$ref": "session.schema.json"},
+    "pending_proposals": {"type": "array", "items": {"$ref": "engine-result.schema.json"}},
+    "event_cursor": {"type": "integer", "minimum": 0},
+    "prior_checkpoint_digest": {"anyOf": [{"$ref": "common.schema.json#/$defs/digest"}, {"type": "null"}]},
+    "contracts": {
+      "type": "object",
+      "required": ["engines", "prompts"],
+      "properties": {
+        "engines": {"type": "object", "additionalProperties": {"type": "string"}},
+        "prompts": {"type": "object", "additionalProperties": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "capability_profile": {"$ref": "capability-manifest.schema.json"},
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "media_type", "digest"],
+        "properties": {
+          "id": {"$ref": "common.schema.json#/$defs/id"},
+          "media_type": {"type": "string"},
+          "digest": {"$ref": "common.schema.json#/$defs/digest"},
+          "uri": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "execution_summaries": {"type": "array", "items": {"type": "object"}},
+    "created_at": {"$ref": "common.schema.json#/$defs/timestamp"},
+    "state_digest": {"$ref": "common.schema.json#/$defs/digest"},
+    "checkpoint_digest": {"$ref": "common.schema.json#/$defs/digest"}
+  },
+  "additionalProperties": false
+}

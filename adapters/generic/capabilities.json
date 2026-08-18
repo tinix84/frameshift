@@ -1,0 +1,8 @@
+{
+  "schema_version": "1.0.0",
+  "profile_id": "generic-conversation-only",
+  "adapter": {"id": "frameshift.generic", "version": "0.1.0"},
+  "capabilities": [
+    {"id": "artifact.read", "version": "1", "operations": ["read-inline"], "side_effect": "none", "approval": "never", "available": true, "data_classes": ["user-provided"], "limitations": ["Only artifacts provided in the current context."]}
+  ]
+}

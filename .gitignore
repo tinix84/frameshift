@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.DS_Store
+.idea/
+.vscode/
+dist/
+build/
+coverage/
+evals/results/
+checkpoints/local/

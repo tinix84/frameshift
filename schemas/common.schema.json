@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frameshift.dev/schemas/common.schema.json",
+  "title": "FrameShift common types",
+  "$defs": {
+    "id": {"type": "string", "minLength": 3, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "confidence": {"type": "string", "enum": ["unknown", "low", "medium", "high"]},
+    "provenance": {
+      "type": "object",
+      "required": ["kind", "source_ids"],
+      "properties": {
+        "kind": {"type": "string", "enum": ["observed", "sourced", "inferred", "assumed", "unknown"]},
+        "source_ids": {"type": "array", "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
+        "note": {"type": "string", "maxLength": 2000}
+      },
+      "additionalProperties": false
+    },
+    "actor": {
+      "type": "object",
+      "required": ["id", "kind"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "kind": {"type": "string", "enum": ["human", "service", "runtime"]},
+        "role": {"type": "string", "maxLength": 64}
+      },
+      "additionalProperties": false
+    }
+  }
+}

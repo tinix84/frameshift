@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frameshift.dev/schemas/session.schema.json",
+  "title": "FrameShift session",
+  "type": "object",
+  "required": ["schema_version", "id", "workspace_id", "title", "status", "phase", "revision", "statements", "frames", "graph", "options", "criteria", "approvals"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "id": {"$ref": "common.schema.json#/$defs/id"},
+    "workspace_id": {"$ref": "common.schema.json#/$defs/id"},
+    "title": {"type": "string", "minLength": 1, "maxLength": 300},
+    "status": {"type": "string", "enum": ["active", "decided", "archived", "deleted"]},
+    "phase": {"type": "string", "enum": ["intake", "framing", "causal", "solutions", "decision", "monitoring"]},
+    "revision": {"type": "integer", "minimum": 0},
+    "active_frame_id": {"anyOf": [{"$ref": "common.schema.json#/$defs/id"}, {"type": "null"}]},
+    "statements": {"type": "array", "items": {"$ref": "#/$defs/statement"}},
+    "frames": {"type": "array", "items": {"$ref": "#/$defs/frame"}},
+    "graph": {"$ref": "graph.schema.json"},
+    "options": {"type": "array", "items": {"$ref": "#/$defs/option"}},
+    "criteria": {"type": "array", "items": {"$ref": "#/$defs/criterion"}},
+    "approvals": {"type": "array", "items": {"$ref": "#/$defs/approval"}},
+    "extensions": {"type": "object"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "statement": {
+      "type": "object",
+      "required": ["id", "text", "primary_role", "status", "provenance"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/id"},
+        "text": {"type": "string", "minLength": 1, "maxLength": 10000},
+        "primary_role": {"type": "string", "enum": ["observation", "need", "outcome", "problem", "function", "requirement", "constraint", "assumption", "proposal", "question"]},
+        "secondary_roles": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "status": {"type": "string", "enum": ["draft", "proposed", "approved", "rejected", "superseded", "archived"]},
+        "provenance": {"$ref": "common.schema.json#/$defs/provenance"}
+      },
+      "additionalProperties": false
+    },
+    "frame": {
+      "type": "object",
+      "required": ["id", "question", "outcome", "abstraction_level", "included", "excluded", "success_measures", "constraints", "assumptions", "status", "digest"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/id"},
+        "question": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "outcome": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "abstraction_level": {"type": "string", "enum": ["component", "subsystem", "system", "product", "lifecycle", "operations", "supply_chain", "portfolio", "business"]},
+        "included": {"type": "array", "items": {"type": "string"}},
+        "excluded": {"type": "array", "items": {"type": "string"}},
+        "success_measures": {"type": "array", "items": {"type": "string"}},
+        "constraints": {"type": "array", "items": {"type": "string"}},
+        "assumptions": {"type": "array", "items": {"type": "string"}},
+        "open_questions": {"type": "array", "items": {"type": "string"}},
+        "status": {"type": "string", "enum": ["draft", "proposed", "working", "rejected", "superseded", "archived"]},
+        "digest": {"$ref": "common.schema.json#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "option": {
+      "type": "object",
+      "required": ["id", "frame_id", "title", "leverage_level", "mechanism", "status"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/id"},
+        "frame_id": {"$ref": "common.schema.json#/$defs/id"},
+        "title": {"type": "string", "minLength": 1, "maxLength": 500},
+        "leverage_level": {"type": "string", "maxLength": 100},
+        "mechanism": {"type": "string", "minLength": 1, "maxLength": 3000},
+        "prerequisites": {"type": "array", "items": {"type": "string"}},
+        "risk_ids": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/id"}},
+        "status": {"type": "string", "enum": ["draft", "proposed", "shortlisted", "selected", "rejected", "superseded"]}
+      },
+      "additionalProperties": false
+    },
+    "criterion": {
+      "type": "object",
+      "required": ["id", "name", "kind", "direction", "owner_id"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/id"},
+        "name": {"type": "string", "minLength": 1, "maxLength": 300},
+        "kind": {"type": "string", "enum": ["constraint", "preference", "risk"]},
+        "direction": {"type": "string", "enum": ["minimize", "maximize", "target", "boolean"]},
+        "owner_id": {"$ref": "common.schema.json#/$defs/id"},
+        "unit": {"type": "string", "maxLength": 50},
+        "threshold": {},
+        "weight": {"type": "number", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "approval": {
+      "type": "object",
+      "required": ["id", "target_id", "target_digest", "disposition", "actor", "session_revision", "created_at"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/id"},
+        "target_id": {"$ref": "common.schema.json#/$defs/id"},
+        "target_digest": {"$ref": "common.schema.json#/$defs/digest"},
+        "disposition": {"type": "string", "enum": ["approved", "edited", "rejected", "deferred", "evidence_requested"]},
+        "actor": {"$ref": "common.schema.json#/$defs/actor"},
+        "session_revision": {"type": "integer", "minimum": 0},
+        "rationale": {"type": "string", "maxLength": 3000},
+        "created_at": {"$ref": "common.schema.json#/$defs/timestamp"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frameshift.dev/schemas/capability-manifest.schema.json",
+  "title": "FrameShift capability manifest",
+  "type": "object",
+  "required": ["schema_version", "profile_id", "adapter", "capabilities"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "profile_id": {"$ref": "common.schema.json#/$defs/id"},
+    "adapter": {
+      "type": "object",
+      "required": ["id", "version"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/id"},
+        "version": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "version", "operations", "side_effect", "approval", "available"],
+        "properties": {
+          "id": {"$ref": "common.schema.json#/$defs/id"},
+          "version": {"type": "string", "minLength": 1},
+          "operations": {"type": "array", "items": {"type": "string"}, "minItems": 1, "uniqueItems": true},
+          "side_effect": {"type": "string", "enum": ["none", "reversible", "external", "irreversible"]},
+          "approval": {"type": "string", "enum": ["never", "policy", "each_call"]},
+          "available": {"type": "boolean"},
+          "data_classes": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+          "limitations": {"type": "array", "items": {"type": "string"}}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

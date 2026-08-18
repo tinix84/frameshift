@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0.0",
+  "profile_id": "claude-code-local-agent",
+  "adapter": {"id": "frameshift.claude-code", "version": "0.1.0"},
+  "capabilities": [
+    {"id": "artifact.read", "version": "1", "operations": ["read"], "side_effect": "none", "approval": "never", "available": true, "data_classes": ["workspace"]},
+    {"id": "artifact.write", "version": "1", "operations": ["create", "update"], "side_effect": "reversible", "approval": "policy", "available": true, "data_classes": ["workspace"]},
+    {"id": "code.execute.sandboxed", "version": "1", "operations": ["run"], "side_effect": "reversible", "approval": "policy", "available": true, "data_classes": ["workspace"], "limitations": ["Actual permissions are discovered at runtime."]},
+    {"id": "external.connector", "version": "1", "operations": ["read", "write"], "side_effect": "external", "approval": "policy", "available": false, "data_classes": [], "limitations": ["Availability depends on configured MCP servers."]}
+  ]
+}

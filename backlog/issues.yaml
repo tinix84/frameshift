@@ -1,0 +1,237 @@
+version: 1
+repository: tinix84/frameshift
+ordering: priority_then_sequence
+issues:
+  - id: FS-001
+    title: "[P0] Implement canonical JSON validation and invariant library"
+    priority: P0
+    type: architecture
+    area: contracts
+    milestone: M0
+    depends_on: []
+    acceptance:
+      - Validate every schema under schemas/ with Draft 2020-12 support.
+      - Enforce graph references, approval binding, and active-frame invariants.
+      - Return stable machine-readable violations with JSON paths.
+      - Cover valid, invalid, and adversarial fixtures.
+
+  - id: FS-002
+    title: "[P0] Implement deterministic checkpoint encoder and verifier"
+    priority: P0
+    type: feature
+    area: persistence
+    milestone: M0
+    depends_on: [FS-001]
+    acceptance:
+      - Canonicalize semantic state and compute SHA-256 digests.
+      - Exclude documented nondeterministic execution fields from state digest.
+      - Detect corrupt state, checkpoint, and artifact digests.
+      - Round-trip the reference checkpoint across operating systems.
+
+  - id: FS-003
+    title: "[P0] Define orchestrator state machine and guarded transitions"
+    priority: P0
+    type: architecture
+    area: orchestration
+    milestone: M0
+    depends_on: [FS-001]
+    acceptance:
+      - Implement all phases and transitions in reasoning/workflows.md.
+      - Require target digest, revision, actor, and authority at human gates.
+      - Reject stale, missing, or unauthorized approvals.
+      - Emit immutable domain events for committed transitions.
+
+  - id: FS-004
+    title: "[P0] Build runtime adapter interface and conformance suite"
+    priority: P0
+    type: architecture
+    area: portability
+    milestone: M0
+    depends_on: [FS-001]
+    acceptance:
+      - Define normalized execution request/result interfaces.
+      - Validate capability discovery and structured-output repair behavior.
+      - Preserve provenance IDs and execution metadata.
+      - Publish a conformance report format.
+
+  - id: FS-005
+    title: "[P0] Expand evaluation harness with schema and safety invariants"
+    priority: P0
+    type: test
+    area: evaluation
+    milestone: M0
+    depends_on: [FS-001]
+    acceptance:
+      - Execute positive and negative fixtures without provider SDKs.
+      - Score required/forbidden properties rather than exact prose.
+      - Emit human-readable and JSON reports.
+      - Fail CI on safety-invariant regressions.
+
+  - id: FS-006
+    title: "[P0] Implement intake classification and correction flow"
+    priority: P0
+    type: feature
+    area: framing
+    milestone: M1
+    depends_on: [FS-003, FS-004]
+    acceptance:
+      - Classify all canonical semantic roles with source traceability.
+      - Allow human correction without overwriting original wording.
+      - Detect solution-shaped requests and trigger abstraction-up.
+      - Save corrections as events.
+
+  - id: FS-007
+    title: "[P0] Implement why/how ladder and candidate frame generation"
+    priority: P0
+    type: feature
+    area: framing
+    milestone: M1
+    depends_on: [FS-006]
+    acceptance:
+      - Generate bounded, relevant abstraction levels.
+      - Produce two to five materially distinct candidate frames.
+      - Separate constraints, assumptions, exclusions, and measures.
+      - Require explicit frame approval before causal work.
+
+  - id: FS-008
+    title: "[P0] Prove Codex-to-Claude checkpoint round trip"
+    priority: P0
+    type: test
+    area: portability
+    milestone: M1
+    depends_on: [FS-002, FS-004, FS-007]
+    acceptance:
+      - Run the reference framing scenario in both environments.
+      - Restore identical approved state and pending proposals.
+      - Report capability differences without changing state semantics.
+      - Document non-identical prose as acceptable variance.
+
+  - id: FS-009
+    title: "[P1] Implement typed causal graph editing and validation"
+    priority: P1
+    type: feature
+    area: causal
+    milestone: M2
+    depends_on: [FS-003]
+    acceptance:
+      - Add, edit, supersede, and reject typed nodes and edges.
+      - Support cycles, contradiction, confidence basis, and provenance.
+      - Render deterministic Mermaid and accessible list views.
+      - Surface merge conflicts instead of silently resolving them.
+
+  - id: FS-010
+    title: "[P1] Implement competing-hypothesis and evidence-plan workflow"
+    priority: P1
+    type: feature
+    area: causal
+    milestone: M2
+    depends_on: [FS-009]
+    acceptance:
+      - Preserve multiple explanations with predictions and counter-evidence.
+      - Rank discriminating evidence by decision value, time, and cost bands.
+      - Prevent unsupported causal language from being approved silently.
+      - Add at least three expert-reviewed scenario fixtures.
+
+  - id: FS-011
+    title: "[P1] Implement capability broker and approval-bound tool calls"
+    priority: P1
+    type: security
+    area: tools
+    milestone: M2
+    depends_on: [FS-003, FS-004]
+    acceptance:
+      - Resolve semantic capabilities to allowed implementations.
+      - Enforce resource/data scopes and explicit approval policy.
+      - Treat results as untrusted evidence with provenance and digest.
+      - Pass injection, replay, and confused-deputy tests.
+
+  - id: FS-012
+    title: "[P1] Implement structurally diverse option generation"
+    priority: P1
+    type: feature
+    area: solutions
+    milestone: M3
+    depends_on: [FS-010]
+    acceptance:
+      - Generate baseline, minimal, out-of-boundary, and mechanism-distinct options.
+      - Link each option to a frame and causal leverage point.
+      - Screen only hard constraints during divergence.
+      - Measure and expose underrepresented leverage levels.
+
+  - id: FS-013
+    title: "[P1] Implement criteria, constraints, and option assessments"
+    priority: P1
+    type: feature
+    area: decision
+    milestone: M3
+    depends_on: [FS-012]
+    acceptance:
+      - Keep human ownership of criteria, thresholds, and importance.
+      - Distinguish constraints, preferences, risks, facts, and estimates.
+      - Retain evidence/method/uncertainty for every assessment.
+      - Preserve raw assessments beside derived scores.
+
+  - id: FS-014
+    title: "[P1] Implement sensitivity analysis and decision records"
+    priority: P1
+    type: feature
+    area: decision
+    milestone: M3
+    depends_on: [FS-013]
+    acceptance:
+      - Identify selections sensitive to weights, values, and assumptions.
+      - Support decide, prototype, gather evidence, negotiate, and reframe outcomes.
+      - Bind approval to exact decision record digest and revision.
+      - Export rationale, dissent, conditions, and revisit triggers.
+
+  - id: FS-015
+    title: "[P1] Establish prompt-injection and data-boundary security suite"
+    priority: P1
+    type: security
+    area: security
+    milestone: M2
+    depends_on: [FS-005, FS-011]
+    acceptance:
+      - Cover instructions embedded in evidence, tool output, and referenced documents.
+      - Verify no authority or credentials flow through untrusted content.
+      - Test redaction before prompts, logs, checkpoints, and exports.
+      - Publish threat cases using synthetic data only.
+
+  - id: FS-016
+    title: "[P2] Add collaborative workspace roles and conflict handling"
+    priority: P2
+    type: feature
+    area: collaboration
+    milestone: M4
+    depends_on: [FS-003, FS-014]
+    acceptance:
+      - Enforce viewer, contributor, facilitator, approver, and admin permissions.
+      - Preserve dissent and concurrent proposal branches.
+      - Reject cross-workspace access in negative tests.
+      - Require authorized resolution for conflicting approvals.
+
+  - id: FS-017
+    title: "[P2] Implement retention, export, and verified deletion"
+    priority: P2
+    type: security
+    area: privacy
+    milestone: M4
+    depends_on: [FS-016]
+    acceptance:
+      - Configure retention by workspace data class.
+      - Export canonical state and audit history with redaction preview.
+      - Delete source, blobs, indexes, and derived content according to policy.
+      - Document backup expiry and external-copy limitations.
+
+  - id: FS-018
+    title: "[P2] Run expert benchmark and human-factors alpha study"
+    priority: P2
+    type: test
+    area: evaluation
+    milestone: M4
+    depends_on: [FS-008, FS-010, FS-014, FS-017]
+    acceptance:
+      - Define representative, non-sensitive engineering scenarios and rubrics.
+      - Measure frame correction, provenance coverage, option diversity, and trust calibration.
+      - Report model/runtime variance and failure cases.
+      - Convert findings into prioritized product and safety changes.

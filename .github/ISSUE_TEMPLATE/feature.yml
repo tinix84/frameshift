@@ -1,0 +1,31 @@
+name: Feature
+description: Propose a user outcome or implementation slice
+title: "[P2] "
+labels: ["type:feature"]
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: User outcome
+      description: Describe the problem and outcome without prescribing implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and boundaries
+      description: State included/excluded behavior, assumptions, and constraints.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Provide observable, testable criteria.
+    validations:
+      required: true
+  - type: textarea
+    id: contracts
+    attributes:
+      label: Contracts, ADRs, and risks
+      description: Link affected specifications/schemas and note safety or privacy impact.
