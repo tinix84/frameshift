@@ -1,6 +1,6 @@
 # ADR-0005: Capability broker for tools
 
-- Status: accepted
+- Status: accepted; superseded in part by ADR-0009 (discovery, schema publication, and invocation move to MCP; policy, approval binding, and provenance stand)
 - Date: 2026-08-18
 - Deciders: initial maintainers
 - Supersedes: none

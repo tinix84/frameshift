@@ -1,6 +1,6 @@
 # ADR-0006: Schema-constrained engine results
 
-- Status: accepted
+- Status: accepted; superseded in part by ADR-0009 (constraint moves to the tool input schema and repair narrows; the EngineResult envelope stands)
 - Date: 2026-08-18
 - Deciders: initial maintainers
 - Supersedes: none

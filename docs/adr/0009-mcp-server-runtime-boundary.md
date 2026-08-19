@@ -11,7 +11,7 @@ ADR-0001 through ADR-0008 assumed FrameShift would call models through hand-writ
 
 Claude Code already supplies the model, the agent loop, and the human at the terminal. What it lacks is canonical state, schema validation, an explicit state machine, gates, a typed graph, and portable checkpoints. That is the whole of what FrameShift contributes, and the Model Context Protocol is the interface through which a runtime consumes it.
 
-Three accepted ADRs are partly overtaken. They are immutable, so this ADR supersedes the affected parts rather than editing them.
+Three accepted ADRs are partly overtaken. Their decision text stands as written; each carries a `Status` line pointing here and naming the extent, so a reader arriving at ADR-0005 learns it was overtaken without the history being rewritten.
 
 ## Decision
 
