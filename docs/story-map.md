@@ -77,9 +77,9 @@ Slice 1 is the walking skeleton. Until it exists, no exemplar can pass.
 
 ## Exemplars
 
-Named cases that cut across the whole backbone. Each has a runnable twin in
-[`evals/fixtures/`](../evals/fixtures) — an exemplar nobody can execute is an
-anecdote.
+Named cases that cut across the whole backbone. Each has a runnable twin the
+evaluation harness executes — an exemplar nobody can execute is an anecdote.
+Where the twin lives is the harness's decision, not this file's.
 
 | Exemplar | The reasoner arrives with |
 |---|---|
