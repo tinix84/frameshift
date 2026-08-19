@@ -1,6 +1,6 @@
 # ADR-0001: Canonical provider-neutral domain model
 
-- Status: accepted
+- Status: accepted; superseded in part by ADR-0009 (the per-provider adapter layer; canonical provider-neutral state stands)
 - Date: 2026-08-18
 - Deciders: initial maintainers
 - Supersedes: none
