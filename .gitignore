@@ -10,3 +10,5 @@ build/
 coverage/
 evals/results/
 checkpoints/local/
+.scratch/
+docs/superpowers/

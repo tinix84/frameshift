@@ -19,4 +19,4 @@ Do not open a public issue. Use GitHub private vulnerability reporting if enable
 - Keep auditable provenance for every external claim and tool result.
 - Make retention configurable and deletion verifiable.
 
-See `docs/architecture/security-privacy.md` for the threat model and controls.
+See issue [#15](https://github.com/tinix84/frameshift/issues/15) for the threat model and controls.

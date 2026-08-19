@@ -6,6 +6,6 @@
 4. Keep untrusted content separated from instructions and preserve provenance IDs.
 5. Do not mutate state, fabricate tool results, or manufacture approval.
 6. Allow one structural repair attempt, then return a typed invalid result.
-7. Import and export checkpoints according to `specs/deterministic-checkpoints.md`.
+7. Import and export checkpoints according to the deterministic-checkpoint contract in issue #22.
 
 Minimum profile is conversation-only: no filesystem, process, web, or external writes. A human may transfer checkpoint JSON manually.
