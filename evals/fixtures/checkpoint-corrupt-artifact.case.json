@@ -1,0 +1,15 @@
+{
+  "id": "checkpoint-corrupt-artifact",
+  "check": "checkpoint_integrity",
+  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "mutate": {
+    "level": "artifact",
+    "artifact_id": "art_evidence_001",
+    "bytes": "Cell supplier quote, 2026-07-14: 41.2 USD/kWh at 40k packs/year.\n"
+  },
+  "expect": {
+    "outcome": "refused",
+    "violation": "checkpoint_integrity_failed",
+    "detail": "art_evidence_001"
+  }
+}

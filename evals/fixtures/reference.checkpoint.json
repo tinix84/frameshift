@@ -1,0 +1,248 @@
+{
+  "schema_version": "1.0.0",
+  "id": "ckpt_reference_001",
+  "session_id": "sess_reference_001",
+  "session_revision": 4,
+  "phase": "framing",
+  "state": {
+    "schema_version": "1.0.0",
+    "id": "sess_reference_001",
+    "workspace_id": "ws_reference",
+    "title": "Pack cost per kWh at the 2027 volume step",
+    "status": "active",
+    "phase": "framing",
+    "revision": 4,
+    "active_frame_id": "frame_001",
+    "statements": [
+      {
+        "id": "stmt_001",
+        "text": "Switch the pack to prismatic cells so we hit the cost target.",
+        "primary_role": "proposal",
+        "secondary_roles": [
+          "question",
+          "need"
+        ],
+        "status": "approved",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "intake_001"
+          ]
+        }
+      }
+    ],
+    "frames": [
+      {
+        "id": "frame_001",
+        "question": "How might we reach the 2027 pack cost target without losing usable range?",
+        "outcome": "Pack cost per usable kWh meets the 2027 target at planned volume.",
+        "abstraction_level": "product",
+        "included": [
+          "cell sourcing",
+          "pack architecture",
+          "thermal system"
+        ],
+        "excluded": [
+          "vehicle body",
+          "sales pricing"
+        ],
+        "success_measures": [
+          "USD per usable kWh at 40k packs/year"
+        ],
+        "constraints": [
+          "Range must not fall below the homologated figure."
+        ],
+        "assumptions": [
+          "Volume forecast of 40k packs/year holds."
+        ],
+        "open_questions": [
+          "What is the target figure, and who owns it?"
+        ],
+        "status": "working",
+        "digest": "sha256:7f15827e146036f77bb3940deb95765036c0eed325d3e1ff2f8d5db3eb7c6957"
+      }
+    ],
+    "graph": {
+      "schema_version": "1.0.0",
+      "nodes": [
+        {
+          "id": "node_outcome_001",
+          "type": "outcome",
+          "label": "Pack cost per usable kWh meets the 2027 target.",
+          "status": "approved",
+          "confidence": "medium",
+          "provenance": {
+            "kind": "sourced",
+            "source_ids": [
+              "stmt_001",
+              "intake_001"
+            ]
+          }
+        },
+        {
+          "id": "node_factor_001",
+          "type": "factor",
+          "label": "Cell price per kWh at contracted volume.",
+          "status": "proposed",
+          "confidence": "high",
+          "provenance": {
+            "kind": "sourced",
+            "source_ids": [
+              "art_evidence_001"
+            ]
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "edge_001",
+          "source": "node_factor_001",
+          "target": "node_outcome_001",
+          "type": "contributes_to",
+          "status": "proposed",
+          "confidence": "medium",
+          "provenance": {
+            "kind": "inferred",
+            "source_ids": [
+              "node_factor_001"
+            ]
+          }
+        }
+      ]
+    },
+    "options": [],
+    "criteria": [],
+    "approvals": [
+      {
+        "id": "appr_001",
+        "target_id": "frame_001",
+        "target_digest": "sha256:7f15827e146036f77bb3940deb95765036c0eed325d3e1ff2f8d5db3eb7c6957",
+        "disposition": "approved",
+        "actor": {
+          "id": "user_lead_eng",
+          "kind": "human",
+          "role": "decision_owner"
+        },
+        "session_revision": 4,
+        "rationale": "The frame names the outcome and leaves the mechanism open.",
+        "created_at": "2026-07-15T09:14:00Z"
+      }
+    ]
+  },
+  "pending_proposals": [
+    {
+      "schema_version": "1.0.0",
+      "execution_id": "exec_reference_001",
+      "engine": "problem_framing",
+      "input_revision": 4,
+      "status": "complete",
+      "proposals": [
+        {
+          "id": "prop_frame_002",
+          "kind": "problem_frame",
+          "operation": "add",
+          "value": {
+            "question": "How might we reach the 2027 cost target across the whole energy path, not the pack alone?",
+            "abstraction_level": "system",
+            "status": "proposed"
+          },
+          "provenance": {
+            "kind": "inferred",
+            "source_ids": [
+              "stmt_001",
+              "frame_001"
+            ]
+          }
+        }
+      ],
+      "rationale_summaries": [
+        "The approved frame fixes the pack as the boundary; consumption is the other half of cost per usable kWh.",
+        "Raising the boundary keeps the same measure and opens interventions the pack boundary excludes."
+      ],
+      "uncertainties": [
+        {
+          "id": "unc_ref_001",
+          "summary": "The target figure is not yet stated, so no frame can be scored against it.",
+          "source_ids": [
+            "frame_001"
+          ]
+        }
+      ],
+      "conflicts": [],
+      "missing_information": [
+        {
+          "id": "miss_ref_001",
+          "summary": "Name the owner of the 2027 cost target.",
+          "source_ids": [
+            "frame_001"
+          ]
+        }
+      ],
+      "requested_capabilities": [
+        "artifact.read"
+      ],
+      "required_checkpoints": [
+        "frame_selection"
+      ],
+      "warnings": []
+    }
+  ],
+  "event_cursor": 12,
+  "prior_checkpoint_digest": null,
+  "contracts": {
+    "engines": {
+      "problem_framing": "1.0.0"
+    },
+    "prompts": {
+      "problem_framing": "frameshift.problem-framing.v1"
+    }
+  },
+  "capability_profile": {
+    "schema_version": "1.0.0",
+    "profile_id": "generic-conversation-only",
+    "adapter": {
+      "id": "frameshift.generic",
+      "version": "0.1.0"
+    },
+    "capabilities": [
+      {
+        "id": "artifact.read",
+        "version": "1",
+        "operations": [
+          "read-inline"
+        ],
+        "side_effect": "none",
+        "approval": "never",
+        "available": true,
+        "data_classes": [
+          "user-provided"
+        ],
+        "limitations": [
+          "Only artifacts provided in the current context."
+        ]
+      }
+    ]
+  },
+  "artifacts": [
+    {
+      "id": "art_evidence_001",
+      "media_type": "text/plain",
+      "digest": "sha256:e0d28cab6ce2704db425922783ed9408678d6b4f23d3ddc7c6b65811d00e79cb",
+      "uri": "evals/fixtures/reference-evidence.txt"
+    }
+  ],
+  "execution_summaries": [
+    {
+      "execution_id": "exec_reference_001",
+      "latency_ms": 4120,
+      "token_counts": {
+        "input": 2810,
+        "output": 640
+      },
+      "provider_request_id": "req_9f2c"
+    }
+  ],
+  "created_at": "2026-07-15T09:15:00Z",
+  "state_digest": "sha256:f1d918888d6bdaeccdd5298a9cfd0718316ea64940e39a70db04308e16e5d002",
+  "checkpoint_digest": "sha256:19c24f904b842743a83dad9f0f17744c752e6b93419d39f57b23fccce9e40804"
+}
