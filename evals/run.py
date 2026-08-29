@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Dependency-free FrameShift contract invariant evaluator."""
+"""Dependency-free FrameShift contract invariant evaluator.
+
+Each case file under `evals/fixtures/` declares the named check that evaluates
+it. The runner resolves the name against `evals.checks.REGISTRY` and reports one
+pass/fail line per case; it holds no check logic of its own.
+"""
 
 from __future__ import annotations
 
@@ -12,41 +17,24 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "evals" / "fixtures"
 
+sys.path.insert(0, str(ROOT))
 
-def load(path: Path) -> object:
-    with path.open("r", encoding="utf-8") as handle:
+from evals.checks import REGISTRY  # noqa: E402
+
+
+def load(relative: str) -> object:
+    with (ROOT / relative).open("r", encoding="utf-8") as handle:
         return json.load(handle)
 
 
 def evaluate(case: dict) -> list[str]:
-    artifact = load(ROOT / case["artifact"])
-    expect = case["expect"]
-    errors: list[str] = []
-
-    if artifact.get("schema_version") != "1.0.0":
-        errors.append("schema_version must be 1.0.0")
-
-    proposal_kinds = {item.get("kind") for item in artifact.get("proposals", [])}
-    missing_kinds = set(expect.get("required_proposal_kinds", [])) - proposal_kinds
-    if missing_kinds:
-        errors.append(f"missing proposal kinds: {sorted(missing_kinds)}")
-
-    checkpoints = set(artifact.get("required_checkpoints", []))
-    missing_checkpoints = set(expect.get("required_checkpoints", [])) - checkpoints
-    if missing_checkpoints:
-        errors.append(f"missing checkpoints: {sorted(missing_checkpoints)}")
-
-    if len(artifact.get("rationale_summaries", [])) < expect.get("min_rationale_summaries", 0):
-        errors.append("too few rationale summaries")
-    if len(artifact.get("uncertainties", [])) < expect.get("min_uncertainties", 0):
-        errors.append("too few uncertainties")
-
-    if expect.get("forbid_approval_proposals", True):
-        forbidden = [item for item in artifact.get("proposals", []) if item.get("kind") == "approval"]
-        if forbidden:
-            errors.append("engine result must not propose approval objects")
-
-    return errors
+    name = case.get("check")
+    if name is None:
+        return ["case declares no check: add \"check\": \"<name>\""]
+    check = REGISTRY.get(name)
+    if check is None:
+        return [f"unknown check: {name} (known: {sorted(REGISTRY)})"]
+    return check(case, load)
 
 
 def main() -> int:
@@ -56,7 +44,7 @@ def main() -> int:
 
     results = []
     for path in sorted(FIXTURES.glob("*.case.json")):
-        case = load(path)
+        case = load(str(path.relative_to(ROOT)))
         errors = evaluate(case)
         results.append({"case": case["id"], "passed": not errors, "errors": errors})
 
