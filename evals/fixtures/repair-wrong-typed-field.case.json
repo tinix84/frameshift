@@ -1,0 +1,15 @@
+{
+  "id": "repair-wrong-typed-field",
+  "check": "engine_result_repair",
+  "prompt": {
+    "path": "prompts/repair-structured-output.v1.md",
+    "id": "frameshift.repair-structured-output.v1",
+    "version": "1.0.0"
+  },
+  "invalid": "evals/fixtures/repair/wrong-typed-field.invalid.json",
+  "repaired": "evals/fixtures/repair/wrong-typed-field.repaired.json",
+  "expect": {
+    "outcome": "repaired",
+    "attempts": 1
+  }
+}

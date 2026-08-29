@@ -1,0 +1,15 @@
+{
+  "id": "repair-valid-output-untouched",
+  "check": "engine_result_repair",
+  "prompt": {
+    "path": "prompts/repair-structured-output.v1.md",
+    "id": "frameshift.repair-structured-output.v1",
+    "version": "1.0.0"
+  },
+  "invalid": "evals/fixtures/framing-solution-disguised.result.json",
+  "repaired": null,
+  "expect": {
+    "outcome": "valid",
+    "attempts": 0
+  }
+}

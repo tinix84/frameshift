@@ -37,6 +37,7 @@ entry. The runner does not change.
 | `engine_result_invariants` | Engine-result envelope: required proposal kinds, required checkpoints, minimum rationale summaries and uncertainties, no approval proposals. |
 | `checkpoint_digest` | A committed reference checkpoint hashes to a recorded `sha256:` value, and the value survives key order, line endings, set-like array order, and execution metadata. |
 | `checkpoint_integrity` | A copy mutated at one of three levels — canonical state, checkpoint envelope, referenced artifact — is refused with `checkpoint_integrity_failed`, and a verified restore commits and executes nothing. |
+| `engine_result_repair` | Repair is attempted once and only for shape: outcome and attempt count are asserted, and the repaired output's identifiers, evidence references, and proposal kinds must be a subset of the invalid output's. |
 
 Runtime adapters should capture actual `EngineResult` JSON and feed it to the
 same named checks rather than adding a second entry point.
@@ -52,3 +53,18 @@ everywhere" is a CI result rather than a claim.
 Changing it changes the recorded digests in
 `fixtures/checkpoint-digest-stability.case.json`. If a change is semantic that
 is correct; if it is not, the canonicalization rules are wrong.
+## The repair corpus
+
+`fixtures/repair/` holds the invalid engine outputs and the candidate repairs
+the corpus runs them through. Each case pins the prompt under test by path, id,
+and version, so the corpus cannot silently start measuring a different prompt.
+
+The rule the corpus exists for is the subset rule in `checks/repair.py`: a
+repaired artifact may gain structure, but every identifier, evidence reference,
+and proposal kind in it must already have been in the invalid output. Schema
+validation alone cannot catch an invented referent, because the repaired output
+is valid by construction.
+
+`checks/schema.py` validates against the committed schemas rather than
+restating them, and refuses a schema using a keyword it does not implement, so
+silence never passes for a check that did not run.

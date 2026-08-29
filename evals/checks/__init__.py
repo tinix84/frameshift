@@ -12,10 +12,12 @@ from __future__ import annotations
 
 from .checkpoint import checkpoint_digest, checkpoint_integrity
 from .engine_result import engine_result_invariants
+from .repair import engine_result_repair
 
 
 REGISTRY = {
     "checkpoint_digest": checkpoint_digest,
     "checkpoint_integrity": checkpoint_integrity,
     "engine_result_invariants": engine_result_invariants,
+    "engine_result_repair": engine_result_repair,
 }

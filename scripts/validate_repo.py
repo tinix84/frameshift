@@ -134,7 +134,7 @@ def chain_of_thought_errors() -> list[str]:
 def rationale_summary_errors() -> list[str]:
     """The positive half of ADR-0007: engine results carry rationale summaries."""
     errors: list[str] = []
-    for path in sorted((ROOT / "evals" / "fixtures").glob("*.json")):
+    for path in sorted((ROOT / "evals" / "fixtures").rglob("*.json")):
         try:
             with path.open("r", encoding="utf-8") as handle:
                 artifact = json.load(handle)
