@@ -35,6 +35,7 @@ entry. The runner does not change.
 | Check | Evaluates |
 |---|---|
 | `engine_result_invariants` | Engine-result envelope: required proposal kinds, required checkpoints, minimum rationale summaries and uncertainties, no approval proposals. |
+| `approval_binding` | A guarded transition is attempted with a declared approval and must be accepted, or refused with `approval_required`, `approval_stale`, or `invariant_violation`. |
 | `checkpoint_digest` | A committed reference checkpoint hashes to a recorded `sha256:` value, and the value survives key order, line endings, set-like array order, and execution metadata. |
 | `checkpoint_integrity` | A copy mutated at one of three levels — canonical state, checkpoint envelope, referenced artifact — is refused with `checkpoint_integrity_failed`, and a verified restore commits and executes nothing. |
 | `engine_result_repair` | Repair is attempted once and only for shape: outcome and attempt count are asserted, and the repaired output's identifiers, evidence references, and proposal kinds must be a subset of the invalid output's. |
@@ -68,3 +69,22 @@ is valid by construction.
 `checks/schema.py` validates against the committed schemas rather than
 restating them, and refuses a schema using a keyword it does not implement, so
 silence never passes for a check that did not run.
+
+## The approval gates
+
+`fixtures/approval/gates.session.json` is a schema-valid starting state holding
+one target for each of the eight checkpoint gates in `CONTEXT.md`. A case
+declares a list of attempts; each runs against a fresh copy of that state, so no
+attempt can inherit another's outcome.
+
+An attempt names a gate, a target, and either an approval or none, and expects
+`accepted` or a refusal with a stable code. It may also declare an `edit`
+applied before the attempt, which is how a sign-off is shown not to carry across
+a change to what was signed.
+
+Negative attempts outnumber positive ones, so `approval-gates-accept-a-bound-approval`
+carries `"covers_gates": true` — every one of the eight gates must have an
+accepted attempt, or the case fails. Refusing everything is not a pass.
+
+Who may pass which gate is `GATE_AUTHORITY` in `checks/approval.py`: the first
+slice's reference policy, deliberately visible. Separation-of-duty rules are #16.

@@ -1,0 +1,146 @@
+{
+  "id": "approval-gates-accept-a-bound-approval",
+  "check": "approval_binding",
+  "session": "evals/fixtures/approval/gates.session.json",
+  "expect": {
+    "covers_gates": true
+  },
+  "attempts": [
+    {
+      "id": "intake_correction-accepted",
+      "gate": "intake_correction",
+      "target_id": "stmt_001",
+      "to_phase": "framing",
+      "approval": {
+        "bind_to_current_content": true,
+        "actor": {
+          "id": "user_lead_eng",
+          "kind": "human",
+          "role": "facilitator"
+        }
+      },
+      "expect": {
+        "outcome": "accepted"
+      }
+    },
+    {
+      "id": "frame_selection-accepted",
+      "gate": "frame_selection",
+      "target_id": "frame_001",
+      "to_phase": "causal",
+      "approval": {
+        "bind_to_current_content": true,
+        "actor": {
+          "id": "user_lead_eng",
+          "kind": "human",
+          "role": "decision_owner"
+        }
+      },
+      "expect": {
+        "outcome": "accepted"
+      }
+    },
+    {
+      "id": "evidence_sufficiency-accepted",
+      "gate": "evidence_sufficiency",
+      "target_id": "node_evidence_001",
+      "to_phase": "solutions",
+      "approval": {
+        "bind_to_current_content": true,
+        "actor": {
+          "id": "user_lead_eng",
+          "kind": "human",
+          "role": "facilitator"
+        }
+      },
+      "expect": {
+        "outcome": "accepted"
+      }
+    },
+    {
+      "id": "option_set_acceptance-accepted",
+      "gate": "option_set_acceptance",
+      "target_id": "opt_001",
+      "to_phase": "decision",
+      "approval": {
+        "bind_to_current_content": true,
+        "actor": {
+          "id": "user_lead_eng",
+          "kind": "human",
+          "role": "decision_owner"
+        }
+      },
+      "expect": {
+        "outcome": "accepted"
+      }
+    },
+    {
+      "id": "criteria_confirmation-accepted",
+      "gate": "criteria_confirmation",
+      "target_id": "crit_001",
+      "to_phase": "decision",
+      "approval": {
+        "bind_to_current_content": true,
+        "actor": {
+          "id": "user_lead_eng",
+          "kind": "human",
+          "role": "decision_owner"
+        }
+      },
+      "expect": {
+        "outcome": "accepted"
+      }
+    },
+    {
+      "id": "decision_approval-accepted",
+      "gate": "decision_approval",
+      "target_id": "node_decision_001",
+      "to_phase": "monitoring",
+      "approval": {
+        "bind_to_current_content": true,
+        "actor": {
+          "id": "user_lead_eng",
+          "kind": "human",
+          "role": "decision_owner"
+        }
+      },
+      "expect": {
+        "outcome": "accepted"
+      }
+    },
+    {
+      "id": "external_action-accepted",
+      "gate": "external_action",
+      "target_id": "node_intervention_001",
+      "to_phase": "causal",
+      "approval": {
+        "bind_to_current_content": true,
+        "actor": {
+          "id": "user_lead_eng",
+          "kind": "human",
+          "role": "operator"
+        }
+      },
+      "expect": {
+        "outcome": "accepted"
+      }
+    },
+    {
+      "id": "knowledge_promotion-accepted",
+      "gate": "knowledge_promotion",
+      "target_id": "stmt_lesson_001",
+      "to_phase": "monitoring",
+      "approval": {
+        "bind_to_current_content": true,
+        "actor": {
+          "id": "user_lead_eng",
+          "kind": "human",
+          "role": "workspace_owner"
+        }
+      },
+      "expect": {
+        "outcome": "accepted"
+      }
+    }
+  ]
+}

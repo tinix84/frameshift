@@ -1,0 +1,58 @@
+{
+  "id": "approval-edit-invalidates-the-previous-digest",
+  "check": "approval_binding",
+  "session": "evals/fixtures/approval/gates.session.json",
+  "attempts": [
+    {
+      "id": "sign-off-does-not-carry-across-an-edit",
+      "gate": "frame_selection",
+      "target_id": "frame_001",
+      "to_phase": "causal",
+      "edit": {
+        "target_id": "frame_001",
+        "field": "question",
+        "value": "How might we reach the 2027 cost target across the whole energy path?"
+      },
+      "approval": {
+        "id": "appr_before_the_edit",
+        "target_id": "frame_001",
+        "target_digest": "sha256:d9a59c0da6480e8f41531fa04383e27c8ef6767fa8c7605f6550b2ead0509726",
+        "disposition": "approved",
+        "actor": {
+          "id": "user_lead_eng",
+          "kind": "human",
+          "role": "decision_owner"
+        },
+        "session_revision": 8,
+        "created_at": "2026-07-16T10:00:00Z"
+      },
+      "expect": {
+        "outcome": "refused",
+        "violation": "approval_stale",
+        "detail": "target_digest"
+      }
+    },
+    {
+      "id": "re-approving-the-edited-frame-is-accepted",
+      "gate": "frame_selection",
+      "target_id": "frame_001",
+      "to_phase": "causal",
+      "edit": {
+        "target_id": "frame_001",
+        "field": "question",
+        "value": "How might we reach the 2027 cost target across the whole energy path?"
+      },
+      "approval": {
+        "bind_to_current_content": true,
+        "actor": {
+          "id": "user_lead_eng",
+          "kind": "human",
+          "role": "decision_owner"
+        }
+      },
+      "expect": {
+        "outcome": "accepted"
+      }
+    }
+  ]
+}
