@@ -1,0 +1,15 @@
+{
+  "id": "checkpoint-digest-stability",
+  "check": "checkpoint_digest",
+  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "expect": {
+    "state_digest": "sha256:f1d918888d6bdaeccdd5298a9cfd0718316ea64940e39a70db04308e16e5d002",
+    "checkpoint_digest": "sha256:19c24f904b842743a83dad9f0f17744c752e6b93419d39f57b23fccce9e40804",
+    "invariant_under": [
+      "key_order",
+      "line_endings",
+      "set_order",
+      "execution_metadata"
+    ]
+  }
+}

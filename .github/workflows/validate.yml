@@ -10,7 +10,13 @@ permissions:
 
 jobs:
   contracts:
-    runs-on: ubuntu-latest
+    # ADR-0004 promises one digest everywhere. A single runner cannot show that,
+    # so the reference checkpoint is hashed on all three supported platforms.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

@@ -1,0 +1,20 @@
+{
+  "id": "checkpoint-corrupt-state",
+  "check": "checkpoint_integrity",
+  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "mutate": {
+    "level": "state",
+    "path": [
+      "state",
+      "frames",
+      0,
+      "outcome"
+    ],
+    "value": "Pack cost per usable kWh meets the 2028 target at planned volume."
+  },
+  "expect": {
+    "outcome": "refused",
+    "violation": "checkpoint_integrity_failed",
+    "detail": "state_digest"
+  }
+}

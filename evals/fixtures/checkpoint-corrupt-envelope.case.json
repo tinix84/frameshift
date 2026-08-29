@@ -1,0 +1,17 @@
+{
+  "id": "checkpoint-corrupt-envelope",
+  "check": "checkpoint_integrity",
+  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "mutate": {
+    "level": "envelope",
+    "path": [
+      "event_cursor"
+    ],
+    "value": 11
+  },
+  "expect": {
+    "outcome": "refused",
+    "violation": "checkpoint_integrity_failed",
+    "detail": "checkpoint_digest"
+  }
+}
