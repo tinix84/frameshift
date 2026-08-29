@@ -1,0 +1,93 @@
+{
+  "schema_version": "1.0.0",
+  "execution_id": "exec_repair_001",
+  "engine": "problem_framing",
+  "input_revision": 1,
+  "status": "complete",
+  "proposals": [
+    {
+      "id": "prop_classify_001",
+      "kind": "statement_classification",
+      "operation": "add",
+      "value": {
+        "statement_id": "stmt_001",
+        "primary_role": "proposal",
+        "secondary_roles": [
+          "question"
+        ]
+      },
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [
+          "stmt_001"
+        ],
+        "note": "The intake prescribes motor and inverter changes."
+      }
+    },
+    {
+      "id": "prop_ladder_001",
+      "kind": "abstraction_ladder",
+      "operation": "add",
+      "value": {
+        "levels": [
+          "component",
+          "system",
+          "product",
+          "business"
+        ],
+        "top_outcome": "Improve vehicle contribution margin while meeting required performance."
+      },
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [
+          "stmt_001"
+        ]
+      }
+    },
+    {
+      "id": "prop_frame_001",
+      "kind": "problem_frame",
+      "operation": "add",
+      "value": {
+        "question": "How might we improve vehicle contribution margin while meeting minimum performance requirements?",
+        "abstraction_level": "business",
+        "status": "proposed"
+      },
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [
+          "stmt_001"
+        ]
+      }
+    }
+  ],
+  "rationale_summaries": [
+    "The intake specifies an implementation boundary before naming the owned outcome.",
+    "Moving to product and business levels opens supply-chain, platform, modularity, and component interventions."
+  ],
+  "uncertainties": [
+    {
+      "id": "unc_001",
+      "summary": "The intended performance measure and minimum acceptable threshold are not yet known.",
+      "source_ids": [
+        "stmt_001"
+      ]
+    }
+  ],
+  "conflicts": [],
+  "missing_information": [
+    {
+      "id": "miss_001",
+      "summary": "Identify the decision owner and primary economic objective.",
+      "source_ids": [
+        "stmt_001"
+      ]
+    }
+  ],
+  "requested_capabilities": [],
+  "required_checkpoints": [
+    "intake_correction",
+    "frame_selection"
+  ],
+  "warnings": []
+}

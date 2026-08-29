@@ -11,8 +11,10 @@ returns a list of human-readable error strings. An empty list is a pass.
 from __future__ import annotations
 
 from .engine_result import engine_result_invariants
+from .repair import engine_result_repair
 
 
 REGISTRY = {
     "engine_result_invariants": engine_result_invariants,
+    "engine_result_repair": engine_result_repair,
 }
