@@ -1,0 +1,128 @@
+{
+  "schema_version": "1.0.0",
+  "id": "sess_gates_001",
+  "workspace_id": "ws_reference",
+  "title": "Pack cost per kWh at the 2027 volume step",
+  "status": "active",
+  "phase": "framing",
+  "revision": 7,
+  "active_frame_id": "frame_001",
+  "statements": [
+    {
+      "id": "stmt_001",
+      "text": "Switch the pack to prismatic cells so we hit the cost target.",
+      "primary_role": "proposal",
+      "status": "proposed",
+      "provenance": {
+        "kind": "observed",
+        "source_ids": [
+          "intake_001"
+        ]
+      }
+    },
+    {
+      "id": "stmt_lesson_001",
+      "text": "A cost target stated without an owner cannot be scored against.",
+      "primary_role": "observation",
+      "status": "proposed",
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [
+          "frame_001"
+        ]
+      }
+    }
+  ],
+  "frames": [
+    {
+      "id": "frame_001",
+      "question": "How might we reach the 2027 pack cost target without losing usable range?",
+      "outcome": "Pack cost per usable kWh meets the 2027 target at planned volume.",
+      "abstraction_level": "product",
+      "included": [
+        "cell sourcing",
+        "pack architecture"
+      ],
+      "excluded": [
+        "vehicle body"
+      ],
+      "success_measures": [
+        "USD per usable kWh at 40k packs/year"
+      ],
+      "constraints": [
+        "Range must not fall below the homologated figure."
+      ],
+      "assumptions": [
+        "Volume forecast of 40k packs/year holds."
+      ],
+      "status": "proposed",
+      "digest": "sha256:d9a59c0da6480e8f41531fa04383e27c8ef6767fa8c7605f6550b2ead0509726"
+    }
+  ],
+  "graph": {
+    "schema_version": "1.0.0",
+    "nodes": [
+      {
+        "id": "node_evidence_001",
+        "type": "evidence",
+        "label": "Cell supplier quote, July 2026.",
+        "status": "proposed",
+        "confidence": "high",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_evidence_001"
+          ]
+        }
+      },
+      {
+        "id": "node_decision_001",
+        "type": "decision",
+        "label": "Adopt the shortlisted pack architecture.",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "opt_001"
+          ]
+        }
+      },
+      {
+        "id": "node_intervention_001",
+        "type": "intervention",
+        "label": "Request a second supplier quote.",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_evidence_001"
+          ]
+        }
+      }
+    ],
+    "edges": []
+  },
+  "options": [
+    {
+      "id": "opt_001",
+      "frame_id": "frame_001",
+      "title": "Requalify a second cell supplier",
+      "leverage_level": "change process or sourcing",
+      "mechanism": "Dual-source the cell to move price at contracted volume.",
+      "status": "proposed"
+    }
+  ],
+  "criteria": [
+    {
+      "id": "crit_001",
+      "name": "Pack cost per usable kWh",
+      "kind": "preference",
+      "direction": "minimize",
+      "owner_id": "user_lead_eng",
+      "unit": "USD/kWh"
+    }
+  ],
+  "approvals": []
+}

@@ -1,0 +1,141 @@
+{
+  "id": "approval-refusals",
+  "check": "approval_binding",
+  "session": "evals/fixtures/approval/gates.session.json",
+  "attempts": [
+    {
+      "id": "no-approval",
+      "gate": "frame_selection",
+      "target_id": "frame_001",
+      "to_phase": "causal",
+      "approval": null,
+      "expect": {
+        "outcome": "refused",
+        "violation": "approval_required",
+        "detail": "no approval"
+      }
+    },
+    {
+      "id": "disposition-is-not-approval",
+      "gate": "frame_selection",
+      "target_id": "frame_001",
+      "to_phase": "causal",
+      "approval": {
+        "bind_to_current_content": true,
+        "actor": {
+          "id": "user_lead_eng",
+          "kind": "human",
+          "role": "decision_owner"
+        },
+        "disposition": "evidence_requested"
+      },
+      "expect": {
+        "outcome": "refused",
+        "violation": "approval_required",
+        "detail": "disposition is evidence_requested"
+      }
+    },
+    {
+      "id": "runtime-cannot-approve-for-a-human",
+      "gate": "frame_selection",
+      "target_id": "frame_001",
+      "to_phase": "causal",
+      "approval": {
+        "bind_to_current_content": true,
+        "actor": {
+          "id": "runtime_claude_code",
+          "kind": "runtime",
+          "role": "decision_owner"
+        }
+      },
+      "expect": {
+        "outcome": "refused",
+        "violation": "invariant_violation",
+        "detail": "actor kind runtime"
+      }
+    },
+    {
+      "id": "actor-lacks-authority",
+      "gate": "knowledge_promotion",
+      "target_id": "stmt_lesson_001",
+      "to_phase": "monitoring",
+      "approval": {
+        "bind_to_current_content": true,
+        "actor": {
+          "id": "user_note_taker",
+          "kind": "human",
+          "role": "facilitator"
+        }
+      },
+      "expect": {
+        "outcome": "refused",
+        "violation": "invariant_violation",
+        "detail": "lacks authority"
+      }
+    },
+    {
+      "id": "approval-targets-something-else",
+      "gate": "frame_selection",
+      "target_id": "frame_001",
+      "to_phase": "causal",
+      "approval": {
+        "bind_to_current_content": true,
+        "actor": {
+          "id": "user_lead_eng",
+          "kind": "human",
+          "role": "decision_owner"
+        },
+        "target_id": "opt_001"
+      },
+      "expect": {
+        "outcome": "refused",
+        "violation": "invariant_violation",
+        "detail": "targets something other"
+      }
+    },
+    {
+      "id": "revision-trails-the-session",
+      "gate": "frame_selection",
+      "target_id": "frame_001",
+      "to_phase": "causal",
+      "approval": {
+        "bind_to_current_content": true,
+        "actor": {
+          "id": "user_lead_eng",
+          "kind": "human",
+          "role": "decision_owner"
+        },
+        "session_revision": 6
+      },
+      "expect": {
+        "outcome": "refused",
+        "violation": "approval_stale",
+        "detail": "trails session revision"
+      }
+    },
+    {
+      "id": "digest-does-not-match-current-content",
+      "gate": "frame_selection",
+      "target_id": "frame_001",
+      "to_phase": "causal",
+      "approval": {
+        "id": "appr_hand_written",
+        "target_id": "frame_001",
+        "target_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "disposition": "approved",
+        "actor": {
+          "id": "user_lead_eng",
+          "kind": "human",
+          "role": "decision_owner"
+        },
+        "session_revision": 7,
+        "created_at": "2026-07-16T10:00:00Z"
+      },
+      "expect": {
+        "outcome": "refused",
+        "violation": "approval_stale",
+        "detail": "target_digest"
+      }
+    }
+  ]
+}
