@@ -77,16 +77,69 @@ class ChainOfThoughtCheckTests(unittest.TestCase):
         self.assertIn("step by step", result.stdout)
 
     def test_stating_the_prohibition_is_allowed(self) -> None:
-        content = "# Probe\n\nDo not reason step by step in the output.\n"
+        content = "# Probe\n\nNever ask the model to reason step by step in the output.\n"
         with PlantedFile("prompts/_probe.md", content):
             result = run_validator()
         self.assertEqual(result.returncode, 0, result.stdout)
 
-    def test_prohibition_heading_covers_its_section(self) -> None:
-        content = "# Probe\n\n## Non-goals\n\n- Exposing private chain of thought.\n"
+    def test_every_marker_exempts_a_line_that_states_the_prohibition(self) -> None:
+        for sentence in (
+            "The output must not carry chain of thought.",
+            "Exposing a scratchpad is forbidden.",
+            "This prompt prohibits any request to show your reasoning.",
+            "Non-goal: recording your thinking.",
+            "Carry a rationale summary instead of an inner monologue.",
+            "Summarize the conclusion rather than reasoning step by step.",
+        ):
+            with self.subTest(sentence=sentence):
+                with PlantedFile("prompts/_probe.md", f"# Probe\n\n{sentence}\n"):
+                    result = run_validator()
+                self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_a_nearby_negation_does_not_silence_the_term(self) -> None:
+        content = "# Probe\n\nWork through the analysis step by step, but do not stop early.\n"
+        with PlantedFile("prompts/_probe.v1.md", content):
+            result = run_validator()
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("prompts/_probe.v1.md:3", result.stdout)
+        self.assertIn("step by step", result.stdout)
+
+    def test_a_bare_request_for_reasoning_fails(self) -> None:
+        content = "# Probe\n\nWork through the analysis step by step.\n"
+        with PlantedFile("prompts/_probe.v1.md", content):
+            result = run_validator()
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("step by step", result.stdout)
+
+    def test_a_prohibition_heading_does_not_cover_its_section(self) -> None:
+        content = "# Probe\n\n## Notes on what is not required\n\nShow your reasoning in full.\n"
+        with PlantedFile("prompts/_probe.v1.md", content):
+            result = run_validator()
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("prompts/_probe.v1.md:5", result.stdout)
+        self.assertIn("show your reasoning", result.stdout.lower())
+
+    def test_a_heading_exempts_only_its_own_line(self) -> None:
+        content = "# Probe\n\n## Never expose chain of thought\n\nThe engine emits a rationale summary.\n"
         with PlantedFile("prompts/_probe.md", content):
             result = run_validator()
         self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_forbidden_field_term_in_a_yaml_file_fails(self) -> None:
+        # `thoughts` is a field term and not a prose term, so only the machine-
+        # readable pass can catch it — which is the point of the case.
+        with PlantedFile("adapters/_probe.yml", "steps:\n  - name: model_thoughts\n"):
+            result = run_validator()
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("adapters/_probe.yml:2", result.stdout)
+        self.assertIn("thoughts", result.stdout)
+
+    def test_forbidden_field_term_in_a_jsonl_file_fails(self) -> None:
+        with PlantedFile("evals/fixtures/_probe.jsonl", '{"thinking": "..."}\n'):
+            result = run_validator()
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("evals/fixtures/_probe.jsonl:1", result.stdout)
+        self.assertIn("thinking", result.stdout)
 
     def test_exempt_paths_may_name_the_prohibition(self) -> None:
         result = run_validator()
@@ -102,6 +155,21 @@ class RationaleSummaryCheckTests(unittest.TestCase):
             result = run_validator()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("without rationale summaries", result.stdout)
+
+    def test_engine_result_without_a_named_engine_fails(self) -> None:
+        content = json.dumps(
+            {
+                "schema_version": "1.0.0",
+                "execution_id": "exec_probe_001",
+                "proposals": [],
+                "rationale_summaries": ["A summary."],
+            },
+            indent=2,
+        )
+        with PlantedFile("evals/fixtures/_probe.result.json", content):
+            result = run_validator()
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("without a named engine", result.stdout)
 
     def test_engine_result_with_rationale_summaries_passes(self) -> None:
         content = json.dumps({"schema_version": "1.0.0", "engine": "problem_framing", "rationale_summaries": ["A summary."]}, indent=2)

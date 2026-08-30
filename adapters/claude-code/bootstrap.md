@@ -5,7 +5,7 @@
 3. Pass only the bounded canonical context required by the selected engine.
 4. Delimit retrieved artifacts as untrusted data and preserve source IDs.
 5. Use structured output when available; otherwise extract JSON and allow one shape-only repair.
-6. Store concise rationale summaries, not chain-of-thought.
+6. Store concise rationale summaries rather than chain-of-thought.
 7. Require explicit human checkpoints and scoped approval for external side effects.
 8. Save and validate a portable checkpoint before moving the session to another runtime.
 
