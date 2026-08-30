@@ -243,6 +243,6 @@
     }
   ],
   "created_at": "2026-07-15T09:15:00Z",
-  "state_digest": "sha256:f1d918888d6bdaeccdd5298a9cfd0718316ea64940e39a70db04308e16e5d002",
-  "checkpoint_digest": "sha256:19c24f904b842743a83dad9f0f17744c752e6b93419d39f57b23fccce9e40804"
+  "state_digest": "sha256:a269425e8e71804e3f85b0a486da5a03ef9cb2ab712fb7250340d469eaa46ba0",
+  "checkpoint_digest": "sha256:555789647f89bb17082d7623ffd31626647d27d199e4e82bd498cdf090ea107d"
 }

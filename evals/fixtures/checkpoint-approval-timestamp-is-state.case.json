@@ -1,0 +1,20 @@
+{
+  "id": "checkpoint-approval-timestamp-is-state",
+  "check": "checkpoint_integrity",
+  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "mutate": {
+    "level": "state",
+    "path": [
+      "state",
+      "approvals",
+      0,
+      "created_at"
+    ],
+    "value": "2031-01-01T00:00:00Z"
+  },
+  "expect": {
+    "outcome": "refused",
+    "violation": "checkpoint_integrity_failed",
+    "detail": "state_digest"
+  }
+}
