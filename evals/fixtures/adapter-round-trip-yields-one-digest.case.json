@@ -1,0 +1,14 @@
+{
+  "id": "adapter-round-trip-yields-one-digest",
+  "check": "adapter_round_trip",
+  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "adapters": [
+    "echo",
+    "reordering",
+    "extension_annotating"
+  ],
+  "expect": {
+    "outcome": "agreed",
+    "is_the_recorded_state_digest": true
+  }
+}
