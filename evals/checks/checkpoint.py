@@ -100,6 +100,12 @@ def plan_restore(checkpoint: dict, artifact_bytes: dict[str, bytes]) -> dict:
     plan = {
         "outcome": "refused" if violations else "verified",
         "violations": violations,
+        # PLACEHOLDER (#102): these two lists are literals, and nothing anywhere
+        # populates them, so `checkpoint_integrity` asserting they are empty
+        # cannot fail. The criterion names the property without measuring it.
+        # There is no restore path to measure until #2 lands one; when it does,
+        # delegate to it here so a restore that executes a capability or commits
+        # a proposal is caught.
         "executed_capabilities": [],
         "committed_proposal_ids": [],
         "pending_proposal_ids": [],
