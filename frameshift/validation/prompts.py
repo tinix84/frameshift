@@ -15,6 +15,7 @@ cannot smuggle a field past the check by writing it in a shape nobody parses.
 
 from __future__ import annotations
 
+import hashlib
 import re
 from pathlib import Path
 
@@ -23,6 +24,7 @@ PROMPTS = ROOT / "prompts"
 SCHEMA = "prompt-manifest.schema.json"
 
 FRONT_MATTER = re.compile(r"\A---\r?\n(?P<body>.*?)\r?\n---\r?\n", re.DOTALL)
+FRONT_MATTER_BLOCK = re.compile(r"\A---\r?\n.*?\r?\n---\r?\n", re.DOTALL)
 LINE = re.compile(r"^(?P<key>[a-z_]+):\s*(?P<value>.*?)\s*$")
 
 
@@ -51,6 +53,17 @@ def parse_front_matter(text: str) -> dict:
     return manifest
 
 
+def body_digest(text: str) -> str:
+    """Digest of everything below the front matter, line endings normalized.
+
+    The manifest does not digest itself — the same reason a checkpoint omits its
+    own digest fields before hashing. Only the prompt text is covered, which is
+    the part a version is a promise about.
+    """
+    body = FRONT_MATTER_BLOCK.sub("", text).replace("\r\n", "\n")
+    return "sha256:" + hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
 def prompt_manifest_violations() -> list[str]:
     """Every prompt declares a valid manifest whose references resolve."""
     from .schema import validate_against
@@ -76,6 +89,14 @@ def prompt_manifest_violations() -> list[str]:
             violations.append(f"{relative}: id {identifier!r} is already declared by {seen[identifier]}")
         elif isinstance(identifier, str):
             seen[identifier] = relative
+
+        declared = manifest.get("body_digest")
+        actual = body_digest(path.read_text(encoding="utf-8"))
+        if isinstance(declared, str) and declared != actual:
+            violations.append(
+                f"{relative}: body_digest is {declared}, the prompt text hashes to {actual} — "
+                "the body changed without the version changing"
+            )
 
         output_schema = manifest.get("output_schema")
         if isinstance(output_schema, str) and not (ROOT / output_schema).is_file():

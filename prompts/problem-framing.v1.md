@@ -2,6 +2,7 @@
 id: frameshift.problem-framing.v1
 version: 1.0.0
 engine: problem_framing
+body_digest: sha256:bf74bace8919d542082bdfe3b830076fb40b0909e77a1067338348402384480b
 output_schema: schemas/engine-result.schema.json
 fixtures: [framing-solution-disguised]
 repair_prompt: frameshift.repair-structured-output.v1
