@@ -369,10 +369,19 @@ class StoryPlacementTests(unittest.TestCase):
                 issues = [story(6, ["story", column])]
                 self.assertEqual(self.module.story_placement_errors(issues, self.columns), [])
 
-    def test_an_empty_set_is_reported_rather_than_passing_silently(self):
+    def test_the_check_never_passes_silently(self):
+        """Either it examined issues or it said why it could not — never nothing.
+
+        CI runs with `gh` unauthenticated, so the skip branch is the one
+        exercised there; a developer machine takes the other. Both must speak.
+        """
         result = run_validator()
         self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertIn("story placement checked over", result.stdout)
+        self.assertTrue(
+            "story placement checked over" in result.stdout
+            or "skipping the story placement check" in result.stdout,
+            result.stdout,
+        )
 
 
 if __name__ == "__main__":
