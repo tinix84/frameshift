@@ -1,0 +1,8 @@
+{
+  "id": "schemas-are-well-formed",
+  "check": "schema_wellformedness",
+  "expect": {
+    "outcome": "valid",
+    "min_schemas": 6
+  }
+}
