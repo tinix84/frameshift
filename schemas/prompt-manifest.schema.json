@@ -7,7 +7,8 @@
   "required": [
     "id",
     "version",
-    "engine"
+    "engine",
+    "body_digest"
   ],
   "properties": {
     "id": {
@@ -44,6 +45,10 @@
     },
     "repair_prompt": {
       "$ref": "common.schema.json#/$defs/id"
+    },
+    "body_digest": {
+      "description": "Digest of the prompt text below the front matter, with line endings normalized. It is what makes the version mean something: change the body without changing the version and this stops matching. The manifest does not digest itself, the same way a checkpoint does not carry its own digest.",
+      "$ref": "common.schema.json#/$defs/digest"
     }
   },
   "additionalProperties": false

@@ -34,7 +34,20 @@ class PlantedPrompt:
         self.path.unlink(missing_ok=True)
 
 
-VALID = "---\nid: frameshift.probe.v1\nversion: 1.0.0\nengine: shared\n---\n\nDo the thing.\n"
+BODY = "\nDo the thing.\n"
+
+
+def probe(extra: str = "", body: str = BODY, identifier: str = "frameshift.probe.v1") -> str:
+    """A valid prompt file, with a body digest that actually matches its body."""
+    front = f"---\nid: {identifier}\nversion: 1.0.0\nengine: shared\n"
+    if extra:
+        front += extra + "\n"
+    placeholder = front + "body_digest: sha256:" + "0" * 64 + "\n---\n" + body
+    digest = prompts.body_digest(placeholder)
+    return front + f"body_digest: {digest}\n---\n" + body
+
+
+VALID = probe()
 
 
 class ParserTests(unittest.TestCase):
@@ -121,6 +134,32 @@ class ManifestTests(unittest.TestCase):
             (prompts.PROMPTS / "problem-framing.v1.md").read_text(encoding="utf-8")
         )
         self.assertEqual(manifest["repair_prompt"], "frameshift.repair-structured-output.v1")
+
+    def test_a_body_that_changed_without_the_version_is_caught(self) -> None:
+        """#20's versioning rule: a prompt cannot change under a fixed version."""
+        edited = probe().replace("Do the thing.", "Do something materially different.")
+        with PlantedPrompt("_probe.md", edited):
+            violations = prompts.prompt_manifest_violations()
+        self.assertTrue(
+            any("the body changed without the version changing" in item for item in violations),
+            violations,
+        )
+
+    def test_every_committed_prompt_declares_a_matching_digest(self) -> None:
+        for path in sorted(prompts.PROMPTS.glob("*.md")):
+            with self.subTest(prompt=path.name):
+                text = path.read_text(encoding="utf-8")
+                manifest = prompts.parse_front_matter(text)
+                self.assertEqual(manifest["body_digest"], prompts.body_digest(text))
+
+    def test_the_digest_covers_the_body_and_not_the_manifest(self) -> None:
+        """Adding a manifest field must not change the digest, or nothing could be added."""
+        plain = probe()
+        annotated = probe(extra="repair_prompt: frameshift.repair-structured-output.v1")
+        self.assertEqual(prompts.body_digest(plain), prompts.body_digest(annotated))
+
+    def test_the_digest_ignores_line_endings(self) -> None:
+        self.assertEqual(prompts.body_digest(probe()), prompts.body_digest(probe().replace("\n", "\r\n")))
 
     def test_the_planted_file_is_always_removed(self) -> None:
         with PlantedPrompt("_probe.md", VALID) as path:
