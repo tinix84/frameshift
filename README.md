@@ -46,7 +46,7 @@ flowchart LR
 
 - Autonomous approval or execution of consequential engineering decisions.
 - Replacing simulation, domain analysis, experiments, certification, or expert review.
-- Capturing or exposing private model chain-of-thought.
+- Capturing or exposing private model chain-of-thought — never requested, never stored.
 - Guaranteeing root cause, optimality, correctness, or completeness.
 - Building a general-purpose project manager or note-taking system.
 

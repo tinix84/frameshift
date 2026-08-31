@@ -59,26 +59,31 @@ FORBIDDEN_PROSE_TERMS = [
     "your thinking",
     "your thoughts",
 ]
-# A prose term is allowed on a line that forbids it, or under a heading that
-# frames the section as a prohibition. Naming what you refuse to do is the point.
+# A prose term is allowed on a line that explicitly forbids it, and on that line
+# only. Naming what you refuse to do is the point; being near a negation is not.
+#
+# Every marker here is a phrase whose job in a sentence is to forbid. Bare
+# negations — `no `, `not `, `cannot` — are deliberately absent: `not` is one of
+# the commonest words in English, so any nearby negation would silence the term
+# it sits beside. For the same reason the marker is searched in the line alone
+# and never in the enclosing heading, which used to exempt a whole section.
 PROHIBITION_MARKERS = [
-    "do not",
-    "does not",
     "must not",
-    "cannot",
     "never",
-    "no ",
-    "not ",
-    "without",
     "forbid",
     "prohibit",
+    "non-goal",
     "instead of",
     "rather than",
-    "non-goal",
 ]
+# Files a machine reads, where a key or value naming a forbidden term is the
+# violation regardless of the surrounding prose.
+MACHINE_READABLE_SUFFIXES = {".json", ".jsonl", ".yaml", ".yml"}
 # Where state is defined, behavior is requested, and agents are instructed.
 COT_SCAN_DIRS = ["schemas", "prompts", "evals/fixtures", "adapters"]
 COT_ROOT_FILES = ["README.md", "AGENTS.md", "CLAUDE.md", "CONTRIBUTING.md", "SECURITY.md"]
+# The shape of an engine result, for a fixture that does not name its engine.
+ENGINE_RESULT_MARKER_KEYS = ("execution_id", "proposals")
 # Exempt: these must name the thing they prohibit in order to define it.
 COT_EXEMPT = ["docs/adr", "CONTEXT.md"]
 LINK = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
@@ -110,11 +115,8 @@ def chain_of_thought_errors() -> list[str]:
             text = path.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             continue
-        machine_readable = path.suffix == ".json"
-        heading = ""
+        machine_readable = path.suffix in MACHINE_READABLE_SUFFIXES
         for number, line in enumerate(text.splitlines(), start=1):
-            if line.lstrip().startswith("#") and not machine_readable:
-                heading = line.lower()
             lowered = line.lower()
             if machine_readable:
                 for term in FORBIDDEN_FIELD_TERMS:
@@ -124,11 +126,22 @@ def chain_of_thought_errors() -> list[str]:
             match = PROSE_PATTERN.search(line)
             if not match:
                 continue
-            context = lowered + " " + heading
-            if any(marker in context for marker in PROHIBITION_MARKERS):
+            if any(marker in lowered for marker in PROHIBITION_MARKERS):
                 continue
             errors.append(f"chain-of-thought term in {relative}:{number}: {match.group(0)}")
     return errors
+
+
+def is_engine_result(artifact: object) -> bool:
+    """An engine result, recognized without trusting it to name its own engine.
+
+    Keying on `engine` alone let a fixture opt out of the whole check by
+    omitting that key, so the shape an engine result cannot fake — an execution
+    carrying proposals — identifies it too.
+    """
+    if not isinstance(artifact, dict):
+        return False
+    return "engine" in artifact or all(key in artifact for key in ENGINE_RESULT_MARKER_KEYS)
 
 
 def rationale_summary_errors() -> list[str]:
@@ -140,10 +153,12 @@ def rationale_summary_errors() -> list[str]:
                 artifact = json.load(handle)
         except (OSError, json.JSONDecodeError):
             continue
-        if not isinstance(artifact, dict) or "engine" not in artifact:
+        if not is_engine_result(artifact):
             continue
+        relative = path.relative_to(ROOT).as_posix()
+        if "engine" not in artifact:
+            errors.append(f"engine result without a named engine: {relative}")
         if not artifact.get("rationale_summaries"):
-            relative = path.relative_to(ROOT).as_posix()
             errors.append(f"engine result without rationale summaries: {relative}")
     return errors
 

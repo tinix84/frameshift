@@ -10,7 +10,7 @@ Build FrameShift as an inspectable, model-agnostic reasoning system. Preserve hu
 
 1. Read `README.md`, `CONTEXT.md`, the issue you are working from, and applicable ADRs before changing behavior. Contracts and product requirements are issues, not files — see `docs/agents/issue-tracker.md`.
 2. Keep canonical domain objects provider-neutral and valid against `schemas/`.
-3. Do not treat hidden chain-of-thought as product state. Persist concise claims, evidence, assumptions, uncertainties, alternatives, and decision rationale.
+3. Never treat hidden chain-of-thought as product state. Persist concise claims, evidence, assumptions, uncertainties, alternatives, and decision rationale.
 4. Put LLM-specific behavior behind an adapter in `adapters/`.
 5. Put tool-specific behavior behind the capability contract in issue #21.
 6. Add or update a fixture for any reasoning-contract change.
