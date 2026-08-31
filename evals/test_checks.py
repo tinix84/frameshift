@@ -231,6 +231,64 @@ class IntegrityTests(unittest.TestCase):
         self.assertEqual(plan["outcome"], "refused")
         self.assertEqual(plan["pending_proposal_ids"], [])
 
+    def test_restore_delegates_to_the_application_rather_than_returning_literals(self) -> None:
+        from frameshift.persistence import restore as application_restore
+
+        reference = load_reference()
+        payloads = {item["id"]: checkpoint.read_artifact(item["uri"]) for item in reference["artifacts"]}
+        self.assertEqual(
+            checkpoint.plan_restore(reference, payloads),
+            application_restore(reference, payloads),
+        )
+
+    def test_a_restore_that_executes_a_capability_is_caught(self) -> None:
+        """#102: the guard reads a record of what happened, not a literal."""
+        from frameshift.persistence import RestoreJournal
+        from frameshift.persistence import restore as application_restore
+
+        def wrong_restore(cp, artifacts):
+            journal = RestoreJournal()
+            journal.record_execution("code.execute.sandboxed")
+            return application_restore(cp, artifacts, journal)
+
+        reference = load_reference()
+        payloads = {item["id"]: checkpoint.read_artifact(item["uri"]) for item in reference["artifacts"]}
+        plan = checkpoint.plan_restore(reference, payloads, restore=wrong_restore)
+        self.assertEqual(plan["executed_capabilities"], ["code.execute.sandboxed"])
+
+        original = checkpoint.plan_restore
+        checkpoint.plan_restore = lambda cp, artifacts: wrong_restore(cp, artifacts)
+        try:
+            errors = run.evaluate(run.load("evals/fixtures/checkpoint-restore-is-not-an-action.case.json"))
+        finally:
+            checkpoint.plan_restore = original
+        self.assertTrue(
+            any("executed a capability" in item for item in errors),
+            f"the guard must fire on a restore that acts, got {errors}",
+        )
+
+    def test_a_restore_that_commits_a_proposal_is_caught(self) -> None:
+        from frameshift.persistence import RestoreJournal
+        from frameshift.persistence import restore as application_restore
+
+        def wrong_restore(cp, artifacts):
+            journal = RestoreJournal()
+            journal.record_commit("prop_frame_001")
+            return application_restore(cp, artifacts, journal)
+
+        original = checkpoint.plan_restore
+        checkpoint.plan_restore = lambda cp, artifacts: wrong_restore(cp, artifacts)
+        try:
+            errors = run.evaluate(run.load("evals/fixtures/checkpoint-restore-is-not-an-action.case.json"))
+        finally:
+            checkpoint.plan_restore = original
+        self.assertTrue(any("committed a proposal" in item for item in errors), errors)
+
+    def test_the_correct_restore_still_passes_the_same_case(self) -> None:
+        self.assertEqual(
+            run.evaluate(run.load("evals/fixtures/checkpoint-restore-is-not-an-action.case.json")), []
+        )
+
     def test_a_missing_artifact_is_an_integrity_failure(self) -> None:
         reference = load_reference()
         violations = checkpoint.verify(reference, {})

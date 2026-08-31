@@ -144,43 +144,26 @@ def verify(checkpoint: dict, artifact_bytes: dict[str, bytes]) -> list[str]:
     return violations
 
 
-def plan_restore(checkpoint: dict, artifact_bytes: dict[str, bytes]) -> dict:
-    """Restoring is not an action.
+def plan_restore(
+    checkpoint: dict, artifact_bytes: dict[str, bytes], restore=None
+) -> dict:
+    """Restoring is not an action, measured against the application's restore path.
 
-    Verification comes first, and a verified checkpoint yields a plan: what is
-    pending, and which gates a human must still pass. Nothing is executed and
-    nothing is committed, so restoring can never become a way to run a tool.
+    This used to return `executed_capabilities` and `committed_proposal_ids` as
+    literals, so the guard asserting they were empty could not fail (#102). It
+    now delegates to `frameshift.persistence.restore`, which reports what it did
+    from a journal rather than claiming what it should have done. A restore that
+    executed a capability or committed a proposal has to record it, and the
+    check reads the record.
+
+    `restore` is injectable so a test can hand in a deliberately wrong
+    implementation and watch the guard fire.
     """
-    violations = verify(checkpoint, artifact_bytes)
-    plan = {
-        "outcome": "refused" if violations else "verified",
-        "violations": violations,
-        # PLACEHOLDER (#102): these two lists are literals, and nothing anywhere
-        # populates them, so `checkpoint_integrity` asserting they are empty
-        # cannot fail. The criterion names the property without measuring it.
-        # There is no restore path to measure until #2 lands one; when it does,
-        # delegate to it here so a restore that executes a capability or commits
-        # a proposal is caught.
-        "executed_capabilities": [],
-        "committed_proposal_ids": [],
-        "pending_proposal_ids": [],
-        "required_checkpoints": [],
-    }
-    if violations:
-        return plan
-    plan["pending_proposal_ids"] = [
-        proposal["id"]
-        for result in checkpoint.get("pending_proposals", [])
-        for proposal in result.get("proposals", [])
-    ]
-    plan["required_checkpoints"] = sorted(
-        {
-            gate
-            for result in checkpoint.get("pending_proposals", [])
-            for gate in result.get("required_checkpoints", [])
-        }
-    )
-    return plan
+    if restore is None:
+        from frameshift.persistence import restore as application_restore
+
+        restore = application_restore
+    return restore(checkpoint, artifact_bytes)
 
 
 def _nested(levels: int) -> object:
