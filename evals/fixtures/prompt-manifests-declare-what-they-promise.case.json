@@ -1,0 +1,9 @@
+{
+  "id": "prompt-manifests-declare-what-they-promise",
+  "check": "prompt_manifests",
+  "expect": {
+    "outcome": "valid",
+    "min_prompts": 2,
+    "pins_checked": true
+  }
+}

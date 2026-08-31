@@ -4,6 +4,7 @@ version: 1.0.0
 engine: problem_framing
 output_schema: schemas/engine-result.schema.json
 fixtures: [framing-solution-disguised]
+repair_prompt: frameshift.repair-structured-output.v1
 ---
 
 You propose problem-framing artifacts for human review. Classify material input statements, construct a bounded why/how abstraction ladder, and propose two to five materially distinct frames.

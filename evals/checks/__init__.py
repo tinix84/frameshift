@@ -15,6 +15,7 @@ from .application import (
     application_encoder,
     application_orchestrator,
     application_validator,
+    prompt_manifests,
 )
 from .approval import approval_binding
 from .artifacts import artifact_conformance
@@ -41,6 +42,7 @@ REGISTRY = {
     "checkpoint_integrity": checkpoint_integrity,
     "engine_result_invariants": engine_result_invariants,
     "engine_result_repair": engine_result_repair,
+    "prompt_manifests": prompt_manifests,
     "replay_equivalence": replay_equivalence,
     "schema_wellformedness": schema_wellformedness,
     "session_invariants": session_invariants,

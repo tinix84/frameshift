@@ -24,6 +24,7 @@ import re
 SET_LIKE_FIELDS = frozenset(
     {
         "data_classes",
+        "fixtures",
         "invariants",
         "operations",
         "requested_capabilities",
