@@ -1,0 +1,21 @@
+{
+  "id": "replay-out-of-order-is-refused",
+  "check": "replay_equivalence",
+  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "log": "evals/fixtures/reference.events.jsonl",
+  "mutate": [
+    {
+      "kind": "swap",
+      "sequences": [
+        9,
+        10
+      ]
+    }
+  ],
+  "expect": {
+    "outcome": "diverged",
+    "violations_naming": [
+      "reordered, truncated, or duplicated"
+    ]
+  }
+}

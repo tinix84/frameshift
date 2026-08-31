@@ -17,6 +17,7 @@ from .capability import capability_compatibility
 from .checkpoint import checkpoint_digest, checkpoint_integrity
 from .engine_result import engine_result_invariants
 from .repair import engine_result_repair
+from .replay import replay_equivalence
 from .schema_files import schema_wellformedness
 from .session import session_invariants
 
@@ -32,6 +33,7 @@ REGISTRY = {
     "checkpoint_integrity": checkpoint_integrity,
     "engine_result_invariants": engine_result_invariants,
     "engine_result_repair": engine_result_repair,
+    "replay_equivalence": replay_equivalence,
     "schema_wellformedness": schema_wellformedness,
     "session_invariants": session_invariants,
 }

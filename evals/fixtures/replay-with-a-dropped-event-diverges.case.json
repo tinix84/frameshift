@@ -1,0 +1,20 @@
+{
+  "id": "replay-with-a-dropped-event-diverges",
+  "check": "replay_equivalence",
+  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "log": "evals/fixtures/reference.events.jsonl",
+  "mutate": [
+    {
+      "kind": "drop",
+      "sequence": 4
+    }
+  ],
+  "expect": {
+    "outcome": "diverged",
+    "check_sequence": false,
+    "violations_naming": [
+      "replay reached",
+      "the snapshot records"
+    ]
+  }
+}
