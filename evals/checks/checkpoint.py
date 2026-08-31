@@ -14,7 +14,18 @@ from pathlib import Path
 from . import canonical
 
 INTEGRITY_VIOLATION = "checkpoint_integrity_failed"
+# A resource guard, deliberately not an integrity failure. An oversized
+# checkpoint is not corrupt, and reporting it as corruption would misdescribe it
+# — and would make a real corruption indistinguishable from a large file.
+LIMIT_VIOLATION = "checkpoint_limits_exceeded"
 ROOT = Path(__file__).resolve().parents[2]
+
+# Step 1 of the restore algorithm (#22): parse within configured limits. Every
+# later step walks the whole structure, so a checkpoint is bounded before it is
+# trusted enough to walk. These are starting values with room to spare over real
+# data — `evals/test_checks.py` asserts the headroom rather than assuming it,
+# because a limit just above real data is a limit that fires in production.
+PARSE_LIMITS = {"max_bytes": 1_048_576, "max_depth": 64}
 
 
 # Differences that must not change a digest. Each returns a modified copy whose
@@ -89,9 +100,37 @@ def read_artifact(uri: str) -> bytes:
     return (ROOT / uri).read_bytes().replace(b"\r\n", b"\n")
 
 
+def depth(value: object) -> int:
+    """Nesting depth of a parsed JSON value; a scalar is depth 0."""
+    if isinstance(value, dict):
+        return 1 + max((depth(item) for item in value.values()), default=0)
+    if isinstance(value, list):
+        return 1 + max((depth(item) for item in value), default=0)
+    return 0
+
+
+def limit_violations(checkpoint: object, limits: dict[str, int] = PARSE_LIMITS) -> list[str]:
+    """Bound the checkpoint before anything walks it."""
+    violations: list[str] = []
+    measured = depth(checkpoint)
+    if measured > limits["max_depth"]:
+        violations.append(
+            f"{LIMIT_VIOLATION}: nested {measured} deep, max_depth is {limits['max_depth']}"
+        )
+    size = len(canonical.encode(checkpoint).encode("utf-8"))
+    if size > limits["max_bytes"]:
+        violations.append(
+            f"{LIMIT_VIOLATION}: {size} bytes, max_bytes is {limits['max_bytes']}"
+        )
+    return violations
+
+
 def verify(checkpoint: dict, artifact_bytes: dict[str, bytes]) -> list[str]:
     """Return integrity violations. An empty list means the checkpoint is intact."""
-    violations: list[str] = []
+    # Limits first: every check below walks the whole structure.
+    violations = limit_violations(checkpoint)
+    if violations:
+        return violations
     if canonical.state_digest(checkpoint) != checkpoint.get("state_digest"):
         violations.append(f"{INTEGRITY_VIOLATION}: state_digest")
     if canonical.checkpoint_digest(checkpoint) != checkpoint.get("checkpoint_digest"):
@@ -142,6 +181,14 @@ def plan_restore(checkpoint: dict, artifact_bytes: dict[str, bytes]) -> dict:
         }
     )
     return plan
+
+
+def _nested(levels: int) -> object:
+    """A value nested `levels` deep, for a case that plants an unbounded structure."""
+    value: object = "bottom"
+    for _ in range(levels):
+        value = [value]
+    return value
 
 
 def _set_path(container: object, path: list[str | int], value: object) -> None:
@@ -199,7 +246,10 @@ def checkpoint_integrity(case: dict, load) -> list[str]:
         if level == "artifact":
             override[mutation["artifact_id"]] = mutation["bytes"].encode("utf-8")
         elif level in ("state", "envelope"):
-            _set_path(checkpoint, mutation["path"], mutation["value"])
+            # `nest_depth` builds the value rather than spelling a hundred
+            # brackets into the fixture; the intent stays readable either way.
+            value = mutation["value"] if "value" in mutation else _nested(mutation["nest_depth"])
+            _set_path(checkpoint, mutation["path"], value)
         else:
             return [f"unknown mutation level: {level} (known: artifact, envelope, state)"]
 

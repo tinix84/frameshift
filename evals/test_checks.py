@@ -177,6 +177,60 @@ class IntegrityTests(unittest.TestCase):
         self.assertEqual(plan["executed_capabilities"], [])
         self.assertIn("frame_selection", plan["required_checkpoints"])
 
+    def test_the_reference_checkpoint_has_headroom_under_both_limits(self) -> None:
+        """A limit just above real data is a limit that fires in production."""
+        reference = load_reference()
+        self.assertEqual(checkpoint.limit_violations(reference), [])
+        measured = checkpoint.depth(reference)
+        size = len(canonical.encode(reference).encode("utf-8"))
+        self.assertLess(measured * 2, checkpoint.PARSE_LIMITS["max_depth"], f"depth {measured}")
+        self.assertLess(size * 2, checkpoint.PARSE_LIMITS["max_bytes"], f"size {size}")
+
+    def test_a_checkpoint_nested_past_the_limit_is_refused(self) -> None:
+        reference = load_reference()
+        reference["state"]["title"] = checkpoint._nested(200)
+        violations = checkpoint.limit_violations(reference)
+        self.assertTrue(any("max_depth" in item for item in violations), violations)
+        self.assertTrue(all(item.startswith(checkpoint.LIMIT_VIOLATION) for item in violations))
+
+    def test_a_checkpoint_past_the_size_limit_is_refused(self) -> None:
+        reference = load_reference()
+        reference["state"]["title"] = "x" * 2_000_000
+        violations = checkpoint.limit_violations(reference)
+        self.assertTrue(any("max_bytes" in item for item in violations), violations)
+
+    def test_a_limit_violation_is_not_reported_as_corruption(self) -> None:
+        """An oversized checkpoint is not a corrupt one, and must not read as one."""
+        reference = load_reference()
+        reference["state"]["title"] = checkpoint._nested(200)
+        payloads = {item["id"]: checkpoint.read_artifact(item["uri"]) for item in reference["artifacts"]}
+        violations = checkpoint.verify(reference, payloads)
+        self.assertTrue(violations)
+        self.assertFalse(
+            any(checkpoint.INTEGRITY_VIOLATION in item for item in violations), violations
+        )
+
+    def test_limits_are_checked_before_digests_are_recomputed(self) -> None:
+        reference = load_reference()
+        reference["state"]["title"] = checkpoint._nested(200)
+        calls: list[str] = []
+        original = canonical.state_digest
+        canonical.state_digest = lambda cp: calls.append("walked") or original(cp)
+        try:
+            payloads = {item["id"]: checkpoint.read_artifact(item["uri"]) for item in reference["artifacts"]}
+            checkpoint.verify(reference, payloads)
+        finally:
+            canonical.state_digest = original
+        self.assertEqual(calls, [], "an oversized checkpoint must never be walked")
+
+    def test_restore_of_an_oversized_checkpoint_produces_no_plan(self) -> None:
+        reference = load_reference()
+        reference["state"]["title"] = checkpoint._nested(200)
+        payloads = {item["id"]: checkpoint.read_artifact(item["uri"]) for item in reference["artifacts"]}
+        plan = checkpoint.plan_restore(reference, payloads)
+        self.assertEqual(plan["outcome"], "refused")
+        self.assertEqual(plan["pending_proposal_ids"], [])
+
     def test_a_missing_artifact_is_an_integrity_failure(self) -> None:
         reference = load_reference()
         violations = checkpoint.verify(reference, {})
