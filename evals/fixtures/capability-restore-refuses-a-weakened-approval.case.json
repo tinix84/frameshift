@@ -1,0 +1,23 @@
+{
+  "id": "capability-restore-refuses-a-weakened-approval",
+  "check": "capability_compatibility",
+  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "adapter": "adapters/generic/capabilities.json",
+  "mutate_recorded": [
+    {
+      "path": [
+        "capabilities",
+        0,
+        "approval"
+      ],
+      "value": "each_call"
+    }
+  ],
+  "expect": {
+    "outcome": "refused",
+    "refused_naming": [
+      "artifact.read",
+      "approval weakened"
+    ]
+  }
+}

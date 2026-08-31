@@ -1,0 +1,15 @@
+{
+  "id": "capability-restore-reports-what-changed",
+  "check": "capability_compatibility",
+  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "adapter": "adapters/claude-code/capabilities.json",
+  "expect": {
+    "outcome": "compatible",
+    "reported_naming": [
+      "code.execute.sandboxed",
+      "artifact.write",
+      "external.connector",
+      "profile changed"
+    ]
+  }
+}

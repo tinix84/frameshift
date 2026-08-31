@@ -13,6 +13,7 @@ from __future__ import annotations
 from .adapter import adapter_conformance_report, adapter_round_trip, corpus_across_adapters
 from .approval import approval_binding
 from .artifacts import artifact_conformance
+from .capability import capability_compatibility
 from .checkpoint import checkpoint_digest, checkpoint_integrity
 from .engine_result import engine_result_invariants
 from .repair import engine_result_repair
@@ -25,6 +26,7 @@ REGISTRY = {
     "adapter_round_trip": adapter_round_trip,
     "approval_binding": approval_binding,
     "artifact_conformance": artifact_conformance,
+    "capability_compatibility": capability_compatibility,
     "corpus_across_adapters": corpus_across_adapters,
     "checkpoint_digest": checkpoint_digest,
     "checkpoint_integrity": checkpoint_integrity,
