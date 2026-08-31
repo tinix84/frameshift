@@ -144,5 +144,51 @@ class ThirdAdapterTests(unittest.TestCase):
         )
 
 
+class CorpusAcrossAdaptersTests(unittest.TestCase):
+    """The corpus already written is the conformance suite an adapter faces."""
+
+    CORPUS = "evals/fixtures/corpus-survives-every-adapter.case.json"
+
+    def test_the_whole_corpus_survives_every_neutral_adapter(self) -> None:
+        self.assertEqual(run.evaluate(run.load(self.CORPUS)), [])
+
+    def test_a_leaky_adapter_breaks_the_corpus_and_is_named(self) -> None:
+        case = run.load(self.CORPUS)
+        case["transports"] = ["request_id_promoting"]
+        errors = run.evaluate(case)
+        self.assertTrue(errors, "a leaky adapter must not pass the corpus")
+        self.assertTrue(all(item.startswith("request_id_promoting changed ") for item in errors), errors)
+
+    def test_an_adapter_cannot_turn_a_refusal_into_a_transition(self) -> None:
+        """#27's consequence clause: a gate is not something an adapter can cross."""
+        case = run.load(self.CORPUS)
+        case["corpus"] = ["approval_binding"]
+        for name in ("echo", "reordering", "crlf_text"):
+            with self.subTest(adapter=name):
+                self.assertEqual(run.evaluate(dict(case, transports=[name])), [])
+
+    def test_the_repair_corpus_runs_against_every_adapter(self) -> None:
+        """#31's cross-adapter story: one standard for every adapter's output."""
+        case = run.load(self.CORPUS)
+        case["corpus"] = ["engine_result_repair"]
+        self.assertEqual(run.evaluate(case), [])
+
+    def test_an_unknown_transport_is_named(self) -> None:
+        case = run.load(self.CORPUS)
+        case["transports"] = ["telepathy"]
+        errors = run.evaluate(case)
+        self.assertTrue(any("unknown adapter: telepathy" in item for item in errors), errors)
+
+    def test_a_corpus_naming_no_known_check_fails(self) -> None:
+        case = run.load(self.CORPUS)
+        case["corpus"] = ["nothing_declares_this"]
+        self.assertTrue(run.evaluate(case))
+
+    def test_a_case_without_transports_fails(self) -> None:
+        case = run.load(self.CORPUS)
+        case["transports"] = []
+        self.assertTrue(run.evaluate(case))
+
+
 if __name__ == "__main__":
     unittest.main()

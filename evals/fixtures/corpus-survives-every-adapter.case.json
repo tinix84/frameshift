@@ -1,0 +1,19 @@
+{
+  "id": "corpus-survives-every-adapter",
+  "check": "corpus_across_adapters",
+  "corpus": [
+    "approval_binding",
+    "checkpoint_digest",
+    "checkpoint_integrity",
+    "engine_result_invariants",
+    "engine_result_repair"
+  ],
+  "transports": [
+    "echo",
+    "reordering",
+    "crlf_text"
+  ],
+  "expect": {
+    "outcome": "unchanged"
+  }
+}
