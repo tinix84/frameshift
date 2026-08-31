@@ -35,3 +35,4 @@ Every ADR is paired with the issue that makes it verifiable; ADR-0008 is a wayfi
 | [0009](docs/adr/0009-mcp-server-runtime-boundary.md) | 2026-08-19 | MCP server as the runtime boundary; supersedes ADR-0001, ADR-0005, ADR-0006 in part | [#67](https://github.com/tinix84/frameshift/issues/67) |
 | [0010](docs/adr/0010-four-reasoning-engines.md) | 2026-08-19 | Four reasoning engines, framing first | [#68](https://github.com/tinix84/frameshift/issues/68) |
 | [0011](docs/adr/0011-solution-neutral-problem-framing.md) | 2026-08-19 | Problem framing is solution-neutral | [#69](https://github.com/tinix84/frameshift/issues/69) |
+| [0012](docs/adr/0012-typed-provenance-namespaces.md) | 2026-08-31 | Provenance cites a typed, open namespace | [#115](https://github.com/tinix84/frameshift/issues/115) |
