@@ -24,6 +24,7 @@ jobs:
           python-version: "3.12"
       - run: python scripts/validate_repo.py
       - run: python scripts/test_validate_repo.py
+      - run: python scripts/test_story_grid.py
       - run: python evals/run.py
       - run: python -m unittest discover -s evals -p "test_*.py" -t .
       - run: python -m unittest discover -s frameshift -p "test_*.py" -t .
