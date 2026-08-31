@@ -214,3 +214,42 @@ def application_orchestrator(case: dict, load) -> list[str]:
         if uncovered:
             errors.append(f"the orchestrator accepted no attempt for gates: {uncovered}")
     return errors
+
+
+def prompt_manifests(case: dict, load) -> list[str]:
+    """Every prompt declares a manifest, and its references resolve (#20)."""
+    from frameshift.validation import prompt_manifest_violations, parse_front_matter
+
+    expect = case["expect"]
+    errors: list[str] = []
+
+    root = Path(__file__).resolve().parents[2]
+    prompts = sorted((root / "prompts").glob("*.md"))
+    minimum = expect.get("min_prompts", 1)
+    if len(prompts) < minimum:
+        errors.append(f"{len(prompts)} prompts found, case expects at least {minimum}")
+
+    violations = prompt_manifest_violations()
+    outcome = "invalid" if violations else "valid"
+    if outcome != expect["outcome"]:
+        errors.append(f"prompt manifests are {outcome}, case expects {expect['outcome']}: {violations}")
+
+    # The repair corpus pins a prompt by id and version; the manifest is where
+    # those come from, so the two must agree or the pin is checking a fiction.
+    pinned = {}
+    for path in sorted((root / "evals" / "fixtures").glob("*.case.json")):
+        with path.open("r", encoding="utf-8") as handle:
+            other = json.load(handle)
+        pin = other.get("prompt")
+        if pin:
+            pinned[pin["path"]] = (pin["id"], pin["version"])
+    for relative, (identifier, version) in sorted(pinned.items()):
+        manifest = parse_front_matter((root / relative).read_text(encoding="utf-8"))
+        if (manifest.get("id"), manifest.get("version")) != (identifier, version):
+            errors.append(
+                f"{relative}: corpus pins {identifier} {version}, manifest declares "
+                f"{manifest.get('id')} {manifest.get('version')}"
+            )
+    if expect.get("pins_checked") and not pinned:
+        errors.append("no corpus case pins a prompt, so the pin comparison checked nothing")
+    return errors

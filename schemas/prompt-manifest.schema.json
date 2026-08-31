@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frameshift.dev/schemas/prompt-manifest.schema.json",
+  "title": "FrameShift prompt manifest",
+  "description": "The front matter of a prompt file. A prompt is a versioned interface, not free-form application code, so what it promises is declared and checkable. Required here are the three fields an execution request pins it by; the rest of #20's field list needs content decisions and is optional until those are taken.",
+  "type": "object",
+  "required": [
+    "id",
+    "version",
+    "engine"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+[.][0-9]+[.][0-9]+$"
+    },
+    "engine": {
+      "type": "string",
+      "description": "`shared` is a prompt no single engine owns, such as repair.",
+      "enum": [
+        "problem_framing",
+        "causal_reasoning",
+        "solution_generation",
+        "decision_validation",
+        "shared"
+      ]
+    },
+    "output_schema": {
+      "description": "A path under schemas/. Checked to exist.",
+      "type": "string",
+      "minLength": 1
+    },
+    "fixtures": {
+      "description": "Evaluation cases that exercise this prompt. Each is checked to exist.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "repair_prompt": {
+      "$ref": "common.schema.json#/$defs/id"
+    }
+  },
+  "additionalProperties": false
+}

@@ -42,8 +42,8 @@ class CleanRepositoryTests(unittest.TestCase):
     def test_every_committed_schema_is_well_formed(self) -> None:
         self.assertEqual(run.evaluate(run.load(CASE)), [])
 
-    def test_all_nine_schemas_are_walked(self) -> None:
-        self.assertEqual(len(schema_files.schema_files()), 9)
+    def test_all_ten_schemas_are_walked(self) -> None:
+        self.assertEqual(len(schema_files.schema_files()), 10)
 
     def test_the_schema_count_floor_is_enforced(self) -> None:
         case = run.load(CASE)

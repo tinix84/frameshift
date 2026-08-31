@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+"""Tests for prompt manifests.
+
+A prompt that declares an output schema and an evaluation fixture is making a
+promise. These prove the promise is checked: that a reference which does not
+resolve fails, that a duplicate id fails, and that the parser reports what it
+cannot read rather than skipping it.
+"""
+
+from __future__ import annotations
+
+import sys
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+
+from frameshift.validation import prompts  # noqa: E402
+
+
+class PlantedPrompt:
+    """A prompt file that exists for the duration of one assertion."""
+
+    def __init__(self, name: str, text: str) -> None:
+        self.path = prompts.PROMPTS / name
+        self.text = text
+
+    def __enter__(self) -> Path:
+        self.path.write_text(self.text, encoding="utf-8", newline="")
+        return self.path
+
+    def __exit__(self, *exc: object) -> None:
+        self.path.unlink(missing_ok=True)
+
+
+VALID = "---\nid: frameshift.probe.v1\nversion: 1.0.0\nengine: shared\n---\n\nDo the thing.\n"
+
+
+class ParserTests(unittest.TestCase):
+    def test_a_scalar_and_a_list_are_both_read(self) -> None:
+        manifest = prompts.parse_front_matter(
+            "---\nid: a.b.c\nversion: 1.0.0\nengine: shared\nfixtures: [one, two]\n---\n\nbody\n"
+        )
+        self.assertEqual(manifest["fixtures"], ["one", "two"])
+        self.assertEqual(manifest["version"], "1.0.0")
+
+    def test_an_empty_list_is_read_as_empty(self) -> None:
+        manifest = prompts.parse_front_matter(
+            "---\nid: a.b.c\nversion: 1.0.0\nengine: shared\nfixtures: []\n---\n\nbody\n"
+        )
+        self.assertEqual(manifest["fixtures"], [])
+
+    def test_a_missing_block_is_reported(self) -> None:
+        with self.assertRaises(prompts.MalformedFrontMatter):
+            prompts.parse_front_matter("No front matter here.\n")
+
+    def test_a_shape_outside_the_subset_is_reported_not_skipped(self) -> None:
+        """A field nobody can parse must not slip past as absent."""
+        with self.assertRaises(prompts.MalformedFrontMatter):
+            prompts.parse_front_matter(
+                "---\nid: a.b.c\nversion: 1.0.0\nengine: shared\nnested:\n  - deep\n---\n\nbody\n"
+            )
+
+    def test_every_committed_prompt_parses(self) -> None:
+        paths = sorted(prompts.PROMPTS.glob("*.md"))
+        self.assertTrue(paths)
+        for path in paths:
+            with self.subTest(prompt=path.name):
+                manifest = prompts.parse_front_matter(path.read_text(encoding="utf-8"))
+                self.assertIn("id", manifest)
+
+
+class ManifestTests(unittest.TestCase):
+    def test_the_committed_prompts_are_clean(self) -> None:
+        self.assertEqual(prompts.prompt_manifest_violations(), [])
+
+    def test_a_missing_required_field_fails(self) -> None:
+        with PlantedPrompt("_probe.md", "---\nid: frameshift.probe.v1\nversion: 1.0.0\n---\n\nbody\n"):
+            violations = prompts.prompt_manifest_violations()
+        self.assertTrue(any("engine" in item for item in violations), violations)
+
+    def test_an_unknown_engine_fails(self) -> None:
+        text = VALID.replace("engine: shared", "engine: telepathy")
+        with PlantedPrompt("_probe.md", text):
+            violations = prompts.prompt_manifest_violations()
+        self.assertTrue(any("telepathy" in item for item in violations), violations)
+
+    def test_a_malformed_version_fails(self) -> None:
+        text = VALID.replace("version: 1.0.0", "version: one")
+        with PlantedPrompt("_probe.md", text):
+            violations = prompts.prompt_manifest_violations()
+        self.assertTrue(violations)
+
+    def test_an_output_schema_that_does_not_exist_fails(self) -> None:
+        text = VALID.replace("engine: shared", "engine: shared\noutput_schema: schemas/nope.json")
+        with PlantedPrompt("_probe.md", text):
+            violations = prompts.prompt_manifest_violations()
+        self.assertTrue(any("does not exist" in item for item in violations), violations)
+
+    def test_a_fixture_that_does_not_exist_fails(self) -> None:
+        text = VALID.replace("engine: shared", "engine: shared\nfixtures: [not-a-case]")
+        with PlantedPrompt("_probe.md", text):
+            violations = prompts.prompt_manifest_violations()
+        self.assertTrue(any("not-a-case" in item for item in violations), violations)
+
+    def test_a_repair_prompt_naming_nothing_fails(self) -> None:
+        text = VALID.replace("engine: shared", "engine: shared\nrepair_prompt: frameshift.absent.v1")
+        with PlantedPrompt("_probe.md", text):
+            violations = prompts.prompt_manifest_violations()
+        self.assertTrue(any("names no committed prompt" in item for item in violations), violations)
+
+    def test_a_duplicate_id_fails(self) -> None:
+        text = VALID.replace("frameshift.probe.v1", "frameshift.problem-framing.v1")
+        with PlantedPrompt("_probe.md", text):
+            violations = prompts.prompt_manifest_violations()
+        self.assertTrue(any("already declared" in item for item in violations), violations)
+
+    def test_the_framing_prompt_names_its_repair_prompt(self) -> None:
+        manifest = prompts.parse_front_matter(
+            (prompts.PROMPTS / "problem-framing.v1.md").read_text(encoding="utf-8")
+        )
+        self.assertEqual(manifest["repair_prompt"], "frameshift.repair-structured-output.v1")
+
+    def test_the_planted_file_is_always_removed(self) -> None:
+        with PlantedPrompt("_probe.md", VALID) as path:
+            self.assertTrue(path.exists())
+        self.assertFalse(path.exists())
+
+
+if __name__ == "__main__":
+    unittest.main()
