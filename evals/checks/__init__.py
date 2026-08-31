@@ -16,6 +16,7 @@ from .artifacts import artifact_conformance
 from .checkpoint import checkpoint_digest, checkpoint_integrity
 from .engine_result import engine_result_invariants
 from .repair import engine_result_repair
+from .schema_files import schema_wellformedness
 from .session import session_invariants
 
 
@@ -28,5 +29,6 @@ REGISTRY = {
     "checkpoint_integrity": checkpoint_integrity,
     "engine_result_invariants": engine_result_invariants,
     "engine_result_repair": engine_result_repair,
+    "schema_wellformedness": schema_wellformedness,
     "session_invariants": session_invariants,
 }
