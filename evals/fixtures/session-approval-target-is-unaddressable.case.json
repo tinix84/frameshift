@@ -1,0 +1,25 @@
+{
+  "id": "session-approval-target-is-unaddressable",
+  "check": "session_invariants",
+  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "at": [
+    "state"
+  ],
+  "mutate": [
+    {
+      "path": [
+        "approvals",
+        0,
+        "target_id"
+      ],
+      "value": "frame_deleted_001"
+    }
+  ],
+  "expect": {
+    "outcome": "invalid",
+    "violations_naming": [
+      "$.approvals[0].target_id",
+      "dangling_reference"
+    ]
+  }
+}

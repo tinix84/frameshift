@@ -6,7 +6,8 @@
     "checkpoint_digest",
     "checkpoint_integrity",
     "engine_result_invariants",
-    "engine_result_repair"
+    "engine_result_repair",
+    "session_invariants"
   ],
   "transports": [
     "echo",
