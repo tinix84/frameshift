@@ -1,0 +1,108 @@
+{
+  "schema_version": "1.0.0",
+  "execution_id": "exec_battery_single_source_001",
+  "engine": "problem_framing",
+  "input_revision": 1,
+  "status": "complete",
+  "proposals": [
+    {
+      "id": "prop_classify_001",
+      "kind": "statement_classification",
+      "operation": "add",
+      "value": {
+        "statement_id": "stmt_001",
+        "primary_role": "proposal",
+        "secondary_roles": [
+          "constraint"
+        ]
+      },
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [
+          "stmt_001"
+        ],
+        "note": "The intake names a supplier switch, which is a mechanism, and a cost target, which is a constraint."
+      }
+    },
+    {
+      "id": "prop_ladder_001",
+      "kind": "abstraction_ladder",
+      "operation": "add",
+      "value": {
+        "levels": [
+          "component",
+          "system",
+          "product",
+          "business"
+        ],
+        "top_outcome": "Hold pack cost per usable kWh at the 2028 target without taking an unhedged sourcing position."
+      },
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [
+          "stmt_001"
+        ]
+      }
+    },
+    {
+      "id": "prop_frame_001",
+      "kind": "problem_frame",
+      "operation": "add",
+      "value": {
+        "question": "How might we meet the pack cost target while keeping more than one qualified source for the cell?",
+        "abstraction_level": "business",
+        "status": "proposed"
+      },
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [
+          "stmt_001"
+        ]
+      }
+    }
+  ],
+  "rationale_summaries": [
+    "The intake states a cost reduction as a supplier choice, so the owned outcome and the mechanism are the same sentence.",
+    "Qualifying a single cheaper cell source moves cost and concentration together; naming the outcome at business level separates them."
+  ],
+  "uncertainties": [
+    {
+      "id": "unc_001",
+      "summary": "Whether the cost target can be met at all with two qualified sources is not yet known.",
+      "source_ids": [
+        "stmt_001"
+      ]
+    },
+    {
+      "id": "unc_002",
+      "summary": "The qualification lead time for a second source is not stated.",
+      "source_ids": [
+        "stmt_001"
+      ]
+    }
+  ],
+  "conflicts": [
+    {
+      "id": "conf_001",
+      "summary": "The stated cost target and an unstated continuity expectation may not both be satisfiable.",
+      "source_ids": [
+        "stmt_001"
+      ]
+    }
+  ],
+  "missing_information": [
+    {
+      "id": "miss_001",
+      "summary": "Identify who owns the sourcing decision and what interruption they are willing to absorb.",
+      "source_ids": [
+        "stmt_001"
+      ]
+    }
+  ],
+  "requested_capabilities": [],
+  "required_checkpoints": [
+    "intake_correction",
+    "frame_selection"
+  ],
+  "warnings": []
+}

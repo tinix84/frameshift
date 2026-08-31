@@ -163,6 +163,50 @@ def rationale_summary_errors() -> list[str]:
     return errors
 
 
+# The story map is the durable half of the roadmap: the North Star and the shape
+# of the journey. Two properties keep it honest. It must declare a North Star and
+# a backbone, because a map with neither is a wish; and every exemplar it names
+# must have a runnable twin in the harness, because — as the file itself puts it
+# — an exemplar nobody can execute is an anecdote.
+#
+# The third check #72 asks for, that every `story`-labelled issue carries exactly
+# one journey-position label and one milestone, is not here. It needs the tracker
+# and the `column:*` label set, and no `story` issue exists yet; a check that
+# matches nothing manufactures confidence. See #72.
+STORY_MAP = "docs/story-map.md"
+STORY_MAP_SECTIONS = ["## North Star", "## The backbone", "## Exemplars"]
+EXEMPLAR = re.compile(r"^\|\s*`(?P<name>[a-z0-9][a-z0-9-]*)`\s*\|", re.MULTILINE)
+
+
+def story_map_errors() -> list[str]:
+    """The story map declares a North Star and a backbone, and names no anecdotes."""
+    path = ROOT / STORY_MAP
+    if not path.is_file():
+        return [f"missing required file: {STORY_MAP}"]
+
+    text = path.read_text(encoding="utf-8")
+    errors = [
+        f"{STORY_MAP} is missing a {section!r} section"
+        for section in STORY_MAP_SECTIONS
+        if section not in text
+    ]
+
+    backbone = text.partition("## The backbone")[2].partition("## Slices")[0]
+    if not [line for line in backbone.splitlines() if line.startswith("|")]:
+        errors.append(f"{STORY_MAP} declares a backbone with no columns")
+
+    exemplars = EXEMPLAR.findall(text.partition("## Exemplars")[2])
+    if not exemplars:
+        errors.append(f"{STORY_MAP} names no exemplars")
+    fixtures = {path.name for path in (ROOT / "evals" / "fixtures").rglob("*") if path.is_file()}
+    for name in exemplars:
+        # Where the twin lives is the harness's decision, so the map names the
+        # exemplar and the check looks for a fixture carrying that name.
+        if not any(item.startswith(name + ".") for item in fixtures):
+            errors.append(f"exemplar {name} named in {STORY_MAP} has no fixture under evals/fixtures/")
+    return errors
+
+
 def main() -> int:
     errors: list[str] = []
     for relative in REQUIRED:
@@ -192,6 +236,7 @@ def main() -> int:
 
     errors.extend(chain_of_thought_errors())
     errors.extend(rationale_summary_errors())
+    errors.extend(story_map_errors())
 
     adr_paths = sorted((ROOT / "docs" / "adr").glob("[0-9][0-9][0-9][0-9]-*.md"))
     if len(adr_paths) < 5:

@@ -1,0 +1,19 @@
+{
+  "id": "battery-single-source",
+  "check": "engine_result_invariants",
+  "artifact": "evals/fixtures/battery-single-source.result.json",
+  "expect": {
+    "required_proposal_kinds": [
+      "statement_classification",
+      "abstraction_ladder",
+      "problem_frame"
+    ],
+    "required_checkpoints": [
+      "intake_correction",
+      "frame_selection"
+    ],
+    "min_rationale_summaries": 2,
+    "min_uncertainties": 2,
+    "forbid_approval_proposals": true
+  }
+}

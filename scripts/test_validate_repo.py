@@ -178,5 +178,70 @@ class RationaleSummaryCheckTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
 
 
+class StoryMapCheckTests(unittest.TestCase):
+    """A map that names an exemplar nobody can run is the failure being caught."""
+
+    MAP = ROOT / "docs" / "story-map.md"
+
+    def setUp(self) -> None:
+        self.original = self.MAP.read_bytes()
+
+    def tearDown(self) -> None:
+        self.MAP.write_bytes(self.original)
+
+    def rewrite(self, text: str) -> None:
+        self.MAP.write_text(text, encoding="utf-8", newline="")
+
+    def text(self) -> str:
+        return self.original.decode("utf-8")
+
+    def test_the_committed_map_passes(self) -> None:
+        result = run_validator()
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_both_committed_exemplars_have_a_fixture(self) -> None:
+        for name in ("battery-single-source", "kafka-in-disguise"):
+            with self.subTest(exemplar=name):
+                self.assertIn(f"`{name}`", self.text())
+                self.assertTrue(
+                    list((ROOT / "evals" / "fixtures").glob(f"{name}.*")), name
+                )
+
+    def test_an_exemplar_without_a_fixture_fails(self) -> None:
+        self.rewrite(self.text().replace(
+            "| `kafka-in-disguise` |", "| `nobody-can-run-this` |", 1))
+        result = run_validator()
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("nobody-can-run-this", result.stdout)
+        self.assertIn("has no fixture", result.stdout)
+
+    def test_a_map_without_a_north_star_fails(self) -> None:
+        self.rewrite(self.text().replace("## North Star", "## Vision", 1))
+        result = run_validator()
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("North Star", result.stdout)
+
+    def test_a_map_without_an_exemplars_section_fails(self) -> None:
+        self.rewrite(self.text().replace("## Exemplars", "## Examples", 1))
+        result = run_validator()
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("Exemplars", result.stdout)
+
+    def test_a_backbone_with_no_columns_fails(self) -> None:
+        text = self.text()
+        backbone = text.partition("## The backbone")[2].partition("## Slices")[0]
+        prose = "\n\nThe journey, described in prose.\n\n"
+        self.rewrite(text.replace(backbone, prose, 1))
+        result = run_validator()
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("no columns", result.stdout)
+
+    def test_a_missing_map_fails(self) -> None:
+        self.MAP.unlink()
+        result = run_validator()
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("docs/story-map.md", result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()
