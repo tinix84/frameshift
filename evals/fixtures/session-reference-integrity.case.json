@@ -1,0 +1,11 @@
+{
+  "id": "session-reference-integrity",
+  "check": "session_invariants",
+  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "at": [
+    "state"
+  ],
+  "expect": {
+    "outcome": "valid"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "id": "session-active-frame-does-not-exist",
+  "check": "session_invariants",
+  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "at": [
+    "state"
+  ],
+  "mutate": [
+    {
+      "path": [
+        "active_frame_id"
+      ],
+      "value": "frame_never_created"
+    }
+  ],
+  "expect": {
+    "outcome": "invalid",
+    "violations_naming": [
+      "$.active_frame_id",
+      "dangling_reference"
+    ]
+  }
+}

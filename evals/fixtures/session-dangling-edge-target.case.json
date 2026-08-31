@@ -1,0 +1,26 @@
+{
+  "id": "session-dangling-edge-target",
+  "check": "session_invariants",
+  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "at": [
+    "state"
+  ],
+  "mutate": [
+    {
+      "path": [
+        "graph",
+        "edges",
+        0,
+        "target"
+      ],
+      "value": "node_removed_001"
+    }
+  ],
+  "expect": {
+    "outcome": "invalid",
+    "violations_naming": [
+      "$.graph.edges[0].target",
+      "dangling_reference"
+    ]
+  }
+}
