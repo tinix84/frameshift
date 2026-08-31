@@ -19,7 +19,7 @@
     "outcome": "invalid",
     "violations_naming": [
       "$.approvals[0].target_id",
-      "dangling_reference"
+      "invariant_violation"
     ]
   }
 }

@@ -18,9 +18,9 @@ import copy
 import json
 from pathlib import Path
 
-from . import canonical
+from . import canonical, errors
 
-DIVERGENCE = "adapter_state_diverged"
+DIVERGENCE = errors.ADAPTER_STATE_DIVERGED
 
 # Where the schemas declare a namespaced `extensions` object. Extensions are
 # stripped at these locations and nowhere else before comparing, so an adapter
