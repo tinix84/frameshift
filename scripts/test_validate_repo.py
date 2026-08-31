@@ -243,5 +243,70 @@ class StoryMapCheckTests(unittest.TestCase):
         self.assertIn("docs/story-map.md", result.stdout)
 
 
+class CredentialMaterialCheckTests(unittest.TestCase):
+    """#21: no credential material where state is defined or behavior requested."""
+
+    def test_the_repository_is_clean(self) -> None:
+        result = run_validator()
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_a_credential_field_in_a_manifest_fails(self) -> None:
+        content = json.dumps({"schema_version": "1.0.0", "api_key": "redacted"}, indent=2)
+        with PlantedFile("adapters/_probe.json", content):
+            result = run_validator()
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("adapters/_probe.json:3", result.stdout)
+        self.assertIn("api_key", result.stdout)
+
+    def test_a_credential_in_a_prompt_fails(self) -> None:
+        content = "# Probe\n\nUse the password below.\n"
+        with PlantedFile("prompts/_probe.md", content):
+            result = run_validator()
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("password", result.stdout)
+
+    def test_every_declared_term_is_caught(self) -> None:
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("v", VALIDATOR)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        for term in module.CREDENTIAL_TERMS:
+            with self.subTest(term=term):
+                with PlantedFile("prompts/_probe.md", f"value: {term}\n"):
+                    result = run_validator()
+                self.assertNotEqual(result.returncode, 0, term)
+
+    def test_a_secret_value_is_caught_under_an_innocent_field_name(self) -> None:
+        for value in ("-----BEGIN RSA PRIVATE KEY-----", "AKIAIOSFODNN7EXAMPLE", "ghp_abc123"):
+            with self.subTest(value=value):
+                content = json.dumps({"note": value}, indent=2)
+                with PlantedFile("evals/fixtures/_probe.json", content):
+                    result = run_validator()
+                self.assertNotEqual(result.returncode, 0, value)
+
+    def test_token_counts_is_not_credential_material(self) -> None:
+        """The reference checkpoint carries it, and a check that fired here would be turned off."""
+        content = json.dumps({"token_counts": {"input": 2810, "output": 640}}, indent=2)
+        with PlantedFile("evals/fixtures/_probe.json", content):
+            result = run_validator()
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_a_credential_owner_field_is_not_credential_material(self) -> None:
+        """#21 says a capability declares its credential owner."""
+        content = json.dumps({"credential_owner": "workspace", "credentials": "delegated"}, indent=2)
+        with PlantedFile("adapters/_probe.json", content):
+            result = run_validator()
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_the_security_docs_may_name_what_they_forbid(self) -> None:
+        result = run_validator()
+        self.assertEqual(result.returncode, 0, result.stdout)
+        security = (ROOT / "SECURITY.md").read_text(encoding="utf-8").lower()
+        contributing = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8").lower()
+        self.assertTrue("secret" in security or "credential" in security)
+        self.assertTrue("secret" in contributing or "credential" in contributing)
+
+
 if __name__ == "__main__":
     unittest.main()

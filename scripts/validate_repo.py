@@ -86,6 +86,42 @@ COT_ROOT_FILES = ["README.md", "AGENTS.md", "CLAUDE.md", "CONTRIBUTING.md", "SEC
 ENGINE_RESULT_MARKER_KEYS = ("execution_id", "proposals")
 # Exempt: these must name the thing they prohibit in order to define it.
 COT_EXEMPT = ["docs/adr", "CONTEXT.md"]
+
+# #21: no credential material in prompts, checkpoints, or logs. Same shape as
+# ADR-0007's prohibition and it degrades the same way, one plausible field name
+# at a time — an `api_key` added to a capability manifest with good intentions
+# would pass every other check.
+#
+# These terms name the *material*, never the topic, and that distinction is the
+# whole reason the list is short:
+#   - bare `token` is excluded: `token_counts` is a real field in the reference
+#     checkpoint's execution summaries.
+#   - bare `credential` is excluded: #21 says a capability declares its
+#     credential owner, so `credential_owner` is a field this contract expects.
+# A check that fired on either would be switched off within a week.
+CREDENTIAL_TERMS = [
+    "access_token",
+    "api_key",
+    "apikey",
+    "auth_token",
+    "bearer_token",
+    "client_secret",
+    "passwd",
+    "password",
+    "private_key",
+    "refresh_token",
+    "secret_key",
+]
+# Values that are credential material whatever field they hide behind.
+CREDENTIAL_VALUES = [
+    "-----BEGIN ",
+    "AKIA",
+    "ghp_",
+    "xoxb-",
+]
+# These state the prohibition, so they may name it — as `docs/adr/` may for
+# chain-of-thought.
+CREDENTIAL_EXEMPT = ["CONTRIBUTING.md", "SECURITY.md"]
 LINK = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 PROSE_PATTERN = re.compile(
     "|".join(rf"(?<![A-Za-z0-9_]){re.escape(term)}(?![A-Za-z0-9_])" for term in FORBIDDEN_PROSE_TERMS),
@@ -142,6 +178,28 @@ def is_engine_result(artifact: object) -> bool:
     if not isinstance(artifact, dict):
         return False
     return "engine" in artifact or all(key in artifact for key in ENGINE_RESULT_MARKER_KEYS)
+
+
+def credential_material_errors() -> list[str]:
+    """#21: no credential material where state is defined or behavior requested."""
+    errors: list[str] = []
+    for path in scan_paths():
+        relative = path.relative_to(ROOT).as_posix()
+        if relative in CREDENTIAL_EXEMPT:
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        for number, line in enumerate(text.splitlines(), start=1):
+            lowered = line.lower().replace("-", "_")
+            for term in CREDENTIAL_TERMS:
+                if term in lowered:
+                    errors.append(f"credential material in {relative}:{number}: {term}")
+            for marker in CREDENTIAL_VALUES:
+                if marker in line:
+                    errors.append(f"credential material in {relative}:{number}: {marker.strip()}")
+    return errors
 
 
 def rationale_summary_errors() -> list[str]:
@@ -235,6 +293,7 @@ def main() -> int:
             errors.append(f"forbidden directory: {relative} (this content belongs in the issue tracker)")
 
     errors.extend(chain_of_thought_errors())
+    errors.extend(credential_material_errors())
     errors.extend(rationale_summary_errors())
     errors.extend(story_map_errors())
 
