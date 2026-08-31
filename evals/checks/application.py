@@ -13,8 +13,13 @@ means they agree on every rule that produced them.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from . import canonical as reference_canonical
 from . import schema as reference
+
+FIXTURES = Path(__file__).resolve().parents[2] / "evals" / "fixtures"
 
 
 def application_encoder(case: dict, load) -> list[str]:
@@ -149,4 +154,63 @@ def application_validator(case: dict, load) -> list[str]:
     minimum = expect.get("min_faults_detected", 1)
     if detected < minimum:
         errors.append(f"{detected} faults detected, case expects at least {minimum}")
+    return errors
+
+
+def application_orchestrator(case: dict, load) -> list[str]:
+    """Every approval-corpus attempt, run through the real orchestrator.
+
+    #3 asks for the eight-gate corpus passing against a real orchestrator rather
+    than against the reference guard. The reference stays what it always was —
+    implementation-agnostic, asserting only the externally visible outcome — and
+    this asserts the application reaches the same outcome, code for code, on
+    every attempt the corpus declares.
+    """
+    from frameshift.orchestration import attempt as application_attempt
+
+    from . import approval as reference_guard
+
+    expect = case["expect"]
+    errors: list[str] = []
+    attempts = 0
+    gates_accepted: set[str] = set()
+
+    for path in sorted(FIXTURES.glob("approval-*.case.json")):
+        with path.open("r", encoding="utf-8") as handle:
+            corpus_case = json.load(handle)
+        if corpus_case.get("check") != "approval_binding":
+            continue
+        for item in corpus_case.get("attempts", []):
+            session = load(corpus_case["session"])
+            if "from_phase" in item:
+                session["phase"] = item["from_phase"]
+            if "edit" in item:
+                reference_guard.apply_edit(session, item["edit"])
+
+            approval = reference_guard._resolve_approval(session, item)
+            transition = {
+                "gate": item["gate"],
+                "target_id": item["target_id"],
+                "to_phase": item.get("to_phase"),
+            }
+            theirs = reference_guard.attempt_transition(session, transition, approval)
+            mine = application_attempt(session, transition, approval)
+            attempts += 1
+
+            label = f"{corpus_case['id']}/{item['id']}"
+            for field in ("outcome", "code", "detail"):
+                if mine[field] != theirs[field]:
+                    errors.append(
+                        f"{label}: application {field} {mine[field]!r}, reference {theirs[field]!r}"
+                    )
+            if mine["outcome"] == "accepted":
+                gates_accepted.add(item["gate"])
+
+    minimum = expect.get("min_attempts", 1)
+    if attempts < minimum:
+        errors.append(f"{attempts} attempts run, case expects at least {minimum}")
+    if expect.get("covers_gates"):
+        uncovered = sorted(set(reference_guard.GATE_AUTHORITY) - gates_accepted)
+        if uncovered:
+            errors.append(f"the orchestrator accepted no attempt for gates: {uncovered}")
     return errors
