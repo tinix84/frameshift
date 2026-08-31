@@ -9,7 +9,8 @@
       "key_order",
       "line_endings",
       "set_order",
-      "execution_metadata"
+      "execution_metadata",
+      "timestamp_spelling"
     ]
   }
 }

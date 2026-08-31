@@ -75,6 +75,50 @@ class CanonicalizationTests(unittest.TestCase):
             canonical.checkpoint_digest(mutated), canonical.checkpoint_digest(checkpoint_data)
         )
 
+    def test_one_instant_has_one_digest_however_it_is_spelled(self) -> None:
+        checkpoint_data = load_reference()
+        baseline = canonical.state_digest(checkpoint_data)
+        for spelling in (
+            "2026-07-15T09:14:00+00:00",
+            "2026-07-15T09:14:00.000Z",
+            "2026-07-15t09:14:00z",
+            "2026-07-15T11:14:00+02:00",
+            "2026-07-15T04:14:00-05:00",
+        ):
+            with self.subTest(spelling=spelling):
+                mutated = copy.deepcopy(checkpoint_data)
+                mutated["state"]["approvals"][0]["created_at"] = spelling
+                self.assertEqual(canonical.state_digest(mutated), baseline)
+
+    def test_a_different_instant_still_changes_the_digest(self) -> None:
+        checkpoint_data = load_reference()
+        baseline = canonical.state_digest(checkpoint_data)
+        for spelling in ("2026-07-15T09:14:01Z", "2026-07-15T09:14:00.500Z"):
+            with self.subTest(spelling=spelling):
+                mutated = copy.deepcopy(checkpoint_data)
+                mutated["state"]["approvals"][0]["created_at"] = spelling
+                self.assertNotEqual(canonical.state_digest(mutated), baseline)
+
+    def test_a_non_zero_fraction_is_preserved(self) -> None:
+        self.assertEqual(
+            canonical.normalize_timestamp("2026-07-15T09:14:00.500Z"), "2026-07-15T09:14:00.5Z"
+        )
+        self.assertEqual(
+            canonical.normalize_timestamp("2026-07-15T09:14:00.123456Z"),
+            "2026-07-15T09:14:00.123456Z",
+        )
+
+    def test_a_string_that_is_not_a_timestamp_is_untouched(self) -> None:
+        for text in (
+            "Meeting at 12:30:00 on 2026-07-15, see notes",
+            "2026-07-15",
+            "2026-07-15T09:14:00",
+            "version 1.2.3",
+            "09:14:00Z",
+        ):
+            with self.subTest(text=text):
+                self.assertEqual(canonical.canonicalize(text), text)
+
     def test_a_semantic_change_does_change_the_digest(self) -> None:
         self.assertNotEqual(canonical.digest({"a": 1}), canonical.digest({"a": 2}))
 

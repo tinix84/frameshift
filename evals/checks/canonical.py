@@ -13,8 +13,10 @@ the reference checkpoint this module hashes.
 
 from __future__ import annotations
 
+import datetime
 import hashlib
 import json
+import re
 
 # Arrays the schemas mark `uniqueItems: true` are sets, so their order carries
 # no meaning and must not carry into the digest. `evals/test_checks.py` asserts
@@ -55,6 +57,41 @@ ENVELOPE_EXECUTION_METADATA = frozenset(
     }
 )
 
+# Rule 5 of the canonicalization contract (#22): timestamps are normalized to
+# one RFC 3339 UTC spelling before hashing. `2026-07-15T09:14:00Z`, the same
+# instant as `...+00:00`, as `...00.000Z`, and as the lowercase form, was
+# producing four different digests. Approval times sit inside the state digest
+# since #101, so the spelling was inside it too.
+#
+# Identified by VALUE, not by field name — a name filter at depth is what #101
+# had to undo, and an instant is recognizable from its own text. Only a strict
+# full match is touched, so prose that merely contains digits and colons is
+# left byte-identical.
+TIMESTAMP = re.compile(
+    r"^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})$"
+)
+
+
+def normalize_timestamp(value: str) -> str:
+    """One spelling per instant: UTC, `Z`-suffixed, trailing zero fractions dropped.
+
+    A non-zero fractional second is information and is preserved.
+    """
+    if not TIMESTAMP.match(value):
+        return value
+    try:
+        moment = datetime.datetime.fromisoformat(value.upper().replace("Z", "+00:00"))
+    except ValueError:
+        return value
+    if moment.tzinfo is None:
+        return value
+    moment = moment.astimezone(datetime.timezone.utc)
+    if moment.microsecond:
+        fraction = f"{moment.microsecond:06d}".rstrip("0")
+        return moment.strftime("%Y-%m-%dT%H:%M:%S.") + fraction + "Z"
+    return moment.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 # A checkpoint cannot contain its own digests.
 SELF_DIGEST_FIELDS = frozenset({"checkpoint_digest", "state_digest"})
 
@@ -78,7 +115,7 @@ def canonicalize(value: object, *, drop: frozenset[str] = frozenset()) -> object
     if isinstance(value, list):
         return [canonicalize(item, drop=drop) for item in value]
     if isinstance(value, str):
-        return value.replace("\r\n", "\n").replace("\r", "\n")
+        return normalize_timestamp(value.replace("\r\n", "\n").replace("\r", "\n"))
     if isinstance(value, float):
         if value != value or value in (float("inf"), float("-inf")):
             raise CanonicalizationError("NaN and Infinity are not canonical JSON")
