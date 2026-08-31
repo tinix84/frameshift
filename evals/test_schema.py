@@ -114,6 +114,37 @@ class AdditionalPropertiesTests(unittest.TestCase):
         self.assertTrue(any("$.other" in item for item in errors), errors)
 
 
+class TimestampPatternTests(unittest.TestCase):
+    """`format` is an annotation, so the pattern is what constrains the form."""
+
+    def setUp(self) -> None:
+        self.timestamp = schema.load_schema("common.schema.json")["$defs"]["timestamp"]
+
+    def validate(self, value: str) -> list[str]:
+        return schema.validate(value, self.timestamp, current="common.schema.json")
+
+    def test_the_canonical_spelling_validates(self) -> None:
+        for value in ("2026-07-15T09:14:00Z", "2026-07-15T09:14:00.5Z", "2026-07-15T09:14:00.123456Z"):
+            with self.subTest(value=value):
+                self.assertEqual(self.validate(value), [])
+
+    def test_every_other_spelling_of_the_same_instant_is_refused(self) -> None:
+        for value in (
+            "2026-07-15T09:14:00+00:00",
+            "2026-07-15T09:14:00.000Z",
+            "2026-07-15t09:14:00z",
+            "2026-07-15T11:14:00+02:00",
+            "2026-07-15T09:14:00.500Z",
+            "2026-07-15T09:14:00",
+        ):
+            with self.subTest(value=value):
+                self.assertTrue(self.validate(value), value)
+
+    def test_every_committed_artifact_still_validates(self) -> None:
+        case = run.load("evals/fixtures/committed-artifacts-match-their-schema.case.json")
+        self.assertEqual(run.evaluate(case), [])
+
+
 class RegressionTests(unittest.TestCase):
     def test_the_committed_corpus_is_unaffected(self) -> None:
         case = run.load("evals/fixtures/committed-artifacts-match-their-schema.case.json")

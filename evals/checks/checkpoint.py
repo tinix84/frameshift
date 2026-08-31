@@ -60,11 +60,27 @@ def _replace_execution_metadata(value: dict) -> dict:
     return checkpoint
 
 
+def _respell_timestamps(value: object) -> object:
+    """A runtime that writes the same instant with an offset instead of `Z`."""
+    if isinstance(value, dict):
+        return {key: _respell_timestamps(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_respell_timestamps(item) for item in value]
+    if isinstance(value, str) and canonical.TIMESTAMP.match(value):
+        moment = canonical.datetime.datetime.fromisoformat(value.upper().replace("Z", "+00:00"))
+        shifted = moment.astimezone(
+            canonical.datetime.timezone(canonical.datetime.timedelta(hours=2))
+        )
+        return shifted.isoformat(timespec="seconds")
+    return value
+
+
 PERTURBATIONS = {
     "key_order": _reverse_key_order,
     "line_endings": _crlf_line_endings,
     "set_order": _reverse_set_order,
     "execution_metadata": _replace_execution_metadata,
+    "timestamp_spelling": _respell_timestamps,
 }
 
 

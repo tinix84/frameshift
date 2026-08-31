@@ -5,7 +5,12 @@
   "$defs": {
     "id": {"type": "string", "minLength": 3, "maxLength": 128, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
     "digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
-    "timestamp": {"type": "string", "format": "date-time"},
+    "timestamp": {
+      "type": "string",
+      "description": "RFC 3339 UTC, one spelling per instant: Z-suffixed, and a fractional second only when non-zero and without trailing zeros. `format` is an annotation the validator does not enforce, so the pattern is what constrains the form.",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]*[1-9])?Z$"
+    },
     "confidence": {"type": "string", "enum": ["unknown", "low", "medium", "high"]},
     "provenance": {
       "type": "object",
