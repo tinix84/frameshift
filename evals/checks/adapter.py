@@ -237,3 +237,90 @@ def corpus_across_adapters(case: dict, load) -> list[str]:
     if expect == "changed" and not errors:
         return ["every case survived, the corpus expects at least one to change"]
     return []
+
+
+REPORT_SCHEMA = "conformance-report.schema.json"
+
+
+def conformance_report(load, transports: list[str], corpus_checks: set[str]) -> dict:
+    """Adapter by check by case, for every registered adapter.
+
+    Every adapter in the manifest appears, including one no case exercised —
+    that is reported as `uncovered`, which is deliberately not a pass. An
+    adapter author reading a flat per-fixture list cannot tell those apart.
+    """
+    from . import REGISTRY
+
+    root = Path(__file__).resolve().parents[2]
+    corpus: list[dict] = []
+    for path in sorted((root / "evals" / "fixtures").glob("*.case.json")):
+        with path.open("r", encoding="utf-8") as handle:
+            other = json.load(handle)
+        if other.get("check") in corpus_checks:
+            corpus.append(other)
+
+    adapters = []
+    for name in sorted(ADAPTERS):
+        if name not in transports or not corpus:
+            adapters.append({"name": name, "outcome": "uncovered", "checks": []})
+            continue
+
+        transport = ADAPTERS[name]
+
+        def transported(relative: str, _transport=transport) -> object:
+            return _transport(copy.deepcopy(load(relative)))
+
+        by_check: dict[str, list[dict]] = {}
+        for other in corpus:
+            violations = REGISTRY[other["check"]](other, transported)
+            entry = {"id": other["id"], "outcome": "fail" if violations else "pass"}
+            if violations:
+                entry["violations"] = violations
+            by_check.setdefault(other["check"], []).append(entry)
+
+        checks = []
+        for check_name in sorted(by_check):
+            cases = by_check[check_name]
+            failed = any(item["outcome"] == "fail" for item in cases)
+            checks.append(
+                {
+                    "name": check_name,
+                    "outcome": "nonconformant" if failed else "conformant",
+                    "cases": cases,
+                }
+            )
+        adapters.append(
+            {
+                "name": name,
+                "outcome": "nonconformant" if any(c["outcome"] == "nonconformant" for c in checks) else "conformant",
+                "checks": checks,
+            }
+        )
+
+    return {"schema_version": "1.0.0", "adapters": adapters}
+
+
+def adapter_conformance_report(case: dict, load) -> list[str]:
+    """Build the conformance report, validate its shape, and assert its verdicts."""
+    from . import schema
+
+    expect = case["expect"]
+    errors: list[str] = []
+
+    report = conformance_report(load, case.get("transports", []), set(case.get("corpus", [])))
+    errors.extend(
+        f"report violates {REPORT_SCHEMA} at {item}"
+        for item in schema.validate(report, schema.load_schema(REPORT_SCHEMA), current=REPORT_SCHEMA)
+    )
+
+    verdicts = {item["name"]: item["outcome"] for item in report["adapters"]}
+    for name in sorted(ADAPTERS):
+        if name not in verdicts:
+            errors.append(f"{name} is registered but absent from the report")
+
+    for group in ("conformant", "nonconformant", "uncovered"):
+        for name in expect.get(group, []):
+            if verdicts.get(name) != group:
+                errors.append(f"{name} is {verdicts.get(name)}, case expects {group}")
+
+    return errors

@@ -1,0 +1,28 @@
+{
+  "id": "adapter-conformance-report",
+  "check": "adapter_conformance_report",
+  "corpus": [
+    "approval_binding",
+    "checkpoint_digest",
+    "checkpoint_integrity",
+    "engine_result_invariants",
+    "engine_result_repair",
+    "session_invariants"
+  ],
+  "transports": [
+    "crlf_text",
+    "echo",
+    "reordering"
+  ],
+  "expect": {
+    "conformant": [
+      "crlf_text",
+      "echo",
+      "reordering"
+    ],
+    "uncovered": [
+      "extension_annotating",
+      "request_id_promoting"
+    ]
+  }
+}
