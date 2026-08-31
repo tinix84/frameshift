@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0.0",
+  "execution_id": "exec_reference_001",
+  "engine": "problem_framing",
+  "engine_version": "0.1.0",
+  "session_revision": 4,
+  "input_state_digest": "sha256:a269425e8e71804e3f85b0a486da5a03ef9cb2ab712fb7250340d469eaa46ba0",
+  "prompt_contract_id": "frameshift.problem-framing.v1",
+  "prompt_contract_version": "1.0.0",
+  "capability_profile_id": "generic-conversation-only",
+  "output_schema": "schemas/engine-result.schema.json",
+  "context": [
+    {
+      "id": "art_evidence_001",
+      "digest": "sha256:e0d28cab6ce2704db425922783ed9408678d6b4f23d3ddc7c6b65811d00e79cb",
+      "media_type": "text/plain"
+    }
+  ],
+  "invariants": [
+    "every proposal carries provenance",
+    "no approval is proposed",
+    "rationale summaries are present"
+  ],
+  "data_classification": "user-provided",
+  "budget": {
+    "max_output_tokens": 4000,
+    "timeout_ms": 120000,
+    "max_tool_calls": 0
+  },
+  "checkpoint_policy": "on_accepted_proposal"
+}

@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frameshift.dev/schemas/execution-request.schema.json",
+  "title": "FrameShift canonical execution request",
+  "description": "What the orchestrator hands an adapter to run one engine step. The fields are those #19 lists and #24's example demonstrates; required are the ones without which the request is not reproducible.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "execution_id",
+    "engine",
+    "engine_version",
+    "session_revision",
+    "input_state_digest",
+    "prompt_contract_id",
+    "capability_profile_id",
+    "output_schema"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "execution_id": {
+      "description": "Deterministic: the same request in the same state carries the same id.",
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "engine": {
+      "type": "string",
+      "enum": [
+        "problem_framing",
+        "causal_reasoning",
+        "solution_generation",
+        "decision_validation"
+      ]
+    },
+    "engine_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "session_revision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "input_state_digest": {
+      "description": "Pins the state this request was formed against, so a stale result is detectable.",
+      "$ref": "common.schema.json#/$defs/digest"
+    },
+    "prompt_contract_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "prompt_contract_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "capability_profile_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "output_schema": {
+      "type": "string",
+      "minLength": 1
+    },
+    "context": {
+      "description": "Bounded artifact references. The request carries pointers, never payloads.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/reference"
+      }
+    },
+    "invariants": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "data_classification": {
+      "type": "string",
+      "minLength": 1
+    },
+    "budget": {
+      "$ref": "#/$defs/budget"
+    },
+    "checkpoint_policy": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "reference": {
+      "type": "object",
+      "required": [
+        "id",
+        "digest"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "digest": {
+          "$ref": "common.schema.json#/$defs/digest"
+        },
+        "media_type": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "budget": {
+      "type": "object",
+      "properties": {
+        "max_output_tokens": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_tool_calls": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

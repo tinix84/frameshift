@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0.0",
+  "execution_id": "exec_reference_001",
+  "adapter": {
+    "id": "frameshift.generic",
+    "version": "0.1.0"
+  },
+  "runtime": {
+    "id": "generic.conversation",
+    "version": "1"
+  },
+  "stop_reason": "complete",
+  "validation": {
+    "outcome": "valid",
+    "repair_attempts": 0,
+    "violations": []
+  },
+  "raw_response_digest": "sha256:48904132a3cd7a4a349b51fe481b7fe9368a714e14d6231ba9e62fd36ffcf7a6",
+  "tool_trace_digests": [],
+  "latency_ms": 4120,
+  "token_counts": {
+    "input": 2810,
+    "output": 640
+  },
+  "provider_request_id": "req_9f2c",
+  "unsupported_capabilities": [],
+  "warnings": []
+}

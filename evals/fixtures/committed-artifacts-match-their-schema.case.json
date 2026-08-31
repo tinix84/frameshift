@@ -6,6 +6,8 @@
     "evals/fixtures/*.result.json": "engine-result.schema.json",
     "evals/fixtures/approval/*.session.json": "session.schema.json",
     "evals/fixtures/reference.checkpoint.json": "checkpoint.schema.json",
+    "evals/fixtures/reference.execution-envelope.json": "execution-envelope.schema.json",
+    "evals/fixtures/reference.execution-request.json": "execution-request.schema.json",
     "evals/fixtures/repair/*.repaired.json": "engine-result.schema.json"
   },
   "deliberately_invalid": {
@@ -13,6 +15,6 @@
   },
   "expect": {
     "outcome": "valid",
-    "min_artifacts": 9
+    "min_artifacts": 11
   }
 }
