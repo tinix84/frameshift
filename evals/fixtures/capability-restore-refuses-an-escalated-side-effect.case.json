@@ -1,0 +1,23 @@
+{
+  "id": "capability-restore-refuses-an-escalated-side-effect",
+  "check": "capability_compatibility",
+  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "adapter": "adapters/generic/capabilities.json",
+  "mutate_adapter": [
+    {
+      "path": [
+        "capabilities",
+        0,
+        "side_effect"
+      ],
+      "value": "irreversible"
+    }
+  ],
+  "expect": {
+    "outcome": "refused",
+    "refused_naming": [
+      "artifact.read",
+      "side_effect escalated"
+    ]
+  }
+}
