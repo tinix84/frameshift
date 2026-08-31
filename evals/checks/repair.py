@@ -17,31 +17,52 @@ from . import schema
 # A repair may add structure; it may not add a referent.
 IDENTIFIER_KEYS = frozenset({"execution_id", "id", "target_id"})
 REFERENCE_KEYS = frozenset({"requested_capabilities", "source_ids"})
+# Free-text keys whose values assert something rather than describe a shape: the
+# text of a statement, the question a frame poses, what a rationale summary says.
+# Rewriting one of these leaves every identifier and reference untouched while
+# putting words in the engine's mouth, so the no-new-facts rule covers them too.
+ASSERTION_KEYS = frozenset(
+    {
+        "note",
+        "question",
+        "rationale_summaries",
+        "summary",
+        "text",
+        "top_outcome",
+        "warnings",
+    }
+)
 
 FRONT_MATTER_ID = re.compile(r"^id:\s*(?P<id>\S+)\s*$", re.MULTILINE)
 FRONT_MATTER_VERSION = re.compile(r"^version:\s*(?P<version>\S+)\s*$", re.MULTILINE)
 
 
-def _collect(value: object, keys: frozenset[str], found: set[str]) -> set[str]:
+def _collect(value: object, keys: frozenset[str], found: set[str], *, qualify: bool = False) -> set[str]:
     if isinstance(value, dict):
         for name, item in value.items():
             if name in keys:
+                prefix = f"{name}: " if qualify else ""
                 if isinstance(item, str):
-                    found.add(item)
+                    found.add(prefix + item)
                 elif isinstance(item, list):
-                    found.update(entry for entry in item if isinstance(entry, str))
-            _collect(item, keys, found)
+                    found.update(prefix + entry for entry in item if isinstance(entry, str))
+            _collect(item, keys, found, qualify=qualify)
     elif isinstance(value, list):
         for item in value:
-            _collect(item, keys, found)
+            _collect(item, keys, found, qualify=qualify)
     return found
 
 
 def referents(artifact: object) -> dict[str, set[str]]:
-    """The domain facts an artifact asserts, as three comparable sets."""
+    """The domain facts an artifact asserts, as four comparable sets.
+
+    Assertions carry their key, so a violation names the field that was
+    rewritten rather than only quoting the sentence that replaced it.
+    """
     return {
         "identifiers": _collect(artifact, IDENTIFIER_KEYS, set()),
         "references": _collect(artifact, REFERENCE_KEYS, set()),
+        "assertions": _collect(artifact, ASSERTION_KEYS, set(), qualify=True),
         "proposal kinds": {
             item.get("kind")
             for item in (artifact.get("proposals", []) if isinstance(artifact, dict) else [])

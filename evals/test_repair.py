@@ -70,11 +70,63 @@ class SubsetRuleTests(unittest.TestCase):
         after["proposals"][0]["id"] = "prop_renamed_001"
         self.assertTrue(any("prop_renamed_001" in item for item in repair.subset_violations(before, after)))
 
+    def test_a_rewritten_frame_question_is_caught_and_names_the_field(self) -> None:
+        before = run.load(VALID)
+        after = copy.deepcopy(before)
+        frame = next(item for item in after["proposals"] if item["kind"] == "problem_frame")
+        frame["value"]["question"] = "How might we cut inverter unit cost by 15 percent?"
+        violations = repair.subset_violations(before, after)
+        self.assertTrue(any("question" in item for item in violations), violations)
+
+    def test_a_rewritten_rationale_summary_is_caught(self) -> None:
+        before = run.load(VALID)
+        after = copy.deepcopy(before)
+        after["rationale_summaries"][0] = "The intake already names the owned outcome."
+        violations = repair.subset_violations(before, after)
+        self.assertTrue(any("rationale_summaries" in item for item in violations), violations)
+
+    def test_a_rewritten_note_summary_is_caught(self) -> None:
+        before = run.load(VALID)
+        after = copy.deepcopy(before)
+        after["uncertainties"][0]["summary"] = "The performance threshold is 250 kW."
+        violations = repair.subset_violations(before, after)
+        self.assertTrue(any("summary" in item for item in violations), violations)
+
     def test_a_new_capability_request_is_caught(self) -> None:
         before = run.load(VALID)
         after = copy.deepcopy(before)
         after["requested_capabilities"] = ["shell.execute"]
         self.assertTrue(any("shell.execute" in item for item in repair.subset_violations(before, after)))
+
+
+class ShapeRepairTests(unittest.TestCase):
+    """Shape repair keeps working: the rule refuses new facts, not new structure."""
+
+    def test_correcting_a_type_is_accepted(self) -> None:
+        result = repair.run_repair(run.load(INVALID), run.load(REPAIRED))
+        self.assertEqual(result["outcome"], "repaired", result)
+
+    def test_filling_a_missing_enum_is_accepted(self) -> None:
+        invalid = run.load(VALID)
+        invalid["status"] = "finished"
+        repaired = copy.deepcopy(invalid)
+        repaired["status"] = "complete"
+        result = repair.run_repair(invalid, repaired)
+        self.assertEqual(result["outcome"], "repaired", result)
+
+    def test_adding_a_required_empty_array_is_accepted(self) -> None:
+        invalid = run.load(VALID)
+        del invalid["conflicts"]
+        repaired = copy.deepcopy(invalid)
+        repaired["conflicts"] = []
+        result = repair.run_repair(invalid, repaired)
+        self.assertEqual(result["outcome"], "repaired", result)
+
+    def test_dropping_an_assertion_is_allowed(self) -> None:
+        before = run.load(VALID)
+        after = copy.deepcopy(before)
+        after["rationale_summaries"] = after["rationale_summaries"][:1]
+        self.assertEqual(repair.subset_violations(before, after), [])
 
 
 class OneAttemptTests(unittest.TestCase):
