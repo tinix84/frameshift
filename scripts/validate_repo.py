@@ -83,8 +83,9 @@ MACHINE_READABLE_SUFFIXES = {".json", ".jsonl", ".yaml", ".yml"}
 # Where state is defined, behavior is requested, and agents are instructed.
 COT_SCAN_DIRS = ["schemas", "prompts", "evals/fixtures", "adapters"]
 COT_ROOT_FILES = ["README.md", "AGENTS.md", "CLAUDE.md", "CONTRIBUTING.md", "SECURITY.md"]
-# The shape of an engine result, for a fixture that does not name its engine.
-ENGINE_RESULT_MARKER_KEYS = ("execution_id", "proposals")
+# The shape of an engine result. `proposals` is the field only a result carries:
+# an execution request names an `engine` too, and an envelope names an
+# `execution_id`, so neither alone identifies one.
 # Exempt: these must name the thing they prohibit in order to define it.
 COT_EXEMPT = ["docs/adr", "CONTEXT.md"]
 
@@ -172,13 +173,17 @@ def chain_of_thought_errors() -> list[str]:
 def is_engine_result(artifact: object) -> bool:
     """An engine result, recognized without trusting it to name its own engine.
 
-    Keying on `engine` alone let a fixture opt out of the whole check by
-    omitting that key, so the shape an engine result cannot fake — an execution
-    carrying proposals — identifies it too.
+    Keying on `engine` alone let a fixture opt out by omitting that key — and
+    once execution requests existed it also caught them, since a request names
+    the engine it is for. `proposals` is the field only a result carries;
+    `rationale_summaries` catches one that omits its proposals and still claims
+    to be a result.
     """
     if not isinstance(artifact, dict):
         return False
-    return "engine" in artifact or all(key in artifact for key in ENGINE_RESULT_MARKER_KEYS)
+    if "proposals" in artifact:
+        return True
+    return "engine" in artifact and "rationale_summaries" in artifact
 
 
 def credential_material_errors() -> list[str]:

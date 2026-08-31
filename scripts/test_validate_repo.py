@@ -171,6 +171,30 @@ class RationaleSummaryCheckTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("without a named engine", result.stdout)
 
+    def test_an_execution_request_is_not_an_engine_result(self) -> None:
+        """A request names the engine it is for; only a result carries proposals."""
+        content = json.dumps(
+            {
+                "schema_version": "1.0.0",
+                "execution_id": "exec_probe_001",
+                "engine": "problem_framing",
+                "output_schema": "schemas/engine-result.schema.json",
+            },
+            indent=2,
+        )
+        with PlantedFile("evals/fixtures/_probe.request.json", content):
+            result = run_validator()
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_an_execution_envelope_is_not_an_engine_result(self) -> None:
+        content = json.dumps(
+            {"schema_version": "1.0.0", "execution_id": "exec_probe_001", "stop_reason": "complete"},
+            indent=2,
+        )
+        with PlantedFile("evals/fixtures/_probe.envelope.json", content):
+            result = run_validator()
+        self.assertEqual(result.returncode, 0, result.stdout)
+
     def test_engine_result_with_rationale_summaries_passes(self) -> None:
         content = json.dumps({"schema_version": "1.0.0", "engine": "problem_framing", "rationale_summaries": ["A summary."]}, indent=2)
         with PlantedFile("evals/fixtures/_probe.result.json", content):

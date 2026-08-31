@@ -24,11 +24,14 @@ import re
 SET_LIKE_FIELDS = frozenset(
     {
         "data_classes",
+        "invariants",
         "operations",
         "requested_capabilities",
         "required_checkpoints",
         "secondary_roles",
         "source_ids",
+        "tool_trace_digests",
+        "unsupported_capabilities",
     }
 )
 

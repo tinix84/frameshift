@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frameshift.dev/schemas/execution-envelope.schema.json",
+  "title": "FrameShift execution envelope",
+  "description": "What an adapter returns alongside an EngineResult: how the run went, never what the model thought. Every field here is execution metadata and is excluded from the state digest by location, per ADR-0004.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "execution_id",
+    "adapter",
+    "runtime",
+    "stop_reason",
+    "validation"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "execution_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "adapter": {
+      "$ref": "#/$defs/named_version"
+    },
+    "runtime": {
+      "$ref": "#/$defs/named_version"
+    },
+    "stop_reason": {
+      "type": "string",
+      "enum": [
+        "complete",
+        "max_tokens",
+        "timeout",
+        "refused",
+        "tool_error",
+        "invalid_output"
+      ]
+    },
+    "validation": {
+      "$ref": "#/$defs/validation"
+    },
+    "raw_response_digest": {
+      "description": "A digest, never the response. The raw text is not persisted.",
+      "$ref": "common.schema.json#/$defs/digest"
+    },
+    "tool_trace_digests": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/digest"
+      },
+      "uniqueItems": true
+    },
+    "latency_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "token_counts": {
+      "$ref": "#/$defs/token_counts"
+    },
+    "provider_request_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "unsupported_capabilities": {
+      "type": "array",
+      "items": {
+        "$ref": "common.schema.json#/$defs/id"
+      },
+      "uniqueItems": true
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 1000
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "named_version": {
+      "type": "object",
+      "required": [
+        "id",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "validation": {
+      "description": "ADR-0006 allows exactly one repair attempt, so the count is bounded at one.",
+      "type": "object",
+      "required": [
+        "outcome",
+        "repair_attempts"
+      ],
+      "properties": {
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "valid",
+            "repaired",
+            "refused",
+            "unrepairable"
+          ]
+        },
+        "repair_attempts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "violations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "token_counts": {
+      "type": "object",
+      "properties": {
+        "input": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -3,6 +3,6 @@
   "check": "schema_wellformedness",
   "expect": {
     "outcome": "valid",
-    "min_schemas": 7
+    "min_schemas": 9
   }
 }
