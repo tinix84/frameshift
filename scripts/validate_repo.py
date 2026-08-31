@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -265,6 +266,76 @@ def story_map_errors() -> list[str]:
     return errors
 
 
+COLUMN_LABEL = re.compile(r"`(column:[a-z-]+)`")
+
+
+def backbone_columns() -> list[str]:
+    """The nine column labels, read from the story map's own backbone table."""
+    text = (ROOT / STORY_MAP).read_text(encoding="utf-8")
+    backbone = text.partition("## The backbone")[2].partition("## Slices")[0]
+    return COLUMN_LABEL.findall(backbone)
+
+
+def story_placement_errors(issues: list[dict], columns: list[str]) -> list[str]:
+    """Every `story` issue sits in exactly one column and exactly one slice.
+
+    Pure over the issue list so it can be tested without a network: the `gh`
+    call is the caller's problem, and this is the rule.
+    """
+    known = set(columns)
+    errors: list[str] = []
+    for issue in issues:
+        number = issue.get("number")
+        labels = {item["name"] for item in issue.get("labels", [])}
+        placed = sorted(labels & known)
+        unknown = sorted({item for item in labels if item.startswith("column:")} - known)
+        if unknown:
+            errors.append(f"issue #{number} carries unknown column labels {unknown}")
+        if len(placed) != 1:
+            errors.append(
+                f"issue #{number} has {len(placed)} journey-position labels {placed}, expected exactly one"
+            )
+        if not issue.get("milestone"):
+            errors.append(f"issue #{number} is a story with no milestone, so it sits in no slice")
+    return errors
+
+
+def fetch_story_issues() -> list[dict] | None:
+    """Open `story` issues, or None when `gh` cannot answer."""
+    try:
+        result = subprocess.run(
+            ["gh", "issue", "list", "--label", "story", "--state", "open",
+             "--limit", "200", "--json", "number,labels,milestone"],
+            capture_output=True, text=True, timeout=60, check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0:
+        return None
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+
+
+def story_tracker_errors() -> list[str]:
+    """The third story-map check, skipped with a notice when `gh` is unavailable."""
+    if not (ROOT / STORY_MAP).is_file():
+        return []  # story_map_errors already reports the missing file
+    columns = backbone_columns()
+    if len(columns) != 9:
+        return [f"{STORY_MAP} declares {len(columns)} column labels, expected nine"]
+
+    issues = fetch_story_issues()
+    if issues is None:
+        print(f"note: skipping the story placement check, gh is unavailable ({len(columns)} columns declared)")
+        return []
+    # A check over an empty set passes silently, which is how a checker starts
+    # manufacturing confidence. Say how many were examined.
+    print(f"note: story placement checked over {len(issues)} open `story` issues")
+    return story_placement_errors(issues, columns)
+
+
 def main() -> int:
     errors: list[str] = []
     for relative in REQUIRED:
@@ -296,6 +367,7 @@ def main() -> int:
     errors.extend(credential_material_errors())
     errors.extend(rationale_summary_errors())
     errors.extend(story_map_errors())
+    errors.extend(story_tracker_errors())
 
     adr_paths = sorted((ROOT / "docs" / "adr").glob("[0-9][0-9][0-9][0-9]-*.md"))
     if len(adr_paths) < 5:
