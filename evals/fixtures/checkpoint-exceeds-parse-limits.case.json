@@ -1,0 +1,18 @@
+{
+  "id": "checkpoint-exceeds-parse-limits",
+  "check": "checkpoint_integrity",
+  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "mutate": {
+    "level": "state",
+    "path": [
+      "state",
+      "title"
+    ],
+    "nest_depth": 200
+  },
+  "expect": {
+    "outcome": "refused",
+    "violation": "checkpoint_limits_exceeded",
+    "detail": "max_depth"
+  }
+}
