@@ -45,17 +45,17 @@ real and secondary. They hang off this backbone; they do not define it.
 
 The journey, left to right, in the order the reasoner walks it.
 
-| # | Column | The reasoner's outcome |
-|---|---|---|
-| 1 | Bring a request | Says what they want in their own words, without first having to know what they actually need |
-| 2 | Get reframed | Is shown the outcome their request omitted, and chooses the problem they will actually solve |
-| 3 | Understand what causes it | Sees why the problem happens, with competing explanations kept side by side rather than collapsed |
-| 4 | Find what would tell us | Learns which single observation would separate the explanations, and what it would cost to get |
-| 5 | Generate options | Gets candidate interventions that attack the problem at more than one level, including doing nothing |
-| 6 | Compare against what matters | Judges options against criteria they own, not against a number someone else computed |
-| 7 | Sign the decision | Commits to one option with the rationale, the dissent, and the conditions attached |
-| 8 | Carry it onward | Picks the work up somewhere else, later, without losing what was established |
-| 9 | Keep what was learned | Promotes what proved reusable, deliberately, and leaves the rest behind |
+| # | Column | Label | The reasoner's outcome |
+|---|---|---|---|
+| 1 | Bring a request | `column:request` | Says what they want in their own words, without first having to know what they actually need |
+| 2 | Get reframed | `column:reframe` | Is shown the outcome their request omitted, and chooses the problem they will actually solve |
+| 3 | Understand what causes it | `column:causes` | Sees why the problem happens, with competing explanations kept side by side rather than collapsed |
+| 4 | Find what would tell us | `column:evidence` | Learns which single observation would separate the explanations, and what it would cost to get |
+| 5 | Generate options | `column:options` | Gets candidate interventions that attack the problem at more than one level, including doing nothing |
+| 6 | Compare against what matters | `column:compare` | Judges options against criteria they own, not against a number someone else computed |
+| 7 | Sign the decision | `column:decide` | Commits to one option with the rationale, the dissent, and the conditions attached |
+| 8 | Carry it onward | `column:carry` | Picks the work up somewhere else, later, without losing what was established |
+| 9 | Keep what was learned | `column:promote` | Promotes what proved reusable, deliberately, and leaves the rest behind |
 
 A request that fits no column is the signal, not an inconvenience: either it is
 off the North Star, or the backbone has a hole. Adding a column is a deliberate
@@ -93,7 +93,8 @@ never copied.
 
 - A `story` label marks an issue as user-facing. Infrastructure issues carry no
   story label and are out of scope here.
-- A `column:<name>` label places a story on the backbone.
+- A `column:<name>` label places a story on the backbone. The nine names are
+  the Label column of the backbone table above, and that table is the registry.
 - The milestone places it in a slice.
 - Every `story` issue has exactly one of each.
 

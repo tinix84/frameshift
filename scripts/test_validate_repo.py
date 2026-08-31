@@ -308,5 +308,72 @@ class CredentialMaterialCheckTests(unittest.TestCase):
         self.assertTrue("secret" in contributing or "credential" in contributing)
 
 
+def validator_module():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("validate_repo", VALIDATOR)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def story(number, labels, milestone="M0"):
+    return {
+        "number": number,
+        "labels": [{"name": name} for name in labels],
+        "milestone": {"title": milestone} if milestone else None,
+    }
+
+
+class StoryPlacementTests(unittest.TestCase):
+    """The rule is pure over the issue list; `gh` is the caller's problem."""
+
+    def setUp(self):
+        self.module = validator_module()
+        self.columns = self.module.backbone_columns()
+
+    def test_the_map_declares_nine_columns(self):
+        self.assertEqual(len(self.columns), 9)
+        self.assertIn("column:reframe", self.columns)
+
+    def test_the_declared_columns_are_unique(self):
+        self.assertEqual(len(set(self.columns)), len(self.columns))
+
+    def test_a_correctly_placed_story_passes(self):
+        issues = [story(1, ["story", "column:reframe"])]
+        self.assertEqual(self.module.story_placement_errors(issues, self.columns), [])
+
+    def test_a_story_with_no_column_fails(self):
+        issues = [story(2, ["story"])]
+        errors = self.module.story_placement_errors(issues, self.columns)
+        self.assertTrue(any("0 journey-position labels" in item for item in errors), errors)
+
+    def test_a_story_in_two_columns_fails(self):
+        issues = [story(3, ["story", "column:reframe", "column:decide"])]
+        errors = self.module.story_placement_errors(issues, self.columns)
+        self.assertTrue(any("2 journey-position labels" in item for item in errors), errors)
+
+    def test_a_story_with_no_milestone_fails(self):
+        issues = [story(4, ["story", "column:carry"], milestone=None)]
+        errors = self.module.story_placement_errors(issues, self.columns)
+        self.assertTrue(any("no milestone" in item for item in errors), errors)
+
+    def test_an_unknown_column_label_fails(self):
+        issues = [story(5, ["story", "column:invented"])]
+        errors = self.module.story_placement_errors(issues, self.columns)
+        self.assertTrue(any("unknown column labels" in item for item in errors), errors)
+
+    def test_every_declared_column_is_accepted(self):
+        for column in self.columns:
+            with self.subTest(column=column):
+                issues = [story(6, ["story", column])]
+                self.assertEqual(self.module.story_placement_errors(issues, self.columns), [])
+
+    def test_an_empty_set_is_reported_rather_than_passing_silently(self):
+        result = run_validator()
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("story placement checked over", result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()
