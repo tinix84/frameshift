@@ -123,7 +123,26 @@ def attempt(session: dict, transition: dict, approval: dict | None) -> dict:
         "code": None,
         "detail": "",
         "phase": transition.get("to_phase", session.get("phase")),
+        "events": committed_events(session, transition, approval),
     }
+
+
+def committed_events(session: dict, transition: dict, approval: dict) -> list[dict]:
+    """The domain events a committed transition emits (ADR-0004, ADR-0013).
+
+    Bodies only: `type` and `payload`. Sequence, event id, and the session id
+    are the log's to assign, because only the log knows where the event lands —
+    an orchestrator that guessed a sequence could write two events with the
+    same one.
+
+    A gate that does not advance a phase emits no `phase.changed`, which is what
+    keeps `external_action` from looking like a boundary it never crossed.
+    """
+    events = [{"type": "approval.recorded", "payload": dict(approval)}]
+    gate = phases.GATES[transition["gate"]]
+    if gate.advances:
+        events.append({"type": "phase.changed", "payload": {"phase": gate.to_phase}})
+    return events
 
 
 def _refused(session: dict, refusal: Refused) -> dict:
@@ -132,4 +151,8 @@ def _refused(session: dict, refusal: Refused) -> dict:
         "code": refusal.code,
         "detail": refusal.detail,
         "phase": session.get("phase"),
+        # A refused transition is not history. Nothing happened, so nothing is
+        # recorded — the alternative is a log in which refusals and commits
+        # are indistinguishable after the fact.
+        "events": [],
     }
