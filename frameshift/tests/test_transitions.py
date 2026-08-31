@@ -9,6 +9,7 @@ code from the published vocabulary rather than an invented one.
 
 from __future__ import annotations
 
+import copy
 import json
 import sys
 import unittest
@@ -174,6 +175,72 @@ class AttemptTests(unittest.TestCase):
                 result = transitions.attempt(state, transition, approval)
                 self.assertEqual(result["outcome"], "refused")
                 self.assertIn(result["code"], PUBLISHED)
+
+
+class CommittedEventTests(unittest.TestCase):
+    """A committed transition emits events that fold to the state it produced."""
+
+    def accepted(self, phase: str, gate: str, target_id: str, to_phase: str, role: str = "decision_owner"):
+        state = session(phase)
+        actor = {"id": "user_lead_eng", "kind": "human", "role": role}
+        transition = {"gate": gate, "target_id": target_id, "to_phase": to_phase}
+        result = transitions.attempt(state, transition, bound(state, target_id, actor))
+        self.assertEqual(result["outcome"], "accepted", result["detail"])
+        return state, result
+
+    def test_an_advancing_gate_emits_an_approval_and_a_phase_change(self) -> None:
+        _, result = self.accepted("decision", "decision_approval", "node_decision_001", "monitoring")
+        self.assertEqual([e["type"] for e in result["events"]], ["approval.recorded", "phase.changed"])
+
+    def test_a_same_phase_gate_emits_no_phase_change(self) -> None:
+        """external_action guards an act, so it must not look like a boundary."""
+        _, result = self.accepted("causal", "external_action", "node_decision_001", "causal", "operator")
+        self.assertEqual([e["type"] for e in result["events"]], ["approval.recorded"])
+
+    def test_a_refused_transition_records_nothing(self) -> None:
+        state = session("intake")
+        result = transitions.attempt(
+            state,
+            {"gate": "decision_approval", "target_id": "node_decision_001", "to_phase": "monitoring"},
+            bound(state, "node_decision_001"),
+        )
+        self.assertEqual(result["outcome"], "refused")
+        self.assertEqual(result["events"], [])
+
+    def test_the_events_fold_to_the_state_the_transition_produced(self) -> None:
+        from frameshift.persistence import canonical
+        from evals.checks import replay
+
+        state, result = self.accepted("decision", "decision_approval", "node_decision_001", "monitoring")
+        expected = copy.deepcopy(state)
+        expected["approvals"] = expected.get("approvals", []) + [result["events"][0]["payload"]]
+        expected["phase"] = "monitoring"
+
+        folded = copy.deepcopy(state)
+        for index, body in enumerate(result["events"], start=1):
+            replay._apply(folded, dict(body, sequence=index, event_id=f"evt_{index:03d}"))
+
+        self.assertEqual(canonical.digest(folded), canonical.digest(expected))
+
+    def test_every_emitted_event_type_has_a_reducer(self) -> None:
+        """An event the log cannot replay is a gap in history, not a detail."""
+        from evals.checks import replay
+
+        for gate in phases.GATES.values():
+            with self.subTest(gate=gate.name):
+                state = session(gate.from_phase)
+                role = sorted(transitions.GATE_AUTHORITY[gate.name])[0]
+                actor = {"id": "user_lead_eng", "kind": "human", "role": role}
+                transition = {
+                    "gate": gate.name,
+                    "target_id": "node_decision_001",
+                    "to_phase": gate.to_phase,
+                }
+                result = transitions.attempt(state, transition, bound(state, "node_decision_001", actor))
+                self.assertEqual(result["outcome"], "accepted", result["detail"])
+                for body in result["events"]:
+                    folded = copy.deepcopy(state)
+                    replay._apply(folded, dict(body, sequence=1, event_id="evt_001"))
 
 
 if __name__ == "__main__":
