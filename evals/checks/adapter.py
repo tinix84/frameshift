@@ -15,6 +15,8 @@ and the failure names the JSON path where the two disagree.
 from __future__ import annotations
 
 import copy
+import json
+from pathlib import Path
 
 from . import canonical
 
@@ -106,6 +108,17 @@ def _extension_annotating(state: dict) -> dict:
     return state
 
 
+def _crlf_text(state: dict) -> dict:
+    """A provider that serializes text with CRLF line endings."""
+    if isinstance(state, dict):
+        return {key: _crlf_text(item) for key, item in state.items()}
+    if isinstance(state, list):
+        return [_crlf_text(item) for item in state]
+    if isinstance(state, str):
+        return state.replace("\n", "\r\n")
+    return state
+
+
 def _request_id_promoting(state: dict) -> dict:
     """A provider that promotes its request ID into canonical state. This is the bug."""
     state["provider_request_id"] = "req_9f2c"
@@ -113,6 +126,7 @@ def _request_id_promoting(state: dict) -> dict:
 
 
 ADAPTERS = {
+    "crlf_text": _crlf_text,
     "echo": _echo,
     "extension_annotating": _extension_annotating,
     "reordering": _reordering,
@@ -171,3 +185,55 @@ def adapter_round_trip(case: dict, load) -> list[str]:
             )
 
     return errors
+
+
+def corpus_across_adapters(case: dict, load) -> list[str]:
+    """Every corpus case, re-run with its artifacts carried through each adapter.
+
+    ADR-0001's promise is not only that two adapters agree on a digest. It is
+    that every property the corpus asserts survives the trip: a refusal is still
+    a refusal, a repair still refuses to add facts, a gate still cannot be
+    crossed. Rather than duplicate a fixture per adapter, the case is re-run
+    with a loader that transports whatever it loads, so an adapter is held to
+    the corpus that already exists.
+    """
+    from . import REGISTRY
+
+    transports = case.get("transports", [])
+    wanted = set(case.get("corpus", []))
+    errors: list[str] = []
+
+    if not transports or not wanted:
+        return ['case must name "transports" and "corpus" check names']
+
+    root = Path(__file__).resolve().parents[2]
+    corpus = []
+    for path in sorted((root / "evals" / "fixtures").glob("*.case.json")):
+        with path.open("r", encoding="utf-8") as handle:
+            other = json.load(handle)
+        if other.get("check") in wanted:
+            corpus.append(other)
+    if not corpus:
+        return [f"no corpus cases declare any of {sorted(wanted)}"]
+
+    for name in transports:
+        transport = ADAPTERS.get(name)
+        if transport is None:
+            errors.append(f"unknown adapter: {name} (known: {sorted(ADAPTERS)})")
+            continue
+        # The loader is the seam: every artifact a case reads arrives having
+        # been through the adapter, and nothing about the case itself changes.
+        def transported(relative: str, _transport=transport) -> object:
+            return _transport(copy.deepcopy(load(relative)))
+
+        for other in corpus:
+            found = REGISTRY[other["check"]](other, transported)
+            if found:
+                errors.append(f"{name} changed {other['id']}: {found}")
+
+    expect = case.get("expect", {}).get("outcome", "unchanged")
+    if expect == "unchanged":
+        return errors
+    if expect == "changed" and not errors:
+        return ["every case survived, the corpus expects at least one to change"]
+    return []
