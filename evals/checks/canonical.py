@@ -31,7 +31,19 @@ SET_LIKE_FIELDS = frozenset(
 )
 
 # Execution metadata: real, worth keeping, and never part of semantic identity.
-EXECUTION_METADATA_FIELDS = frozenset(
+#
+# Excluded by LOCATION, not by name. These names are dropped at the top level of
+# the checkpoint envelope only, and `execution_summaries` takes its whole subtree
+# with it — that is where latency, token counts, and provider request IDs live.
+#
+# The previous rule dropped these names at any depth, which reached into
+# canonical state and removed `state.approvals[*].created_at`: an approval's
+# recorded time could be rewritten with every digest staying silent. ADR-0002
+# makes the approval record — when it was given, bound to what, at which
+# revision — the security-relevant artifact, so it has to be inside the digest.
+# If a new execution field appears, add it here and confirm it lives in the
+# envelope; do not restore a name filter that recurses.
+ENVELOPE_EXECUTION_METADATA = frozenset(
     {
         "created_at",
         "execution_summaries",
@@ -51,11 +63,15 @@ class CanonicalizationError(ValueError):
     """The value cannot be canonicalized, so it cannot be hashed."""
 
 
-def canonicalize(value: object, *, drop: frozenset[str] = EXECUTION_METADATA_FIELDS) -> object:
-    """Return the semantic core of `value` in a form with exactly one encoding."""
+def canonicalize(value: object, *, drop: frozenset[str] = frozenset()) -> object:
+    """Return the semantic core of `value` in a form with exactly one encoding.
+
+    `drop` names keys removed at the top level of `value` and nowhere deeper, so
+    an exclusion is a statement about one location rather than about a word.
+    """
     if isinstance(value, dict):
         return {
-            key: canonicalize(item, drop=drop)
+            key: canonicalize(item)
             for key, item in sorted(value.items())
             if key not in drop
         }
@@ -88,20 +104,24 @@ def encode(value: object) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
-def digest(value: object, *, drop: frozenset[str] = EXECUTION_METADATA_FIELDS) -> str:
+def digest(value: object, *, drop: frozenset[str] = frozenset()) -> str:
     """`sha256:` digest over the canonicalized value."""
     canonical = _order_sets(canonicalize(value, drop=drop))
     return "sha256:" + hashlib.sha256(encode(canonical).encode("utf-8")).hexdigest()
 
 
 def state_digest(checkpoint: dict) -> str:
-    """Digest of the canonical state a checkpoint carries."""
+    """Digest of the canonical state a checkpoint carries.
+
+    Nothing is excluded: state holds no execution metadata, and an approval's
+    `created_at` is state.
+    """
     return digest(checkpoint["state"])
 
 
 def checkpoint_digest(checkpoint: dict) -> str:
     """Digest of the whole checkpoint envelope, excluding its own digest fields."""
-    return digest(checkpoint, drop=EXECUTION_METADATA_FIELDS | SELF_DIGEST_FIELDS)
+    return digest(checkpoint, drop=ENVELOPE_EXECUTION_METADATA | SELF_DIGEST_FIELDS)
 
 
 def artifact_digest(payload: bytes) -> str:

@@ -50,10 +50,30 @@ class CanonicalizationTests(unittest.TestCase):
             with self.assertRaises(canonical.CanonicalizationError):
                 canonical.digest({"value": value})
 
-    def test_execution_metadata_never_reaches_the_digest(self) -> None:
-        bare = canonical.digest({"a": 1})
-        for field in canonical.EXECUTION_METADATA_FIELDS:
-            self.assertEqual(canonical.digest({"a": 1, field: "anything"}), bare, field)
+    def test_envelope_execution_metadata_never_reaches_the_checkpoint_digest(self) -> None:
+        checkpoint_data = load_reference()
+        bare = canonical.checkpoint_digest(checkpoint_data)
+        for field in canonical.ENVELOPE_EXECUTION_METADATA:
+            mutated = copy.deepcopy(checkpoint_data)
+            mutated[field] = "anything"
+            self.assertEqual(canonical.checkpoint_digest(mutated), bare, field)
+
+    def test_the_same_name_deeper_in_the_tree_is_hashed(self) -> None:
+        """The exclusion is a location, not a word."""
+        before = canonical.digest({"approvals": [{"created_at": "2026-07-15T09:14:00Z"}]})
+        after = canonical.digest({"approvals": [{"created_at": "2031-01-01T00:00:00Z"}]})
+        self.assertNotEqual(before, after)
+
+    def test_an_approval_timestamp_is_inside_the_state_digest(self) -> None:
+        checkpoint_data = load_reference()
+        mutated = copy.deepcopy(checkpoint_data)
+        mutated["state"]["approvals"][0]["created_at"] = "2031-01-01T00:00:00Z"
+        self.assertNotEqual(
+            canonical.state_digest(mutated), canonical.state_digest(checkpoint_data)
+        )
+        self.assertNotEqual(
+            canonical.checkpoint_digest(mutated), canonical.checkpoint_digest(checkpoint_data)
+        )
 
     def test_a_semantic_change_does_change_the_digest(self) -> None:
         self.assertNotEqual(canonical.digest({"a": 1}), canonical.digest({"a": 2}))
