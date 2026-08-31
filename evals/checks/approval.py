@@ -61,12 +61,41 @@ def content_digest(target: dict) -> str:
     return canonical.digest({key: value for key, value in target.items() if key != "digest"})
 
 
+def sequence_refusal(session: dict, transition: dict) -> Refusal | None:
+    """The sequence guard: a gate is legal only from the phase it belongs to.
+
+    Kept apart from the binding guard on purpose. They answer different
+    questions — *may this transition happen here* and *is this approval good* —
+    and a single function that mixed them could not be reasoned about apart.
+    The phase table comes from `frameshift.orchestration`, so the harness and
+    the application cannot disagree about which gate leads where.
+    """
+    from frameshift.orchestration import phases
+
+    refusals = phases.advance(
+        session.get("phase"), transition["gate"], transition.get("to_phase")
+    )
+    if not refusals:
+        return None
+    # `advance` already prefixes the code; the detail is the rest of the message.
+    detail = refusals[0].split(": ", 1)[1] if ": " in refusals[0] else refusals[0]
+    return Refusal(INVARIANT_VIOLATION, detail)
+
+
 def attempt_transition(session: dict, transition: dict, approval: dict | None) -> dict:
-    """Attempt one guarded transition. Returns the outcome; raises nothing."""
+    """Attempt one guarded transition. Returns the outcome; raises nothing.
+
+    Both guards apply. Sequence comes first: there is no point weighing an
+    approval for a transition that cannot happen from here.
+    """
     gate = transition["gate"]
     try:
         if gate not in GATE_AUTHORITY:
             raise Refusal(INVARIANT_VIOLATION, f"unknown gate {gate}")
+
+        out_of_sequence = sequence_refusal(session, transition)
+        if out_of_sequence is not None:
+            raise out_of_sequence
 
         target = find_target(session, transition["target_id"])
         if target is None:
@@ -150,6 +179,12 @@ def approval_binding(case: dict, load) -> list[str]:
     for attempt in case["attempts"]:
         session = load(case["session"])
         label = attempt["id"]
+
+        # Each attempt declares where the session is standing. Without it every
+        # gate would be attempted from one fixed phase, which is what let the
+        # sequence guard go missing for so long.
+        if "from_phase" in attempt:
+            session["phase"] = attempt["from_phase"]
 
         # An edit happens before the attempt, exactly as a facilitator's would.
         if "edit" in attempt:

@@ -1,0 +1,86 @@
+{
+  "id": "approval-out-of-sequence",
+  "check": "approval_binding",
+  "session": "evals/fixtures/approval/gates.session.json",
+  "expect": {},
+  "attempts": [
+    {
+      "id": "decision_approval-during-intake",
+      "gate": "decision_approval",
+      "from_phase": "intake",
+      "target_id": "node_decision_001",
+      "to_phase": "monitoring",
+      "approval": {
+        "bind_to_current_content": true,
+        "actor": {
+          "id": "user_lead_eng",
+          "kind": "human",
+          "role": "decision_owner"
+        }
+      },
+      "expect": {
+        "outcome": "refused",
+        "violation": "invariant_violation",
+        "detail": "gate decision_approval is passed from 'decision'"
+      }
+    },
+    {
+      "id": "frame_selection-after-the-frame-is-chosen",
+      "gate": "frame_selection",
+      "from_phase": "causal",
+      "target_id": "frame_001",
+      "to_phase": "causal",
+      "approval": {
+        "bind_to_current_content": true,
+        "actor": {
+          "id": "user_lead_eng",
+          "kind": "human",
+          "role": "decision_owner"
+        }
+      },
+      "expect": {
+        "outcome": "refused",
+        "violation": "invariant_violation",
+        "detail": "the session is in 'causal'"
+      }
+    },
+    {
+      "id": "frame_selection-leading-somewhere-it-does-not",
+      "gate": "frame_selection",
+      "from_phase": "framing",
+      "target_id": "frame_001",
+      "to_phase": "monitoring",
+      "approval": {
+        "bind_to_current_content": true,
+        "actor": {
+          "id": "user_lead_eng",
+          "kind": "human",
+          "role": "decision_owner"
+        }
+      },
+      "expect": {
+        "outcome": "refused",
+        "violation": "invariant_violation",
+        "detail": "leads to 'causal'"
+      }
+    },
+    {
+      "id": "external_action-stays-inside-its-phase",
+      "gate": "external_action",
+      "from_phase": "causal",
+      "target_id": "node_decision_001",
+      "to_phase": "causal",
+      "approval": {
+        "bind_to_current_content": true,
+        "actor": {
+          "id": "user_lead_eng",
+          "kind": "human",
+          "role": "decision_owner"
+        }
+      },
+      "expect": {
+        "outcome": "accepted"
+      }
+    }
+  ]
+}

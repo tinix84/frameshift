@@ -130,5 +130,86 @@ class RefusalCaseTests(unittest.TestCase):
         self.assertEqual(json.dumps(run.load(SESSION), sort_keys=True), before)
 
 
+class GuardCompositionTests(unittest.TestCase):
+    """Both guards apply, and each still stands on its own."""
+
+    def session(self) -> dict:
+        return run.load("evals/fixtures/approval/gates.session.json")
+
+    def bound(self, session: dict, gate: str, target_id: str) -> dict:
+        return approval.bind_approval(
+            session, gate, target_id,
+            {"id": "user_lead_eng", "kind": "human", "role": "decision_owner"},
+        )
+
+    def test_the_sequence_guard_is_callable_alone(self) -> None:
+        session = dict(self.session(), phase="intake")
+        refusal = approval.sequence_refusal(
+            session, {"gate": "decision_approval", "to_phase": "monitoring"}
+        )
+        self.assertIsNotNone(refusal)
+        self.assertEqual(refusal.code, approval.INVARIANT_VIOLATION)
+
+    def test_the_sequence_guard_permits_a_legal_transition(self) -> None:
+        session = dict(self.session(), phase="framing")
+        self.assertIsNone(
+            approval.sequence_refusal(session, {"gate": "frame_selection", "to_phase": "causal"})
+        )
+
+    def test_a_perfect_approval_in_the_wrong_phase_is_refused(self) -> None:
+        session = dict(self.session(), phase="intake")
+        transition = {"gate": "decision_approval", "target_id": "node_decision_001", "to_phase": "monitoring"}
+        result = approval.attempt_transition(
+            session, transition, self.bound(session, "decision_approval", "node_decision_001")
+        )
+        self.assertEqual(result["outcome"], "refused")
+        self.assertIn("decision_approval", result["detail"])
+        self.assertIn("intake", result["detail"])
+
+    def test_the_same_approval_in_the_right_phase_is_accepted(self) -> None:
+        """The sequence guard refuses a phase, not the approval."""
+        session = dict(self.session(), phase="decision")
+        transition = {"gate": "decision_approval", "target_id": "node_decision_001", "to_phase": "monitoring"}
+        result = approval.attempt_transition(
+            session, transition, self.bound(session, "decision_approval", "node_decision_001")
+        )
+        self.assertEqual(result["outcome"], "accepted", result["detail"])
+
+    def test_a_legal_sequence_with_no_approval_is_still_refused(self) -> None:
+        """Adding the sequence guard must not weaken the binding one."""
+        session = dict(self.session(), phase="decision")
+        transition = {"gate": "decision_approval", "target_id": "node_decision_001", "to_phase": "monitoring"}
+        result = approval.attempt_transition(session, transition, None)
+        self.assertEqual(result["code"], approval.APPROVAL_REQUIRED)
+
+    def test_a_legal_sequence_with_an_unauthorized_actor_is_still_refused(self) -> None:
+        session = dict(self.session(), phase="decision")
+        bound = self.bound(session, "decision_approval", "node_decision_001")
+        bound["actor"] = {"id": "user_someone", "kind": "human", "role": "observer"}
+        transition = {"gate": "decision_approval", "target_id": "node_decision_001", "to_phase": "monitoring"}
+        result = approval.attempt_transition(session, transition, bound)
+        self.assertEqual(result["code"], approval.INVARIANT_VIOLATION)
+        self.assertIn("lacks authority", result["detail"])
+
+    def test_every_gate_is_accepted_from_its_own_phase_and_refused_elsewhere(self) -> None:
+        from frameshift.orchestration import phases
+
+        for name, gate in phases.GATES.items():
+            with self.subTest(gate=name):
+                elsewhere = next(p for p in phases.PHASES if p != gate.from_phase)
+                session = dict(self.session(), phase=elsewhere)
+                transition = {"gate": name, "to_phase": gate.to_phase}
+                self.assertIsNotNone(approval.sequence_refusal(session, transition))
+                allowed = dict(self.session(), phase=gate.from_phase)
+                self.assertIsNone(approval.sequence_refusal(allowed, transition))
+
+    def test_every_attempt_in_the_corpus_declares_where_it_stands(self) -> None:
+        for path in sorted(run.FIXTURES.glob("approval-*.case.json")):
+            case = run.load(str(path.relative_to(run.ROOT)))
+            for attempt in case.get("attempts", []):
+                with self.subTest(case=case["id"], attempt=attempt["id"]):
+                    self.assertIn("from_phase", attempt)
+
+
 if __name__ == "__main__":
     unittest.main()

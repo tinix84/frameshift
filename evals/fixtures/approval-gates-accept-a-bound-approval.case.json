@@ -9,6 +9,7 @@
     {
       "id": "intake_correction-accepted",
       "gate": "intake_correction",
+      "from_phase": "intake",
       "target_id": "stmt_001",
       "to_phase": "framing",
       "approval": {
@@ -26,6 +27,7 @@
     {
       "id": "frame_selection-accepted",
       "gate": "frame_selection",
+      "from_phase": "framing",
       "target_id": "frame_001",
       "to_phase": "causal",
       "approval": {
@@ -43,6 +45,7 @@
     {
       "id": "evidence_sufficiency-accepted",
       "gate": "evidence_sufficiency",
+      "from_phase": "causal",
       "target_id": "node_evidence_001",
       "to_phase": "solutions",
       "approval": {
@@ -60,6 +63,7 @@
     {
       "id": "option_set_acceptance-accepted",
       "gate": "option_set_acceptance",
+      "from_phase": "solutions",
       "target_id": "opt_001",
       "to_phase": "decision",
       "approval": {
@@ -77,6 +81,7 @@
     {
       "id": "criteria_confirmation-accepted",
       "gate": "criteria_confirmation",
+      "from_phase": "solutions",
       "target_id": "crit_001",
       "to_phase": "decision",
       "approval": {
@@ -94,6 +99,7 @@
     {
       "id": "decision_approval-accepted",
       "gate": "decision_approval",
+      "from_phase": "decision",
       "target_id": "node_decision_001",
       "to_phase": "monitoring",
       "approval": {
@@ -111,6 +117,7 @@
     {
       "id": "external_action-accepted",
       "gate": "external_action",
+      "from_phase": "causal",
       "target_id": "node_intervention_001",
       "to_phase": "causal",
       "approval": {
@@ -128,6 +135,7 @@
     {
       "id": "knowledge_promotion-accepted",
       "gate": "knowledge_promotion",
+      "from_phase": "monitoring",
       "target_id": "stmt_lesson_001",
       "to_phase": "monitoring",
       "approval": {
