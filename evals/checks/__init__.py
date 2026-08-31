@@ -10,6 +10,7 @@ returns a list of human-readable error strings. An empty list is a pass.
 
 from __future__ import annotations
 
+from .adapter import adapter_round_trip
 from .approval import approval_binding
 from .checkpoint import checkpoint_digest, checkpoint_integrity
 from .engine_result import engine_result_invariants
@@ -17,6 +18,7 @@ from .repair import engine_result_repair
 
 
 REGISTRY = {
+    "adapter_round_trip": adapter_round_trip,
     "approval_binding": approval_binding,
     "checkpoint_digest": checkpoint_digest,
     "checkpoint_integrity": checkpoint_integrity,
