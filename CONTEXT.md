@@ -78,6 +78,32 @@ change the focal outcome.
 A band always names its basis and its owner. Numeric probabilities are used
 only when a calibrated method supplies them.
 
+## Provenance
+
+**Provenance** — where a claim came from: a kind (`observed`, `sourced`,
+`inferred`, `assumed`, `unknown`), the sources it cites, and an optional note.
+Every material claim carries one; it is what makes a reasoning case auditable
+rather than merely readable.
+
+**Source id** — one citation inside provenance. A source id carries a type
+prefix, and the prefix names the namespace it belongs to. The namespaces are
+listed below; the list is open, but a prefix that is not on it is a violation
+rather than an assumed external reference.
+
+| Prefix | Names | Lives in canonical state |
+|---|---|---|
+| `stmt_` | an authored statement | yes |
+| `frame_` | a problem frame | yes |
+| `node_` | a graph node | yes |
+| `opt_` | an option | yes |
+| `crit_` | a criterion | yes |
+| `intake_` | an intake record, as it arrived | no |
+| `art_` | a referenced artifact, carried by a checkpoint | no |
+
+A citation whose namespace lives in canonical state must resolve to something
+that exists there. A citation whose namespace lives outside it is accepted on
+its prefix, because the session cannot see the thing cited.
+
 ## Options and decisions
 
 **Option** — a candidate intervention linked to a frame and a leverage point,

@@ -11,13 +11,17 @@ session against `session.schema.json`, and then it resolves every reference
 that must land inside canonical state, naming the JSON path of any that does
 not.
 
-Provenance `source_ids` are deliberately out of scope. They legitimately point
-outside canonical state — the reference session cites `intake_001` and
-`art_evidence_001`, which are an intake record and a checkpoint artifact — so
-what they must resolve against is a decision, not an oversight.
+Provenance `source_ids` are in scope since ADR-0012, and the rule is the one
+that ADR settles: a citation carries a type prefix, and the prefix decides
+whether it must resolve. `stmt_001` names a statement in this session and had
+better exist; `intake_001` names an intake record the session genuinely cannot
+see, and is accepted on its prefix. A prefix nobody declared is a violation, so
+the openness cannot become an escape hatch that swallows dangling references.
 """
 
 from __future__ import annotations
+
+from pathlib import Path
 
 from . import errors
 
@@ -25,6 +29,15 @@ INVARIANT_VIOLATION = errors.INVARIANT_VIOLATION
 
 # Collections whose members carry an `id` that a reference may name.
 TARGET_COLLECTIONS = ("statements", "frames", "options", "criteria")
+
+# The provenance namespaces from ADR-0012. This mirrors the registry table in
+# `CONTEXT.md`, which is the contract; `evals/test_session.py` asserts the two
+# still agree, so adding a namespace means editing the glossary and not this
+# file. A prefix in SESSION_LOCAL must resolve inside canonical state; one in
+# EXTERNAL is accepted on its prefix alone.
+SESSION_LOCAL_PREFIXES = ("crit_", "frame_", "node_", "opt_", "stmt_")
+EXTERNAL_PREFIXES = ("art_", "intake_")
+CONTEXT = Path(__file__).resolve().parents[2] / "CONTEXT.md"
 
 
 def collect_ids(session: dict, collection: str) -> set[str]:
@@ -72,6 +85,41 @@ def reference_violations(session: dict) -> list[str]:
                 "which is not addressable in this session"
             )
 
+    violations.extend(provenance_violations(session, addressable))
+    return violations
+
+
+def walk_source_ids(value: object, path: str = "$"):
+    """Every `source_ids` entry in the session, with the JSON path it sits at."""
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if key == "source_ids" and isinstance(item, list):
+                for index, source in enumerate(item):
+                    if isinstance(source, str):
+                        yield source, f"{path}.source_ids[{index}]"
+            else:
+                yield from walk_source_ids(item, f"{path}.{key}")
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            yield from walk_source_ids(item, f"{path}[{index}]")
+
+
+def provenance_violations(session: dict, addressable: set[str]) -> list[str]:
+    """ADR-0012: the prefix names the namespace, and the namespace decides resolution."""
+    violations: list[str] = []
+    for source, path in walk_source_ids(session):
+        if source.startswith(EXTERNAL_PREFIXES):
+            continue
+        if not source.startswith(SESSION_LOCAL_PREFIXES):
+            violations.append(
+                f"{INVARIANT_VIOLATION}: undeclared provenance namespace, {path} cites {source!r}, "
+                f"whose prefix is in neither {sorted(SESSION_LOCAL_PREFIXES)} nor {sorted(EXTERNAL_PREFIXES)}"
+            )
+        elif source not in addressable:
+            violations.append(
+                f"{INVARIANT_VIOLATION}: dangling reference, {path} cites {source!r}, "
+                "whose namespace is session-local but which is not addressable in this session"
+            )
     return violations
 
 

@@ -86,17 +86,71 @@ class DanglingReferenceTests(unittest.TestCase):
         self.assertTrue(all("dangling reference" in item for item in violations), violations)
 
 
-class ScopeTests(unittest.TestCase):
-    def test_provenance_source_ids_are_deliberately_not_resolved(self) -> None:
-        """The reference cites an intake record and an artifact, neither in state."""
+class ProvenanceNamespaceTests(unittest.TestCase):
+    """ADR-0012: the prefix names the namespace, the namespace decides resolution."""
+
+    def test_the_registry_mirrors_the_table_in_context_md(self) -> None:
+        """`CONTEXT.md` is the contract; this list is a mirror of it."""
+        text = session.CONTEXT.read_text(encoding="utf-8")
+        table = text.partition("| Prefix | Names | Lives in canonical state |")[2].partition("\n\n")[0]
+        declared_local, declared_external = set(), set()
+        for line in table.splitlines():
+            cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+            if len(cells) != 3 or not cells[0].startswith("`"):
+                continue
+            prefix = cells[0].strip("`")
+            (declared_local if cells[2] == "yes" else declared_external).add(prefix)
+        self.assertTrue(declared_local and declared_external, "the table must be readable")
+        self.assertEqual(declared_local, set(session.SESSION_LOCAL_PREFIXES))
+        self.assertEqual(declared_external, set(session.EXTERNAL_PREFIXES))
+
+    def test_an_external_citation_is_accepted_on_its_prefix(self) -> None:
         state = reference_session()
         cited = {
             source
-            for node in state["graph"]["nodes"]
+            for _, node in enumerate(state["graph"]["nodes"])
             for source in node.get("provenance", {}).get("source_ids", [])
         }
-        self.assertTrue(cited - session.node_ids(state) - session.collect_ids(state, "statements"))
+        external = {item for item in cited if item.startswith(session.EXTERNAL_PREFIXES)}
+        self.assertTrue(external, "the reference session cites something outside state")
         self.assertEqual(session.reference_violations(state), [])
+
+    def test_a_dangling_session_local_citation_is_caught(self) -> None:
+        state = reference_session()
+        state["graph"]["nodes"][0]["provenance"]["source_ids"] = ["stmt_999"]
+        violations = session.reference_violations(state)
+        self.assertTrue(any("stmt_999" in item for item in violations), violations)
+        self.assertTrue(any("source_ids[0]" in item for item in violations), violations)
+
+    def test_an_undeclared_namespace_is_caught_rather_than_assumed_external(self) -> None:
+        """The openness must not become an escape hatch for dangling references."""
+        state = reference_session()
+        state["graph"]["nodes"][0]["provenance"]["source_ids"] = ["xyz_001"]
+        violations = session.reference_violations(state)
+        self.assertTrue(any("undeclared provenance namespace" in item for item in violations), violations)
+
+    def test_every_session_local_prefix_resolves_or_fails(self) -> None:
+        for prefix in session.SESSION_LOCAL_PREFIXES:
+            with self.subTest(prefix=prefix):
+                state = reference_session()
+                state["graph"]["nodes"][0]["provenance"]["source_ids"] = [f"{prefix}absent"]
+                self.assertTrue(session.reference_violations(state), prefix)
+
+    def test_every_external_prefix_is_accepted(self) -> None:
+        for prefix in session.EXTERNAL_PREFIXES:
+            with self.subTest(prefix=prefix):
+                state = reference_session()
+                state["graph"]["nodes"][0]["provenance"]["source_ids"] = [f"{prefix}absent"]
+                self.assertEqual(session.reference_violations(state), [], prefix)
+
+    def test_citations_are_found_at_any_depth(self) -> None:
+        state = reference_session()
+        found = dict(session.walk_source_ids(state))
+        self.assertIn("stmt_001", found)
+        self.assertTrue(any(path.startswith("$.graph.nodes[") for path in found.values()))
+
+
+class ScopeTests(unittest.TestCase):
 
     def test_a_schema_violation_is_reported_by_the_check(self) -> None:
         case = run.load("evals/fixtures/session-reference-integrity.case.json")

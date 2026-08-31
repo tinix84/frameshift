@@ -1,0 +1,29 @@
+{
+  "id": "session-provenance-namespace-is-undeclared",
+  "check": "session_invariants",
+  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "at": [
+    "state"
+  ],
+  "mutate": [
+    {
+      "path": [
+        "graph",
+        "nodes",
+        0,
+        "provenance",
+        "source_ids"
+      ],
+      "value": [
+        "xyz_001"
+      ]
+    }
+  ],
+  "expect": {
+    "outcome": "invalid",
+    "violations_naming": [
+      "undeclared provenance namespace",
+      "xyz_001"
+    ]
+  }
+}

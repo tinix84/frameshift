@@ -1,0 +1,30 @@
+{
+  "id": "session-provenance-cites-a-missing-statement",
+  "check": "session_invariants",
+  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "at": [
+    "state"
+  ],
+  "mutate": [
+    {
+      "path": [
+        "graph",
+        "nodes",
+        0,
+        "provenance",
+        "source_ids"
+      ],
+      "value": [
+        "stmt_999"
+      ]
+    }
+  ],
+  "expect": {
+    "outcome": "invalid",
+    "violations_naming": [
+      "stmt_999",
+      "source_ids[0]",
+      "invariant_violation"
+    ]
+  }
+}
