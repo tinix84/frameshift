@@ -1,0 +1,89 @@
+{
+  "schema_version": "1.0.0",
+  "execution_id": "exec_kafka_in_disguise_001",
+  "engine": "problem_framing",
+  "input_revision": 1,
+  "status": "partial",
+  "proposals": [
+    {
+      "id": "prop_classify_001",
+      "kind": "statement_classification",
+      "operation": "add",
+      "value": {
+        "statement_id": "stmt_001",
+        "primary_role": "proposal",
+        "secondary_roles": []
+      },
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [
+          "stmt_001"
+        ],
+        "note": "The intake is a named technology with no outcome attached to it."
+      }
+    },
+    {
+      "id": "prop_ladder_001",
+      "kind": "abstraction_ladder",
+      "operation": "add",
+      "value": {
+        "levels": [
+          "component",
+          "system",
+          "product"
+        ],
+        "top_outcome": "No owned outcome has been stated; the ladder stops where the intake stops."
+      },
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [
+          "stmt_001"
+        ]
+      }
+    }
+  ],
+  "rationale_summaries": [
+    "The intake names a mechanism and no outcome, so there is nothing yet to reframe toward.",
+    "Proposing a frame here would supply the outcome the reasoner never stated, so the engine stops and asks instead."
+  ],
+  "uncertainties": [
+    {
+      "id": "unc_001",
+      "summary": "Whether the pressure is throughput, ordering, retention, or team familiarity is not stated.",
+      "source_ids": [
+        "stmt_001"
+      ]
+    }
+  ],
+  "conflicts": [],
+  "missing_information": [
+    {
+      "id": "miss_001",
+      "summary": "Name the outcome the change is meant to move, in the reasoner's own words.",
+      "source_ids": [
+        "stmt_001"
+      ]
+    },
+    {
+      "id": "miss_002",
+      "summary": "Identify what is failing today and how it is observed.",
+      "source_ids": [
+        "stmt_001"
+      ]
+    },
+    {
+      "id": "miss_003",
+      "summary": "Identify who owns the decision and what they are accountable for.",
+      "source_ids": [
+        "stmt_001"
+      ]
+    }
+  ],
+  "requested_capabilities": [],
+  "required_checkpoints": [
+    "intake_correction"
+  ],
+  "warnings": [
+    "No problem frame is proposed: the intake states no outcome to frame."
+  ]
+}
