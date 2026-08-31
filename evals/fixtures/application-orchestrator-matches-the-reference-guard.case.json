@@ -1,0 +1,8 @@
+{
+  "id": "application-orchestrator-matches-the-reference-guard",
+  "check": "application_orchestrator",
+  "expect": {
+    "covers_gates": true,
+    "min_attempts": 21
+  }
+}
