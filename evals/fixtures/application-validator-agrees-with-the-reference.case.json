@@ -1,0 +1,114 @@
+{
+  "id": "application-validator-agrees-with-the-reference",
+  "check": "application_validator",
+  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "at": [
+    "state"
+  ],
+  "schema": "session.schema.json",
+  "invariants": true,
+  "faults": [
+    {
+      "path": [
+        "title"
+      ],
+      "value": 42
+    },
+    {
+      "path": [
+        "revision"
+      ],
+      "value": "four"
+    },
+    {
+      "path": [
+        "phase"
+      ],
+      "value": "daydreaming"
+    },
+    {
+      "path": [
+        "schema_version"
+      ],
+      "value": "2.0.0"
+    },
+    {
+      "path": [
+        "statements",
+        0,
+        "primary_role"
+      ],
+      "value": "invented"
+    },
+    {
+      "path": [
+        "statements",
+        0,
+        "secondary_roles"
+      ],
+      "value": [
+        "question",
+        "question"
+      ]
+    },
+    {
+      "path": [
+        "graph",
+        "edges",
+        0,
+        "target"
+      ],
+      "value": "node_removed_001"
+    },
+    {
+      "path": [
+        "active_frame_id"
+      ],
+      "value": "frame_never_created"
+    },
+    {
+      "path": [
+        "approvals",
+        0,
+        "target_id"
+      ],
+      "value": "frame_deleted_001"
+    },
+    {
+      "path": [
+        "graph",
+        "nodes",
+        0,
+        "provenance",
+        "source_ids"
+      ],
+      "value": [
+        "xyz_001"
+      ]
+    },
+    {
+      "path": [
+        "graph",
+        "nodes",
+        0,
+        "provenance",
+        "source_ids"
+      ],
+      "value": [
+        "stmt_999"
+      ]
+    },
+    {
+      "path": [
+        "frames",
+        0,
+        "question"
+      ],
+      "value": ""
+    }
+  ],
+  "expect": {
+    "outcome": "agree",
+    "min_faults_detected": 12
+  }
+}

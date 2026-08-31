@@ -11,7 +11,7 @@ returns a list of human-readable error strings. An empty list is a pass.
 from __future__ import annotations
 
 from .adapter import adapter_conformance_report, adapter_round_trip, corpus_across_adapters
-from .application import application_encoder
+from .application import application_encoder, application_validator
 from .approval import approval_binding
 from .artifacts import artifact_conformance
 from .capability import capability_compatibility
@@ -27,6 +27,7 @@ REGISTRY = {
     "adapter_conformance_report": adapter_conformance_report,
     "adapter_round_trip": adapter_round_trip,
     "application_encoder": application_encoder,
+    "application_validator": application_validator,
     "approval_binding": approval_binding,
     "artifact_conformance": artifact_conformance,
     "capability_compatibility": capability_compatibility,
