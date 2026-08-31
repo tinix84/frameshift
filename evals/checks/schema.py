@@ -49,6 +49,44 @@ SUPPORTED = frozenset(
     }
 )
 
+# What SUPPORTED means, split so it cannot drift again. A keyword this validator
+# accepts must either constrain something (ENFORCED) or carry no constraint at
+# all (ANNOTATIONS). #117 was a keyword in neither camp in practice: accepted,
+# then ignored, so `contracts.engines` said "name to version string" and nothing
+# checked it. `evals/test_schema.py` asserts the two sets still partition
+# SUPPORTED, so adding a keyword forces the choice to be made explicitly.
+ENFORCED = frozenset(
+    {
+        "$defs",
+        "$ref",
+        "additionalProperties",
+        "anyOf",
+        "const",
+        "enum",
+        "items",
+        "maxLength",
+        "minItems",
+        "minLength",
+        "minimum",
+        "pattern",
+        "properties",
+        "required",
+        "type",
+        "uniqueItems",
+    }
+)
+ANNOTATIONS = frozenset(
+    {
+        "$anchor",
+        "$id",
+        "$schema",
+        "default",
+        "description",
+        "format",
+        "title",
+    }
+)
+
 TYPES = {
     "object": dict,
     "array": list,
@@ -145,10 +183,22 @@ def validate(value: object, schema: dict, *, current: str, path: str = "$") -> l
         for name in schema.get("required", []):
             if name not in value:
                 errors.append(f"{path}: missing required property {name!r}")
-        if schema.get("additionalProperties") is False:
+        # `additionalProperties` is either False, closing the object, or a
+        # subschema every unnamed property must satisfy. Accepting the keyword
+        # and applying only the boolean case would let a constraint pass for a
+        # check that did not run — `contracts.engines` says "name to version
+        # string" this way, and nothing was enforcing it.
+        additional = schema.get("additionalProperties")
+        if additional is False:
             for name in value:
                 if name not in properties:
                     errors.append(f"{path}: unexpected property {name!r}")
+        elif isinstance(additional, dict):
+            for name, item in value.items():
+                if name not in properties:
+                    errors.extend(
+                        validate(item, additional, current=current, path=f"{path}.{name}")
+                    )
         for name, item in value.items():
             if name in properties:
                 errors.extend(validate(item, properties[name], current=current, path=f"{path}.{name}"))
