@@ -1,0 +1,18 @@
+{
+  "id": "committed-artifacts-match-their-schema",
+  "check": "artifact_conformance",
+  "governs": {
+    "adapters/*/capabilities.json": "capability-manifest.schema.json",
+    "evals/fixtures/*.result.json": "engine-result.schema.json",
+    "evals/fixtures/approval/*.session.json": "session.schema.json",
+    "evals/fixtures/reference.checkpoint.json": "checkpoint.schema.json",
+    "evals/fixtures/repair/*.repaired.json": "engine-result.schema.json"
+  },
+  "deliberately_invalid": {
+    "evals/fixtures/repair/unnamed-engine.repaired.json": "the repair-unrepairable-output corpus case needs an attempt that still fails validation"
+  },
+  "expect": {
+    "outcome": "valid",
+    "min_artifacts": 9
+  }
+}
