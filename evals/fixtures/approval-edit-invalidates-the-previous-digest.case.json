@@ -6,6 +6,7 @@
     {
       "id": "sign-off-does-not-carry-across-an-edit",
       "gate": "frame_selection",
+      "from_phase": "framing",
       "target_id": "frame_001",
       "to_phase": "causal",
       "edit": {
@@ -35,6 +36,7 @@
     {
       "id": "re-approving-the-edited-frame-is-accepted",
       "gate": "frame_selection",
+      "from_phase": "framing",
       "target_id": "frame_001",
       "to_phase": "causal",
       "edit": {
