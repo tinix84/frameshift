@@ -17,7 +17,7 @@
     "outcome": "invalid",
     "violations_naming": [
       "$.active_frame_id",
-      "dangling_reference"
+      "invariant_violation"
     ]
   }
 }

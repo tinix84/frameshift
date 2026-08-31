@@ -24,7 +24,9 @@ its own code.
 
 from __future__ import annotations
 
-DOWNGRADE = "capability_downgrade_refused"
+from . import errors
+
+DOWNGRADE = errors.CAPABILITY_DOWNGRADE_REFUSED
 
 # Mirrored from the enums in `schemas/capability-manifest.schema.json`, weakest
 # gate first and least severe first. `evals/test_capability.py` asserts both

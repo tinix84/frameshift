@@ -11,13 +11,13 @@ from __future__ import annotations
 import copy
 from pathlib import Path
 
-from . import canonical
+from . import canonical, errors
 
-INTEGRITY_VIOLATION = "checkpoint_integrity_failed"
+INTEGRITY_VIOLATION = errors.CHECKPOINT_INTEGRITY_FAILED
 # A resource guard, deliberately not an integrity failure. An oversized
 # checkpoint is not corrupt, and reporting it as corruption would misdescribe it
 # — and would make a real corruption indistinguishable from a large file.
-LIMIT_VIOLATION = "checkpoint_limits_exceeded"
+LIMIT_VIOLATION = errors.CHECKPOINT_LIMITS_EXCEEDED
 ROOT = Path(__file__).resolve().parents[2]
 
 # Step 1 of the restore algorithm (#22): parse within configured limits. Every

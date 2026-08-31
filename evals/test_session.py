@@ -72,13 +72,18 @@ class DanglingReferenceTests(unittest.TestCase):
         violations = session.reference_violations(state)
         self.assertTrue(any("$.approvals[0].target_id" in item for item in violations), violations)
 
-    def test_every_violation_carries_the_dangling_reference_code(self) -> None:
+    def test_every_violation_carries_the_published_invariant_code(self) -> None:
+        """A dangling reference is an invariant violation, which #24 already publishes."""
         state = reference_session()
         state["active_frame_id"] = "frame_never_created"
         state["graph"]["edges"][0]["target"] = "node_removed_001"
         violations = session.reference_violations(state)
         self.assertEqual(len(violations), 2, violations)
-        self.assertTrue(all(item.startswith(session.DANGLING) for item in violations), violations)
+        self.assertTrue(
+            all(item.startswith(session.INVARIANT_VIOLATION) for item in violations), violations
+        )
+        # The descriptive phrase stays in the message, where it helps a reader.
+        self.assertTrue(all("dangling reference" in item for item in violations), violations)
 
 
 class ScopeTests(unittest.TestCase):

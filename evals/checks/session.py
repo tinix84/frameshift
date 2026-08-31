@@ -19,7 +19,9 @@ what they must resolve against is a decision, not an oversight.
 
 from __future__ import annotations
 
-DANGLING = "dangling_reference"
+from . import errors
+
+INVARIANT_VIOLATION = errors.INVARIANT_VIOLATION
 
 # Collections whose members carry an `id` that a reference may name.
 TARGET_COLLECTIONS = ("statements", "frames", "options", "criteria")
@@ -52,21 +54,21 @@ def reference_violations(session: dict) -> list[str]:
         for end in ("source", "target"):
             if edge.get(end) not in nodes:
                 violations.append(
-                    f"{DANGLING}: $.graph.edges[{index}].{end} names {edge.get(end)!r}, "
+                    f"{INVARIANT_VIOLATION}: dangling reference, $.graph.edges[{index}].{end} names {edge.get(end)!r}, "
                     "which is not a node in this graph"
                 )
 
     active = session.get("active_frame_id")
     if active is not None and active not in frames:
         violations.append(
-            f"{DANGLING}: $.active_frame_id names {active!r}, which is not a frame in this session"
+            f"{INVARIANT_VIOLATION}: dangling reference, $.active_frame_id names {active!r}, which is not a frame in this session"
         )
 
     for index, approval in enumerate(session.get("approvals", [])):
         target = approval.get("target_id")
         if target is not None and target not in addressable:
             violations.append(
-                f"{DANGLING}: $.approvals[{index}].target_id names {target!r}, "
+                f"{INVARIANT_VIOLATION}: dangling reference, $.approvals[{index}].target_id names {target!r}, "
                 "which is not addressable in this session"
             )
 

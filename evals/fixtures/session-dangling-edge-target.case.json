@@ -20,7 +20,7 @@
     "outcome": "invalid",
     "violations_naming": [
       "$.graph.edges[0].target",
-      "dangling_reference"
+      "invariant_violation"
     ]
   }
 }

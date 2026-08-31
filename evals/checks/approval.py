@@ -13,12 +13,13 @@ into nothing. The orchestrator (#3) is measured against it, not described by it.
 
 from __future__ import annotations
 
-from . import canonical
+from . import canonical, errors
 
-# Stable codes from the application error vocabulary. Nothing new is invented.
-APPROVAL_REQUIRED = "approval_required"
-APPROVAL_STALE = "approval_stale"
-INVARIANT_VIOLATION = "invariant_violation"
+# Stable codes from the application error vocabulary. Nothing new is invented,
+# and `errors` is where the vocabulary lives so that stays true.
+APPROVAL_REQUIRED = errors.APPROVAL_REQUIRED
+APPROVAL_STALE = errors.APPROVAL_STALE
+INVARIANT_VIOLATION = errors.INVARIANT_VIOLATION
 
 # The eight checkpoint gates named in CONTEXT.md, and who may pass each one.
 # Roles are the first slice's reference policy; separation-of-duty rules are #16.
