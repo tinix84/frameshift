@@ -8,6 +8,7 @@
     "evals/fixtures/reference.checkpoint.json": "checkpoint.schema.json",
     "evals/fixtures/reference.execution-envelope.json": "execution-envelope.schema.json",
     "evals/fixtures/reference.execution-request.json": "execution-request.schema.json",
+    "evals/fixtures/reference.tool-audit-record.json": "tool-audit-record.schema.json",
     "evals/fixtures/reference.tool-request.json": "tool-request.schema.json",
     "evals/fixtures/reference.tool-result.json": "tool-result.schema.json",
     "evals/fixtures/repair/*.repaired.json": "engine-result.schema.json"
@@ -17,6 +18,6 @@
   },
   "expect": {
     "outcome": "valid",
-    "min_artifacts": 13
+    "min_artifacts": 14
   }
 }

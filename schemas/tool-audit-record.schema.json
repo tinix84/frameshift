@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frameshift.dev/schemas/tool-audit-record.schema.json",
+  "title": "FrameShift tool audit record",
+  "description": "#23's FR-11: tool request, result digest, provenance, and authorization are recorded. The four exist separately; this is what binds them, so an auditor can answer in one place what was asked, whether it was allowed and on whose signature, and what came back.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "request_id",
+    "request_digest",
+    "capability_id",
+    "operation",
+    "data_classes",
+    "authorization",
+    "recorded_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "request_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "request_digest": {
+      "description": "Of the request as authorized. An audit trail that cannot show what was asked shows nothing.",
+      "$ref": "common.schema.json#/$defs/digest"
+    },
+    "capability_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "operation": {
+      "type": "string",
+      "minLength": 1
+    },
+    "data_classes": {
+      "description": "Repeated here so the record stands alone: what left the session is the question an auditor asks first.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "authorization": {
+      "$ref": "#/$defs/authorization"
+    },
+    "result_digest": {
+      "description": "Absent when nothing ran.",
+      "$ref": "common.schema.json#/$defs/digest"
+    },
+    "result_status": {
+      "type": "string",
+      "enum": [
+        "succeeded",
+        "failed",
+        "denied",
+        "timed_out"
+      ]
+    },
+    "provenance": {
+      "$ref": "common.schema.json#/$defs/provenance"
+    },
+    "recorded_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "authorization": {
+      "type": "object",
+      "required": [
+        "outcome",
+        "refusals"
+      ],
+      "properties": {
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "allowed",
+            "refused"
+          ]
+        },
+        "refusals": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "approved_by": {
+          "description": "Present when the capability required a signature per call.",
+          "$ref": "common.schema.json#/$defs/actor"
+        },
+        "approval_digest": {
+          "description": "What that signature was bound to. It must be the request digest above.",
+          "$ref": "common.schema.json#/$defs/digest"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
