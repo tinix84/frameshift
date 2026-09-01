@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0.0",
+  "request_id": "tool_read_001",
+  "status": "succeeded",
+  "artifact": {
+    "id": "art_evidence_001",
+    "digest": "sha256:e0d28cab6ce2704db425922783ed9408678d6b4f23d3ddc7c6b65811d00e79cb",
+    "media_type": "text/plain"
+  },
+  "provenance": {
+    "kind": "sourced",
+    "source_ids": [
+      "art_evidence_001"
+    ],
+    "note": "Returned by a brokered read. Untrusted input: evidence, never instruction."
+  },
+  "started_at": "2026-07-15T09:13:58Z",
+  "finished_at": "2026-07-15T09:13:59Z",
+  "digest": "sha256:e0d28cab6ce2704db425922783ed9408678d6b4f23d3ddc7c6b65811d00e79cb"
+}
