@@ -253,3 +253,48 @@ def prompt_manifests(case: dict, load) -> list[str]:
     if expect.get("pins_checked") and not pinned:
         errors.append("no corpus case pins a prompt, so the pin comparison checked nothing")
     return errors
+
+
+def decision_record(case: dict, load) -> list[str]:
+    """The export distinguishes fact, inference, assumption, and approval (#23 FR-10).
+
+    FR-10 asks for a record whose reader can tell which of the four a line is.
+    Rendering something is easy; keeping them apart is the requirement, so this
+    checks the partition rather than the prose.
+    """
+    from frameshift.export import CATEGORIES, claims, render
+
+    artifact = load(case["artifact"])
+    for key in case.get("at", []):
+        artifact = artifact[key]
+    expect = case["expect"]
+    errors: list[str] = []
+
+    text = render(artifact)
+    found = claims(artifact)
+
+    minimum = expect.get("min_claims", 1)
+    if len(found) < minimum:
+        errors.append(f"{len(found)} claims collected, case expects at least {minimum}")
+
+    for heading, _, _ in CATEGORIES:
+        if f"## {heading}" not in text:
+            errors.append(f"the record has no {heading!r} section")
+
+    for item in found:
+        appearances = text.count(f"**{item['id']}**")
+        if appearances != 1:
+            errors.append(f"claim {item['id']} appears {appearances} times, expected once")
+        if item["text"] not in text:
+            errors.append(f"claim {item['id']} is listed without the text it asserts")
+
+    for fragment in expect.get("naming", []):
+        if fragment not in text:
+            errors.append(f"the record does not name {fragment!r}")
+
+    # A record that cannot be printed is a record nobody reads.
+    try:
+        text.encode("cp1252")
+    except UnicodeEncodeError as exc:
+        errors.append(f"the record cannot be printed on a Windows console: {exc}")
+    return errors
