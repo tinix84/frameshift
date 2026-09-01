@@ -33,6 +33,7 @@ REQUEST_SCHEMA = "execution-request.schema.json"
 ENVELOPE_SCHEMA = "execution-envelope.schema.json"
 RESULT_SCHEMA = "engine-result.schema.json"
 
+CAPABILITY_UNAVAILABLE = "capability_unavailable"
 RUNTIME_OUTPUT_INVALID = "runtime_output_invalid"
 INVARIANT_VIOLATION = "invariant_violation"
 SCHEMA_INVALID = "schema_invalid"
@@ -63,6 +64,24 @@ class Adapter(Protocol):
 
     def execute(self, request: dict) -> ExecutionOutcome:
         """Run one engine step and return a normalized outcome."""
+
+
+def unsupported(requested: list[str], manifest: dict) -> list[str]:
+    """Requested capabilities this manifest does not actually offer.
+
+    A capability declared but marked `available: false` counts as unsupported —
+    `adapters/claude-code/capabilities.json` declares `external.connector` that
+    way, and an engine asking for it must be told, not quietly ignored.
+    """
+    offered = {
+        item["id"]: item
+        for item in manifest.get("capabilities", [])
+        if isinstance(item, dict) and isinstance(item.get("id"), str)
+    }
+    return sorted(
+        name for name in requested
+        if name not in offered or not offered[name].get("available")
+    )
 
 
 def run(adapter: Adapter, request: dict) -> ExecutionOutcome:
@@ -106,6 +125,24 @@ def run(adapter: Adapter, request: dict) -> ExecutionOutcome:
             f"{INVARIANT_VIOLATION}: result is from engine "
             f"{outcome.result.get('engine')!r}, the request asked {request['engine']!r}"
         )
+    # #19 responsibility 9: return unsupported capabilities explicitly. An engine
+    # asking for something the runtime cannot do must hear so — silence reads as
+    # "it was done". The envelope may name more than this (a connector down
+    # today is real and only the adapter knows), so it must cover this set, not
+    # equal it.
+    requested = [
+        name for name in outcome.result.get("requested_capabilities", []) if isinstance(name, str)
+    ]
+    if requested:
+        missing = unsupported(requested, adapter.capabilities())
+        reported = set(outcome.envelope.get("unsupported_capabilities", []))
+        for name in missing:
+            if name not in reported:
+                violations.append(
+                    f"{CAPABILITY_UNAVAILABLE}: the result requests {name!r}, which this adapter "
+                    "does not offer, and the envelope does not report it as unsupported"
+                )
+
     if outcome.result.get("input_revision") != request["session_revision"]:
         violations.append(
             f"{INVARIANT_VIOLATION}: result is against revision "
@@ -146,5 +183,9 @@ class EchoAdapter:
             "runtime": {"id": "echo.static", "version": "1"},
             "stop_reason": "complete",
             "validation": {"outcome": "valid", "repair_attempts": 0, "violations": []},
+            "unsupported_capabilities": unsupported(
+                [name for name in result.get("requested_capabilities", []) if isinstance(name, str)],
+                self._manifest,
+            ),
         }
         return ExecutionOutcome(result=result, envelope=envelope)
