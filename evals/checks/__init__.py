@@ -20,6 +20,7 @@ from .application import (
 from .approval import approval_binding
 from .artifacts import artifact_conformance
 from .capability import capability_compatibility
+from .application import decision_record
 from .checkpoint import checkpoint_digest, checkpoint_integrity
 from .engine_result import engine_result_invariants
 from .repair import engine_result_repair
@@ -39,6 +40,7 @@ REGISTRY = {
     "capability_compatibility": capability_compatibility,
     "corpus_across_adapters": corpus_across_adapters,
     "checkpoint_digest": checkpoint_digest,
+    "decision_record": decision_record,
     "checkpoint_integrity": checkpoint_integrity,
     "engine_result_invariants": engine_result_invariants,
     "engine_result_repair": engine_result_repair,

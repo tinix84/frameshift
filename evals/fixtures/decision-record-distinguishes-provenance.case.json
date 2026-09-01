@@ -1,0 +1,16 @@
+{
+  "id": "decision-record-distinguishes-provenance",
+  "check": "decision_record",
+  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "at": [
+    "state"
+  ],
+  "expect": {
+    "min_claims": 4,
+    "naming": [
+      "How might we reach the 2027 pack cost target",
+      "user_lead_eng",
+      "bound to"
+    ]
+  }
+}

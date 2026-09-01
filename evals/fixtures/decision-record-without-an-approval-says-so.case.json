@@ -1,0 +1,11 @@
+{
+  "id": "decision-record-without-an-approval-says-so",
+  "check": "decision_record",
+  "artifact": "evals/fixtures/approval/gates.session.json",
+  "expect": {
+    "min_claims": 4,
+    "naming": [
+      "No approval has been recorded"
+    ]
+  }
+}
