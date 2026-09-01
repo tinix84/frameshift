@@ -1,0 +1,18 @@
+{
+  "id": "proposal-claiming-unseen-state-is-refused",
+  "check": "proposal_admission",
+  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "at": [
+    "state"
+  ],
+  "revision": 0,
+  "result": "evals/fixtures/framing-solution-disguised.result.json",
+  "expect": {
+    "outcome": "held",
+    "staleness": "impossible",
+    "refusals_naming": [
+      "invariant_violation",
+      "does not exist"
+    ]
+  }
+}

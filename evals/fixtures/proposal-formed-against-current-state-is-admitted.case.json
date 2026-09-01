@@ -1,0 +1,14 @@
+{
+  "id": "proposal-formed-against-current-state-is-admitted",
+  "check": "proposal_admission",
+  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "at": [
+    "state"
+  ],
+  "revision": 1,
+  "result": "evals/fixtures/framing-solution-disguised.result.json",
+  "expect": {
+    "outcome": "admitted",
+    "staleness": "current"
+  }
+}
