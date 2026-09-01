@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0.0",
+  "request_id": "tool_read_001",
+  "capability_id": "artifact.read",
+  "operation": "read-inline",
+  "arguments": {
+    "artifact_id": "art_evidence_001"
+  },
+  "purpose": "Read the cited cell-price evidence so the factor node can be checked.",
+  "session_revision": 4,
+  "data_classes": [
+    "user-provided"
+  ],
+  "side_effect": "none",
+  "reversible": true,
+  "approval": "never",
+  "idempotency_key": "read-art_evidence_001-r4"
+}

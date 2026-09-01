@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frameshift.dev/schemas/tool-result.schema.json",
+  "title": "FrameShift tool result",
+  "description": "What a brokered execution returns. #24 is explicit that tool results are untrusted input, so this shape carries evidence and never authority: there is nowhere in it to put an approval, a proposal, or an instruction.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "request_id",
+    "status",
+    "provenance",
+    "started_at",
+    "finished_at",
+    "digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "request_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "succeeded",
+        "failed",
+        "denied",
+        "timed_out"
+      ]
+    },
+    "output": {
+      "description": "Bounded normalized output. Larger payloads become an artifact reference instead.",
+      "type": "string",
+      "maxLength": 10000
+    },
+    "artifact": {
+      "$ref": "#/$defs/artifact"
+    },
+    "provenance": {
+      "$ref": "common.schema.json#/$defs/provenance"
+    },
+    "started_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "finished_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "digest": {
+      "description": "Of the output or artifact bytes, so what was returned can be shown to be what was recorded.",
+      "$ref": "common.schema.json#/$defs/digest"
+    },
+    "denied_reason": {
+      "type": "string",
+      "maxLength": 1000
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "required": [
+        "id",
+        "digest"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/id"
+        },
+        "digest": {
+          "$ref": "common.schema.json#/$defs/digest"
+        },
+        "media_type": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frameshift.dev/schemas/tool-request.schema.json",
+  "title": "FrameShift tool request",
+  "description": "One brokered capability execution. The fields are those #24 lists. Every one of them is something a human must be able to see before approving, which is why they are required rather than inferred at execution time.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "request_id",
+    "capability_id",
+    "operation",
+    "arguments",
+    "purpose",
+    "session_revision",
+    "data_classes",
+    "side_effect",
+    "reversible",
+    "approval",
+    "idempotency_key"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "request_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "capability_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "operation": {
+      "type": "string",
+      "minLength": 1
+    },
+    "arguments": {
+      "description": "Validated against the capability's own input schema, not this one.",
+      "type": "object"
+    },
+    "purpose": {
+      "description": "Why this is being run, in terms a human approving it can weigh.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "session_revision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "data_classes": {
+      "description": "What leaves the session. An approver is agreeing to this, not only to the operation.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "side_effect": {
+      "type": "string",
+      "enum": [
+        "none",
+        "reversible",
+        "external",
+        "irreversible"
+      ]
+    },
+    "reversible": {
+      "type": "boolean"
+    },
+    "approval": {
+      "type": "string",
+      "enum": [
+        "never",
+        "policy",
+        "each_call"
+      ]
+    },
+    "idempotency_key": {
+      "description": "A retry reuses this. Reuse with a different payload is rejected.",
+      "type": "string",
+      "minLength": 1
+    },
+    "destination": {
+      "description": "Where the data goes, when it goes anywhere.",
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false
+}
