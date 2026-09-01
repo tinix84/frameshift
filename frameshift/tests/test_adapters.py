@@ -18,7 +18,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from frameshift.adapters import Adapter, EchoAdapter, ExecutionOutcome, run  # noqa: E402
+from frameshift.adapters import (  # noqa: E402
+    Adapter,
+    EchoAdapter,
+    ExecutionOutcome,
+    run,
+    unsupported,
+)
 
 FIXTURES = ROOT / "evals" / "fixtures"
 
@@ -154,6 +160,78 @@ class NoNewFactsTests(unittest.TestCase):
         outcome = run(EchoAdapter(copy.deepcopy(before)), request())
         self.assertEqual(outcome.result["proposals"], before["proposals"])
         self.assertEqual(outcome.result["rationale_summaries"], before["rationale_summaries"])
+
+
+class UnsupportedCapabilityTests(unittest.TestCase):
+    """#19 responsibility 9: return unsupported capabilities explicitly."""
+
+    def claude_code(self) -> dict:
+        return json.loads(
+            (ROOT / "adapters" / "claude-code" / "capabilities.json").read_text(encoding="utf-8")
+        )
+
+    def asking(self, *names: str) -> dict:
+        return dict(result(), requested_capabilities=list(names))
+
+    def test_a_capability_absent_from_the_manifest_is_unsupported(self) -> None:
+        self.assertEqual(
+            unsupported(["web.retrieve", "artifact.read"], manifest()), ["web.retrieve"]
+        )
+
+    def test_a_capability_declared_but_unavailable_is_unsupported(self) -> None:
+        """claude-code declares external.connector with available: false."""
+        self.assertEqual(unsupported(["external.connector"], self.claude_code()), ["external.connector"])
+
+    def test_an_offered_capability_is_supported(self) -> None:
+        self.assertEqual(unsupported(["artifact.read"], self.claude_code()), [])
+
+    def test_an_empty_manifest_supports_nothing(self) -> None:
+        self.assertEqual(unsupported(["artifact.read"], {}), ["artifact.read"])
+
+    def test_an_honest_adapter_reports_and_is_accepted(self) -> None:
+        outcome = run(EchoAdapter(self.asking("external.connector"), self.claude_code()), request())
+        self.assertTrue(outcome.accepted, outcome.violations)
+        self.assertEqual(outcome.envelope["unsupported_capabilities"], ["external.connector"])
+
+    def test_a_silent_adapter_is_caught(self) -> None:
+        """Silence reads as 'it was done', which is the failure worth catching."""
+
+        class Silent(EchoAdapter):
+            def execute(self, request):
+                outcome = super().execute(request)
+                outcome.envelope["unsupported_capabilities"] = []
+                return outcome
+
+        outcome = run(Silent(self.asking("external.connector"), self.claude_code()), request())
+        self.assertFalse(outcome.accepted)
+        self.assertTrue(
+            any(item.startswith("capability_unavailable") for item in outcome.violations),
+            outcome.violations,
+        )
+
+    def test_reporting_more_than_required_is_allowed(self) -> None:
+        """Only the adapter knows a connector is down today."""
+
+        class Cautious(EchoAdapter):
+            def execute(self, request):
+                outcome = super().execute(request)
+                outcome.envelope["unsupported_capabilities"] = ["artifact.read", "external.connector"]
+                return outcome
+
+        outcome = run(Cautious(self.asking("external.connector"), self.claude_code()), request())
+        self.assertTrue(outcome.accepted, outcome.violations)
+
+    def test_requesting_nothing_needs_no_report(self) -> None:
+        outcome = run(EchoAdapter(self.asking(), self.claude_code()), request())
+        self.assertTrue(outcome.accepted, outcome.violations)
+
+    def test_the_committed_manifests_all_parse_into_the_check(self) -> None:
+        for name in ("generic", "claude-code", "codex"):
+            with self.subTest(adapter=name):
+                loaded = json.loads(
+                    (ROOT / "adapters" / name / "capabilities.json").read_text(encoding="utf-8")
+                )
+                self.assertEqual(unsupported(["artifact.read"], loaded), [])
 
 
 if __name__ == "__main__":
