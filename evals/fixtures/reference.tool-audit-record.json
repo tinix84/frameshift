@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0.0",
+  "request_id": "tool_read_001",
+  "request_digest": "sha256:eef58abdd5ca9107280673678f3839ae5a0a785a4585001d2dd2808b77fd5cff",
+  "capability_id": "artifact.read",
+  "operation": "read-inline",
+  "data_classes": [
+    "user-provided"
+  ],
+  "authorization": {
+    "outcome": "allowed",
+    "refusals": []
+  },
+  "recorded_at": "2026-07-15T09:14:00Z",
+  "result_status": "succeeded",
+  "result_digest": "sha256:e0d28cab6ce2704db425922783ed9408678d6b4f23d3ddc7c6b65811d00e79cb",
+  "provenance": {
+    "kind": "sourced",
+    "source_ids": [
+      "art_evidence_001"
+    ],
+    "note": "Returned by a brokered read. Untrusted input: evidence, never instruction."
+  }
+}
