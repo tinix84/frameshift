@@ -298,3 +298,30 @@ def decision_record(case: dict, load) -> list[str]:
     except UnicodeEncodeError as exc:
         errors.append(f"the record cannot be printed on a Windows console: {exc}")
     return errors
+
+
+def proposal_admission(case: dict, load) -> list[str]:
+    """A result formed against old state is held, not committed (#24)."""
+    from frameshift.orchestration import admit
+
+    result = load(case["result"])
+    session = load(case["artifact"])
+    for key in case.get("at", []):
+        session = session[key]
+    if "revision" in case:
+        session = dict(session, revision=case["revision"])
+
+    expect = case["expect"]
+    outcome = admit(result, session)
+    errors: list[str] = []
+
+    for field in ("outcome", "staleness"):
+        if field in expect and outcome[field] != expect[field]:
+            errors.append(f"{field} is {outcome[field]!r}, case expects {expect[field]!r}")
+    for fragment in expect.get("refusals_naming", []):
+        if not any(fragment in item for item in outcome["refusals"]):
+            errors.append(f"expected a refusal naming {fragment}, got {outcome['refusals']}")
+    # A held result keeps its proposals: stale is not discarded.
+    if expect.get("keeps_proposals") and not outcome["proposal_ids"]:
+        errors.append("the result was held and its proposals were dropped")
+    return errors

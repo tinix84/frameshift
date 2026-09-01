@@ -23,6 +23,7 @@ from . import phases
 APPROVAL_REQUIRED = "approval_required"
 APPROVAL_STALE = "approval_stale"
 INVARIANT_VIOLATION = "invariant_violation"
+REVISION_CONFLICT = "revision_conflict"
 
 # The eight gates and who may pass each one. The first slice's reference policy;
 # separation-of-duty rules are #16.
