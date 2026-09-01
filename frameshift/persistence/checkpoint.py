@@ -121,9 +121,17 @@ def restore(
         "committed_proposal_ids": list(journal.committed_proposal_ids),
         "pending_proposal_ids": [],
         "required_checkpoints": [],
+        # Step 6 of #22's restore algorithm, as far as it can be checked: what
+        # this checkpoint pins that this repository cannot honour. Reported, not
+        # refused — the state is readable, only re-running is affected.
+        "contract_differences": [],
     }
     if violations:
         return plan
+
+    from .compatibility import contract_differences
+
+    plan["contract_differences"] = contract_differences(checkpoint)
 
     # Reading a pending proposal is not committing it: the ids are listed so a
     # human can see what awaits a gate, and nothing here advances a phase.
