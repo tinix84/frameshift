@@ -131,6 +131,26 @@ PROSE_PATTERN = re.compile(
 )
 
 
+# A marker exempts a term within the same sentence, not anywhere on the line.
+# #100 removed heading inheritance and left a smaller version of the same hole:
+# a 430-character paragraph is one line, so a `never` in its opening clause was
+# silencing a forbidden term in its closing one. Both directions were wrong — a
+# legitimate prohibition passed by accident, and "Never skip the intake step.
+# Work through the analysis step by step." passed for the same reason.
+ABBREVIATIONS = ("e.g.", "i.e.", "etc.", "cf.", "vs.", "Dr.", "No.")
+SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
+SENTINEL = "\x00"
+
+
+def sentences(line: str) -> list[str]:
+    """Split a line into sentences, keeping abbreviations and decimals whole."""
+    protected = line
+    for abbreviation in ABBREVIATIONS:
+        protected = protected.replace(abbreviation, abbreviation.replace(".", SENTINEL))
+    protected = re.sub(r"(\d)\.(\d)", r"\1" + SENTINEL + r"\2", protected)
+    return [part.replace(SENTINEL, ".") for part in SENTENCE_END.split(protected) if part.strip()]
+
+
 def is_exempt(relative: str) -> bool:
     return any(relative == item or relative.startswith(item + "/") for item in COT_EXEMPT)
 
@@ -161,12 +181,15 @@ def chain_of_thought_errors() -> list[str]:
                     if term in lowered.replace("-", "_"):
                         errors.append(f"chain-of-thought term in {relative}:{number}: {term}")
                 continue
-            match = PROSE_PATTERN.search(line)
-            if not match:
+            if not PROSE_PATTERN.search(line):
                 continue
-            if any(marker in lowered for marker in PROHIBITION_MARKERS):
-                continue
-            errors.append(f"chain-of-thought term in {relative}:{number}: {match.group(0)}")
+            for sentence in sentences(line):
+                match = PROSE_PATTERN.search(sentence)
+                if not match:
+                    continue
+                if any(marker in sentence.lower() for marker in PROHIBITION_MARKERS):
+                    continue
+                errors.append(f"chain-of-thought term in {relative}:{number}: {match.group(0)}")
     return errors
 
 

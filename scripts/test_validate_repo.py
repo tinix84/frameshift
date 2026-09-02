@@ -408,5 +408,61 @@ class StoryPlacementTests(unittest.TestCase):
         )
 
 
+class SentenceScopeTests(unittest.TestCase):
+    """A marker exempts a term in its own sentence, not anywhere on the line."""
+
+    def setUp(self):
+        self.module = validator_module()
+
+    def test_a_marker_in_an_unrelated_sentence_does_not_exempt(self):
+        """The shape #100 still allowed: one line, two sentences, one prohibition."""
+        content = "# Probe" + chr(10) * 2 + "Never skip the intake step. Work through the analysis step by step." + chr(10)
+        with PlantedFile("prompts/_probe.v1.md", content):
+            result = run_validator()
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("step by step", result.stdout.lower())
+
+    def test_a_marker_in_the_same_sentence_still_exempts(self):
+        content = "# Probe" + chr(10) * 2 + "Never expose private chain-of-thought." + chr(10)
+        with PlantedFile("prompts/_probe.md", content):
+            result = run_validator()
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_a_comma_keeps_one_sentence_together(self):
+        content = "# Probe" + chr(10) * 2 + "The engine must not be asked to reason step by step, ever." + chr(10)
+        with PlantedFile("prompts/_probe.md", content):
+            result = run_validator()
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_the_committed_prompt_earns_its_own_marker(self):
+        """It used to pass on a `never` 380 characters away."""
+        text = (ROOT / "prompts" / "problem-framing.v1.md").read_text(encoding="utf-8")
+        for sentence in self.module.sentences(text):
+            if "chain-of-thought" in sentence.lower():
+                self.assertIn("never", sentence.lower())
+
+
+class SentenceSplitterTests(unittest.TestCase):
+    def setUp(self):
+        self.split = validator_module().sentences
+
+    def test_two_sentences_split(self):
+        self.assertEqual(len(self.split("One thing. Another thing.")), 2)
+
+    def test_an_abbreviation_does_not_split(self):
+        self.assertEqual(len(self.split("Use a marker, e.g. never, in the sentence.")), 1)
+
+    def test_a_decimal_number_does_not_split(self):
+        self.assertEqual(len(self.split("The budget is 2.5 seconds of latency.")), 1)
+
+    def test_a_line_with_no_punctuation_is_one_sentence(self):
+        self.assertEqual(self.split("| a | b |"), ["| a | b |"])
+
+    def test_an_abbreviation_keeps_its_dots(self):
+        self.assertIn("e.g.", self.split("See e.g. the notes.")[0])
+
+    def test_blank_pieces_are_dropped(self):
+        self.assertEqual(self.split("One.    Two."), ["One.", "Two."])
+
 if __name__ == "__main__":
     unittest.main()
