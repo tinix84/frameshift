@@ -277,15 +277,17 @@ class CredentialMaterialCheckTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
 
     def test_a_credential_field_in_a_manifest_fails(self) -> None:
+        """Located by JSON path since #158 parses these."""
         content = json.dumps({"schema_version": "1.0.0", "api_key": "redacted"}, indent=2)
         with PlantedFile("adapters/_probe.json", content):
             result = run_validator()
         self.assertNotEqual(result.returncode, 0, result.stdout)
-        self.assertIn("adapters/_probe.json:3", result.stdout)
+        self.assertIn("$.api_key", result.stdout)
         self.assertIn("api_key", result.stdout)
 
     def test_a_credential_in_a_prompt_fails(self) -> None:
-        content = "# Probe\n\nUse the password below.\n"
+        """An assignment is material; a sentence about one is not (#158)."""
+        content = "# Probe\n\npassword: hunter2\n"
         with PlantedFile("prompts/_probe.md", content):
             result = run_validator()
         self.assertNotEqual(result.returncode, 0, result.stdout)
@@ -299,7 +301,20 @@ class CredentialMaterialCheckTests(unittest.TestCase):
         spec.loader.exec_module(module)
         for term in module.CREDENTIAL_TERMS:
             with self.subTest(term=term):
-                with PlantedFile("prompts/_probe.md", f"value: {term}\n"):
+                with PlantedFile("prompts/_probe.md", f"{term}: some-real-value\n"):
+                    result = run_validator()
+                self.assertNotEqual(result.returncode, 0, term)
+
+    def test_every_declared_term_is_caught_as_a_key(self) -> None:
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("v", VALIDATOR)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        for term in module.CREDENTIAL_TERMS:
+            with self.subTest(term=term):
+                content = json.dumps({term: "some-real-value"}, indent=2)
+                with PlantedFile("evals/fixtures/_probe.json", content):
                     result = run_validator()
                 self.assertNotEqual(result.returncode, 0, term)
 
@@ -530,6 +545,54 @@ class KeyVersusValueScanTests(unittest.TestCase):
             result = run_validator()
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("invalid JSON", result.stdout)
+
+class CredentialScopeTests(unittest.TestCase):
+    """A term must denote the material, not the topic (#158)."""
+
+    def plant_json(self, document):
+        with PlantedFile("evals/fixtures/_probe.json", json.dumps(document, indent=2)):
+            return run_validator()
+
+    def test_a_policy_key_is_about_credentials_not_one(self):
+        for key in ("password_policy", "api_key_rotation", "credential_owner", "token_counts"):
+            with self.subTest(key=key):
+                result = self.plant_json({key: "quarterly"})
+                self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_a_key_naming_what_it_holds_fails(self):
+        for key in ("password", "user_password", "api_key", "client_api_key"):
+            with self.subTest(key=key):
+                result = self.plant_json({key: "hunter2"})
+                self.assertNotEqual(result.returncode, 0, result.stdout)
+
+    def test_prose_about_credentials_passes(self):
+        for note in ("Rotate the password quarterly.", "Document the api_key rotation schedule."):
+            with self.subTest(note=note):
+                result = self.plant_json({"note": note})
+                self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_prose_about_credentials_passes_in_a_prompt(self):
+        with PlantedFile("prompts/_probe.md", "# P" + chr(10) * 2 + "Rotate the password quarterly." + chr(10)):
+            result = run_validator()
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_a_secret_value_is_caught_under_any_key(self):
+        for value in ("-----BEGIN RSA PRIVATE KEY-----", "AKIAIOSFODNN7EXAMPLE", "ghp_abc123", "xoxb-1-2"):
+            with self.subTest(value=value):
+                result = self.plant_json({"note": value})
+                self.assertNotEqual(result.returncode, 0, result.stdout)
+
+    def test_a_yaml_assignment_fails_and_a_policy_key_does_not(self):
+        with PlantedFile("adapters/_probe.yml", "password: hunter2" + chr(10)):
+            self.assertNotEqual(run_validator().returncode, 0)
+        with PlantedFile("adapters/_probe.yml", "password_policy: quarterly" + chr(10)):
+            result = run_validator()
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_a_nested_credential_key_is_found_by_path(self):
+        result = self.plant_json({"adapter": {"auth": {"client_secret": "x"}}})
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("$.adapter.auth.client_secret", result.stdout)
 
 if __name__ == "__main__":
     unittest.main()
