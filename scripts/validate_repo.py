@@ -463,6 +463,44 @@ def fetch_story_issues() -> list[dict] | None:
         return None
 
 
+def fetch_labels() -> list[str] | None:
+    """Label names on the tracker, or None when `gh` cannot answer."""
+    try:
+        result = subprocess.run(
+            ["gh", "label", "list", "--limit", "200", "--json", "name"],
+            capture_output=True, text=True, timeout=60, check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0:
+        return None
+    try:
+        return [item["name"] for item in json.loads(result.stdout)]
+    except (json.JSONDecodeError, KeyError, TypeError):
+        return None
+
+
+def label_registry_errors(labels: list[str], columns: list[str]) -> list[str]:
+    """The tracker's column labels are the map's, exactly.
+
+    #133 made the backbone table the registry, and the labels were then created
+    by hand from it. Nothing kept them in step. Renaming one on the tracker
+    would diverge silently: the placement check only notices an unknown label
+    when some issue carries it, and no issue carries one yet — so the drift
+    would surface long after whoever caused it had moved on.
+    """
+    on_tracker = {name for name in labels if name.startswith("column:")}
+    declared = set(columns)
+    errors: list[str] = []
+    for missing in sorted(declared - on_tracker):
+        errors.append(f"{STORY_MAP} declares {missing}, which does not exist on the tracker")
+    for extra in sorted(on_tracker - declared):
+        errors.append(f"the tracker has {extra}, which {STORY_MAP} does not declare")
+    if "story" not in labels:
+        errors.append("the `story` label does not exist, so no issue can be placed on the map")
+    return errors
+
+
 def story_tracker_errors() -> list[str]:
     """The third story-map check, skipped with a notice when `gh` is unavailable."""
     if not (ROOT / STORY_MAP).is_file():
@@ -475,10 +513,18 @@ def story_tracker_errors() -> list[str]:
     if issues is None:
         print(f"note: skipping the story placement check, gh is unavailable ({len(columns)} columns declared)")
         return []
+
+    errors: list[str] = []
+    labels = fetch_labels()
+    if labels is None:
+        print("note: skipping the label registry check, gh could not list labels")
+    else:
+        errors.extend(label_registry_errors(labels, columns))
+
     # A check over an empty set passes silently, which is how a checker starts
     # manufacturing confidence. Say how many were examined.
     print(f"note: story placement checked over {len(issues)} open `story` issues")
-    return story_placement_errors(issues, columns)
+    return errors + story_placement_errors(issues, columns)
 
 
 def main() -> int:

@@ -145,5 +145,31 @@ class EndToEndTests(unittest.TestCase):
             self.assertIn("every cell is empty", result.stderr)
 
 
+class UnplacedDiagnosisTests(unittest.TestCase):
+    """Name the label that failed, not only the count."""
+
+    def setUp(self):
+        self.grid = module()
+        self.columns = [label for label, _ in self.grid.backbone()]
+
+    def test_a_misspelt_label_is_named(self):
+        _, _, unplaced = self.grid.place([issue(1, ["column:typo"])], self.columns)
+        self.assertTrue(any("unknown column label" in item for item in unplaced), unplaced)
+        self.assertTrue(any("column:typo" in item for item in unplaced), unplaced)
+
+    def test_no_label_still_reports_the_count(self):
+        _, _, unplaced = self.grid.place([issue(2, [])], self.columns)
+        self.assertTrue(any("0 column labels" in item for item in unplaced), unplaced)
+
+    def test_two_labels_still_reports_the_count(self):
+        _, _, unplaced = self.grid.place(
+            [issue(3, ["column:reframe", "column:decide"])], self.columns
+        )
+        self.assertTrue(any("2 column labels" in item for item in unplaced), unplaced)
+
+    def test_a_missing_milestone_is_still_named(self):
+        _, _, unplaced = self.grid.place([issue(4, ["column:carry"], None)], self.columns)
+        self.assertTrue(any("no milestone" in item for item in unplaced), unplaced)
+
 if __name__ == "__main__":
     unittest.main()
