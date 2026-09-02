@@ -282,6 +282,41 @@ def is_engine_result(artifact: object) -> bool:
     return "engine" in artifact and "rationale_summaries" in artifact
 
 
+def names_credential(key: str) -> str | None:
+    """The term a key names, if the key names what the field holds.
+
+    The trailing segment is what names the content: `password` and
+    `user_password` hold one; `password_policy` and `api_key_rotation` are
+    *about* one. Separating them this way needs no list of governance words to
+    maintain, and it is the same argument #130 used to exclude bare `token` and
+    `credential` — a term must denote the material, never the topic.
+    """
+    normalized = str(key).lower().replace("-", "_")
+    for term in CREDENTIAL_TERMS:
+        if normalized == term or normalized.endswith("_" + term):
+            return term
+    return None
+
+
+def credential_key_errors(node: object, relative: str, path: str = "$") -> list[str]:
+    """Keys that name credential material, and values that are some."""
+    errors: list[str] = []
+    if isinstance(node, dict):
+        for key, value in node.items():
+            term = names_credential(key)
+            if term is not None:
+                errors.append(f"credential material in {relative} at {path}.{key}: {term}")
+            errors.extend(credential_key_errors(value, relative, f"{path}.{key}"))
+    elif isinstance(node, list):
+        for index, item in enumerate(node):
+            errors.extend(credential_key_errors(item, relative, f"{path}[{index}]"))
+    elif isinstance(node, str):
+        for marker in CREDENTIAL_VALUES:
+            if marker in node:
+                errors.append(f"credential material in {relative} at {path}: {marker.strip()}")
+    return errors
+
+
 def credential_material_errors() -> list[str]:
     """#21: no credential material where state is defined or behavior requested."""
     errors: list[str] = []
@@ -293,10 +328,19 @@ def credential_material_errors() -> list[str]:
             text = path.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             continue
+
+        if path.suffix in PARSEABLE_SUFFIXES:
+            for document in _documents(text, path.suffix):
+                errors.extend(credential_key_errors(document, relative))
+            continue
+
         for number, line in enumerate(text.splitlines(), start=1):
+            # With no parser, an assignment is the signal: a term followed
+            # directly by `:` or `=` and a value. `password: hunter2` is
+            # material; "Rotate the password quarterly." is a sentence.
             lowered = line.lower().replace("-", "_")
             for term in CREDENTIAL_TERMS:
-                if term in lowered:
+                if re.search(rf"(?<![a-z0-9_]){re.escape(term)}\s*[:=]\s*\S", lowered):
                     errors.append(f"credential material in {relative}:{number}: {term}")
             for marker in CREDENTIAL_VALUES:
                 if marker in line:
