@@ -9,6 +9,7 @@ cannot read rather than skipping it.
 
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -166,6 +167,81 @@ class ManifestTests(unittest.TestCase):
             self.assertTrue(path.exists())
         self.assertFalse(path.exists())
 
+
+class FlowListTests(unittest.TestCase):
+    """An item containing a comma must survive, or the manifest lies."""
+
+    def test_a_quoted_item_keeps_its_commas(self) -> None:
+        text = probe(extra='invariants: ["no evidence, requirement, or decision is invented", "shape only"]')
+        manifest = prompts.parse_front_matter(text)
+        self.assertEqual(len(manifest["invariants"]), 2)
+        self.assertEqual(manifest["invariants"][0], "no evidence, requirement, or decision is invented")
+
+    def test_an_unquoted_list_still_splits(self) -> None:
+        manifest = prompts.parse_front_matter(probe(extra="fixtures: [one, two]"))
+        self.assertEqual(manifest["fixtures"], ["one", "two"])
+
+    def test_an_unbalanced_quote_is_reported(self) -> None:
+        with self.assertRaises(prompts.MalformedFrontMatter):
+            prompts.parse_front_matter(probe(extra='invariants: ["never closed]'))
+
+    def test_quotes_are_delimiters_and_not_content(self) -> None:
+        manifest = prompts.parse_front_matter(probe(extra='invariants: ["one"]'))
+        self.assertEqual(manifest["invariants"], ["one"])
+
+
+class DeclaredInvariantTests(unittest.TestCase):
+    """#20: the manifest declares required invariants, and a request carries them."""
+
+    def request(self) -> dict:
+        path = ROOT / "evals" / "fixtures" / "reference.execution-request.json"
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    def test_both_prompts_declare_invariants(self) -> None:
+        for path in sorted(prompts.PROMPTS.glob("*.md")):
+            with self.subTest(prompt=path.name):
+                manifest = prompts.parse_front_matter(path.read_text(encoding="utf-8"))
+                self.assertTrue(manifest.get("invariants"), "a prompt promising nothing is not an interface")
+
+    def test_each_invariant_reads_as_a_sentence_not_a_label(self) -> None:
+        for path in sorted(prompts.PROMPTS.glob("*.md")):
+            manifest = prompts.parse_front_matter(path.read_text(encoding="utf-8"))
+            for invariant in manifest["invariants"]:
+                with self.subTest(invariant=invariant):
+                    self.assertGreater(len(invariant.split()), 3)
+
+    def test_the_reference_request_carries_what_its_prompt_declares(self) -> None:
+        self.assertEqual(prompts.request_invariant_violations(self.request()), [])
+
+    def test_a_request_dropping_an_invariant_is_caught(self) -> None:
+        request = self.request()
+        request["invariants"] = request["invariants"][:-1]
+        violations = prompts.request_invariant_violations(request)
+        self.assertTrue(any("drops" in item for item in violations), violations)
+
+    def test_a_request_inventing_an_invariant_is_caught(self) -> None:
+        request = self.request()
+        request["invariants"] = request["invariants"] + ["anything goes"]
+        violations = prompts.request_invariant_violations(request)
+        self.assertTrue(any("adds" in item for item in violations), violations)
+
+    def test_order_does_not_matter(self) -> None:
+        request = self.request()
+        request["invariants"] = list(reversed(request["invariants"]))
+        self.assertEqual(prompts.request_invariant_violations(request), [])
+
+    def test_a_request_pinning_an_absent_prompt_is_caught(self) -> None:
+        request = dict(self.request(), prompt_contract_id="frameshift.absent.v1")
+        violations = prompts.request_invariant_violations(request)
+        self.assertTrue(any("not installed" in item for item in violations), violations)
+
+    def test_declaring_invariants_did_not_change_a_body_digest(self) -> None:
+        """The manifest is front matter, and the digest covers only the body."""
+        for path in sorted(prompts.PROMPTS.glob("*.md")):
+            with self.subTest(prompt=path.name):
+                text = path.read_text(encoding="utf-8")
+                manifest = prompts.parse_front_matter(text)
+                self.assertEqual(manifest["body_digest"], prompts.body_digest(text))
 
 if __name__ == "__main__":
     unittest.main()

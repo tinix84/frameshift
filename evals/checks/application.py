@@ -325,3 +325,22 @@ def proposal_admission(case: dict, load) -> list[str]:
     if expect.get("keeps_proposals") and not outcome["proposal_ids"]:
         errors.append("the result was held and its proposals were dropped")
     return errors
+
+def request_invariants(case: dict, load) -> list[str]:
+    """An execution request carries exactly the invariants its prompt declares (#20)."""
+    from frameshift.validation import request_invariant_violations
+
+    request = load(case["artifact"])
+    expect = case["expect"]
+    errors: list[str] = []
+
+    violations = request_invariant_violations(request)
+    outcome = "mismatched" if violations else "aligned"
+    if outcome != expect["outcome"]:
+        errors.append(f"invariants are {outcome}, case expects {expect['outcome']}: {violations}")
+
+    minimum = expect.get("min_invariants", 1)
+    carried = request.get("invariants", [])
+    if len(carried) < minimum:
+        errors.append(f"the request carries {len(carried)} invariants, case expects at least {minimum}")
+    return errors

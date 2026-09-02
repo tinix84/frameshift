@@ -46,11 +46,42 @@ def parse_front_matter(text: str) -> dict:
             raise MalformedFrontMatter(f"line {number} is not `key: value`: {line!r}")
         key, value = found.group("key"), found.group("value")
         if value.startswith("[") and value.endswith("]"):
-            inner = value[1:-1].strip()
-            manifest[key] = [item.strip() for item in inner.split(",")] if inner else []
+            manifest[key] = _flow_list(value[1:-1], number)
         else:
             manifest[key] = value
     return manifest
+
+
+def _flow_list(inner: str, line: int) -> list[str]:
+    """Split a flow sequence, respecting double quotes.
+
+    Splitting on every comma read `"no evidence, requirement, or decision is
+    invented"` as three items — a silent misparse, which is worse than a raise
+    because the manifest then declares things nobody wrote.
+
+    An item containing a comma must therefore be quoted. Nothing needs to check
+    that afterwards: an unquoted comma has already split, so a comma surviving
+    inside an item can only have come from a quoted one. An unbalanced quote is
+    reported, since that is the one shape this cannot resolve.
+    """
+    items: list[str] = []
+    current = ""
+    quoted = False
+    for character in inner:
+        if character == '"':
+            # The quote delimits the item; it is not part of it.
+            quoted = not quoted
+            continue
+        if character == "," and not quoted:
+            items.append(current.strip())
+            current = ""
+        else:
+            current += character
+    if quoted:
+        raise MalformedFrontMatter(f"line {line} has an unbalanced quote")
+    if current.strip():
+        items.append(current.strip())
+    return items
 
 
 def body_digest(text: str) -> str:
@@ -117,3 +148,37 @@ def prompt_manifest_violations() -> list[str]:
                 f"{path.relative_to(ROOT).as_posix()}: repair_prompt {repair!r} names no committed prompt"
             )
     return violations
+
+
+def request_invariant_violations(request: dict, installed: dict | None = None) -> list[str]:
+    """An execution request carries exactly the invariants its prompt declares (#20).
+
+    The prompt states its invariants and the request tells the engine what to
+    satisfy. When those two lists can differ, a request can quietly drop the one
+    that mattered — and the prompt would still look like it had promised it.
+    """
+    from frameshift.persistence.compatibility import installed_prompts
+
+    available = installed_prompts() if installed is None else installed
+    prompt_id = request.get("prompt_contract_id")
+    manifest = available.get(prompt_id)
+    if manifest is None:
+        return [f"the request pins prompt {prompt_id!r}, which is not installed here"]
+
+    declared = list(manifest.get("invariants", []))
+    carried = list(request.get("invariants", []))
+    if not declared:
+        return []
+    if sorted(carried) != sorted(declared):
+        dropped = sorted(set(declared) - set(carried))
+        added = sorted(set(carried) - set(declared))
+        detail = []
+        if dropped:
+            detail.append(f"drops {dropped}")
+        if added:
+            detail.append(f"adds {added}")
+        return [
+            f"the request's invariants do not match prompt {prompt_id!r}: " + " and ".join(detail)
+        ]
+    return []
+
