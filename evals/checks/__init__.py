@@ -20,7 +20,7 @@ from .application import (
 from .approval import approval_binding
 from .artifacts import artifact_conformance
 from .capability import capability_compatibility
-from .application import decision_record, proposal_admission
+from .application import decision_record, proposal_admission, request_invariants
 from .checkpoint import checkpoint_digest, checkpoint_integrity
 from .engine_result import engine_result_invariants
 from .repair import engine_result_repair
@@ -45,6 +45,7 @@ REGISTRY = {
     "engine_result_invariants": engine_result_invariants,
     "engine_result_repair": engine_result_repair,
     "proposal_admission": proposal_admission,
+    "request_invariants": request_invariants,
     "prompt_manifests": prompt_manifests,
     "replay_equivalence": replay_equivalence,
     "schema_wellformedness": schema_wellformedness,

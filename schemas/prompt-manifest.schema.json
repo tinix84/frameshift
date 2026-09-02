@@ -46,6 +46,17 @@
     "repair_prompt": {
       "$ref": "common.schema.json#/$defs/id"
     },
+    "invariants": {
+      "description": "#20's required invariants and forbidden behaviors, stated as the prompt itself states them. An execution request pinning this prompt carries exactly this list, so an engine is told what the prompt promised and a request cannot quietly drop one.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 300
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
     "body_digest": {
       "description": "Digest of the prompt text below the front matter, with line endings normalized. It is what makes the version mean something: change the body without changing the version and this stops matching. The manifest does not digest itself, the same way a checkpoint does not carry its own digest.",
       "$ref": "common.schema.json#/$defs/digest"

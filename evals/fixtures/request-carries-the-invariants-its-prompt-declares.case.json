@@ -1,0 +1,9 @@
+{
+  "id": "request-carries-the-invariants-its-prompt-declares",
+  "check": "request_invariants",
+  "artifact": "evals/fixtures/reference.execution-request.json",
+  "expect": {
+    "outcome": "aligned",
+    "min_invariants": 8
+  }
+}
