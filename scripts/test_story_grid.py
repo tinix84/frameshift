@@ -171,5 +171,20 @@ class UnplacedDiagnosisTests(unittest.TestCase):
         _, _, unplaced = self.grid.place([issue(4, ["column:carry"], None)], self.columns)
         self.assertTrue(any("no milestone" in item for item in unplaced), unplaced)
 
+    def test_a_valid_label_does_not_excuse_a_misspelt_one(self):
+        """The case a count-only guard placed silently: one of each.
+
+        `column:carry` alone is a placement, so a guard on the count let the
+        issue into a cell and never mentioned the typo — while the validator
+        errored on the same issue. The view must not draw what the rule rejects.
+        """
+        grid, _, unplaced = self.grid.place(
+            [issue(5, ["column:carry", "column:typo"])], self.columns
+        )
+        self.assertEqual({}, grid)
+        self.assertTrue(any("column:typo" in item for item in unplaced), unplaced)
+        self.assertTrue(any("unknown column label" in item for item in unplaced), unplaced)
+
+
 if __name__ == "__main__":
     unittest.main()

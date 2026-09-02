@@ -31,13 +31,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 STORY_MAP = ROOT / "docs" / "story-map.md"
 COLUMN_ROW = re.compile(r"^\|\s*\d+\s*\|\s*([^|]+?)\s*\|\s*`column:([a-z-]+)`\s*\|", re.MULTILINE)
+COLUMN_PREFIX = "column:"
 
 
 def backbone() -> list[tuple[str, str]]:
     """(label, title) for each column, read from the map's backbone table."""
     text = STORY_MAP.read_text(encoding="utf-8")
     section = text.partition("## The backbone")[2].partition("## Slices")[0]
-    return [(f"column:{slug}", title) for title, slug in COLUMN_ROW.findall(section)]
+    return [(f"{COLUMN_PREFIX}{slug}", title) for title, slug in COLUMN_ROW.findall(section)]
 
 
 def fetch_stories() -> list[dict] | None:
@@ -71,21 +72,24 @@ def place(issues: list[dict], columns: list[str]) -> tuple[dict, list[str], list
         placed = sorted(labels & known)
         milestone = (issue.get("milestone") or {}).get("title")
 
-        if len(placed) != 1 or not milestone:
+        # Named before the guard, not inside it: an issue carrying one valid
+        # label *and* a misspelt one has exactly one known label, so a guard on
+        # the count alone would place it in a cell and never mention the typo.
+        # The validator errors on that issue (story_placement_errors), and a
+        # view that draws what the rule rejects is worse than no view.
+        unknown = sorted(name for name in labels if name.startswith(COLUMN_PREFIX) and name not in known)
+
+        if unknown or len(placed) != 1 or not milestone:
             # Name the label that failed rather than only counting: an issue
             # carrying `column:typo` reads as "0 column labels", which sends the
             # reader looking for a missing label instead of a misspelt one.
-            unknown = sorted(
-                name for name in labels
-                if name.startswith("column:") and name not in known
-            )
             if unknown:
-                reason = f"unknown column label {unknown}"
+                reason = f"unknown column labels {', '.join(unknown)}"
             elif len(placed) != 1:
                 reason = f"{len(placed)} column labels"
             else:
                 reason = "no milestone"
-            unplaced.append(f"#{number} {issue['title']} - {reason}")
+            unplaced.append(f"#{number} {issue['title']} — {reason}")
             continue
         if milestone not in slices:
             slices.append(milestone)
