@@ -594,5 +594,49 @@ class CredentialScopeTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("$.adapter.auth.client_secret", result.stdout)
 
+class LabelRegistryTests(unittest.TestCase):
+    """The tracker's column labels are the map's, exactly."""
+
+    def setUp(self):
+        self.module = validator_module()
+        self.columns = self.module.backbone_columns()
+
+    def test_the_declared_labels_and_the_story_label_are_enough(self):
+        labels = list(self.columns) + ["story", "P1", "documentation"]
+        self.assertEqual(self.module.label_registry_errors(labels, self.columns), [])
+
+    def test_a_label_the_map_declares_but_the_tracker_lacks_fails(self):
+        labels = list(self.columns)[1:] + ["story"]
+        errors = self.module.label_registry_errors(labels, self.columns)
+        self.assertTrue(any("does not exist on the tracker" in item for item in errors), errors)
+
+    def test_a_label_the_tracker_has_but_the_map_lacks_fails(self):
+        labels = list(self.columns) + ["story", "column:invented"]
+        errors = self.module.label_registry_errors(labels, self.columns)
+        self.assertTrue(any("column:invented" in item for item in errors), errors)
+
+    def test_a_renamed_label_reports_both_halves(self):
+        """The drift a rename causes, which nothing noticed before."""
+        labels = [name for name in self.columns if name != "column:reframe"]
+        labels += ["column:reframed", "story"]
+        errors = self.module.label_registry_errors(labels, self.columns)
+        self.assertTrue(
+            any("declares column:reframe," in item for item in errors), errors
+        )
+        self.assertTrue(
+            any("has column:reframed," in item for item in errors), errors
+        )
+
+    def test_a_missing_story_label_fails(self):
+        errors = self.module.label_registry_errors(list(self.columns), self.columns)
+        self.assertTrue(any("`story` label does not exist" in item for item in errors), errors)
+
+    def test_the_live_tracker_agrees_with_the_map(self):
+        """Runs only where gh can answer; CI takes the skip branch."""
+        labels = self.module.fetch_labels()
+        if labels is None:
+            self.skipTest("gh is unavailable")
+        self.assertEqual(self.module.label_registry_errors(labels, self.columns), [])
+
 if __name__ == "__main__":
     unittest.main()

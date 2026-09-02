@@ -72,10 +72,20 @@ def place(issues: list[dict], columns: list[str]) -> tuple[dict, list[str], list
         milestone = (issue.get("milestone") or {}).get("title")
 
         if len(placed) != 1 or not milestone:
-            reason = (
-                f"{len(placed)} column labels" if len(placed) != 1 else "no milestone"
+            # Name the label that failed rather than only counting: an issue
+            # carrying `column:typo` reads as "0 column labels", which sends the
+            # reader looking for a missing label instead of a misspelt one.
+            unknown = sorted(
+                name for name in labels
+                if name.startswith("column:") and name not in known
             )
-            unplaced.append(f"#{number} {issue['title']} — {reason}")
+            if unknown:
+                reason = f"unknown column label {unknown}"
+            elif len(placed) != 1:
+                reason = f"{len(placed)} column labels"
+            else:
+                reason = "no milestone"
+            unplaced.append(f"#{number} {issue['title']} - {reason}")
             continue
         if milestone not in slices:
             slices.append(milestone)
