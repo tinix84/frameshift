@@ -135,10 +135,12 @@ class ChainOfThoughtCheckTests(unittest.TestCase):
         self.assertIn("thoughts", result.stdout)
 
     def test_forbidden_field_term_in_a_jsonl_file_fails(self) -> None:
+        """Located by JSON path rather than line, since #156 parses these."""
         with PlantedFile("evals/fixtures/_probe.jsonl", '{"thinking": "..."}\n'):
             result = run_validator()
         self.assertNotEqual(result.returncode, 0, result.stdout)
-        self.assertIn("evals/fixtures/_probe.jsonl:1", result.stdout)
+        self.assertIn("evals/fixtures/_probe.jsonl", result.stdout)
+        self.assertIn("$.thinking", result.stdout)
         self.assertIn("thinking", result.stdout)
 
     def test_exempt_paths_may_name_the_prohibition(self) -> None:
@@ -463,6 +465,71 @@ class SentenceSplitterTests(unittest.TestCase):
 
     def test_blank_pieces_are_dropped(self):
         self.assertEqual(self.split("One.    Two."), ["One.", "Two."])
+
+class KeyVersusValueScanTests(unittest.TestCase):
+    """Keys get substrings, values get words (#156)."""
+
+    def plant(self, document, minified=False):
+        separators = (",", ":") if minified else None
+        content = json.dumps(document, separators=separators, indent=None if minified else 2)
+        with PlantedFile("evals/fixtures/_probe.json", content):
+            return run_validator()
+
+    def statement(self, text):
+        return {"statements": [{"id": "stmt_probe", "text": text}]}
+
+    def test_ordinary_prose_containing_thinking_passes(self):
+        result = self.plant(self.statement("Our thinking has changed since the pack review."))
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_a_forbidden_word_inside_a_longer_word_passes(self):
+        """This is a reframing tool; its own exemplars could say this."""
+        result = self.plant(self.statement("Rethinking the frame is the point."))
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_ordinary_prose_containing_thoughts_passes(self):
+        result = self.plant(self.statement("Second thoughts about the supplier."))
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_a_forbidden_key_fails_with_its_json_path(self):
+        result = self.plant({"a": [{"model_thoughts": "x"}]})
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("$.a[0].model_thoughts", result.stdout)
+
+    def test_a_hyphenated_key_is_normalized(self):
+        result = self.plant({"chain-of-thought": "x"})
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+
+    def test_a_key_in_a_minified_file_is_still_found(self):
+        """The old line scan reported every violation at line 1."""
+        result = self.plant({"deep": {"inner": {"scratchpad": 1}}}, minified=True)
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("$.deep.inner.scratchpad", result.stdout)
+
+    def test_a_value_that_names_a_forbidden_term_still_fails(self):
+        result = self.plant({"note": "chain_of_thought"})
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+
+    def test_a_value_asking_for_reasoning_still_fails(self):
+        result = self.plant({"note": "show your reasoning in full"})
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+
+    def test_a_yaml_key_still_fails_after_the_split(self):
+        with PlantedFile("adapters/_probe.yml", "steps:" + chr(10) + "  - name: model_thoughts" + chr(10)):
+            result = run_validator()
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+
+    def test_a_yaml_line_with_a_longer_word_passes(self):
+        with PlantedFile("adapters/_probe.yml", "note: rethinking the frame" + chr(10)):
+            result = run_validator()
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_an_unparseable_fixture_is_reported_once(self):
+        """`main` already reports invalid JSON; failing twice would obscure it."""
+        with PlantedFile("evals/fixtures/_probe.json", "{not json"):
+            result = run_validator()
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("invalid JSON", result.stdout)
 
 if __name__ == "__main__":
     unittest.main()

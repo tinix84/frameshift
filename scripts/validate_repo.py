@@ -80,6 +80,10 @@ PROHIBITION_MARKERS = [
 # Files a machine reads, where a key or value naming a forbidden term is the
 # violation regardless of the surrounding prose.
 MACHINE_READABLE_SUFFIXES = {".json", ".jsonl", ".yaml", ".yml"}
+# The subset there is a stdlib parser for. These are walked structurally, which
+# separates keys from values — the distinction #156 turned on — and finds a key
+# however the file is formatted. YAML has no parser here and keeps the line scan.
+PARSEABLE_SUFFIXES = {".json", ".jsonl"}
 # Where state is defined, behavior is requested, and agents are instructed.
 COT_SCAN_DIRS = ["schemas", "prompts", "evals/fixtures", "adapters"]
 COT_ROOT_FILES = ["README.md", "AGENTS.md", "CLAUDE.md", "CONTRIBUTING.md", "SECURITY.md"]
@@ -164,8 +168,67 @@ def scan_paths() -> list[Path]:
     return [path for path in paths if not is_exempt(path.relative_to(ROOT).as_posix())]
 
 
+def _documents(text: str, suffix: str) -> list[object]:
+    """The parsed documents in a file: one for `.json`, one per line for `.jsonl`.
+
+    An unparseable file yields nothing here; `main` already reports invalid JSON
+    separately, so failing twice for one cause would only obscure it.
+    """
+    try:
+        if suffix == ".jsonl":
+            return [json.loads(line) for line in text.splitlines() if line.strip()]
+        return [json.loads(text)]
+    except json.JSONDecodeError:
+        return []
+
+
+def key_errors(node: object, relative: str, path: str = "$") -> list[str]:
+    """Forbidden vocabulary in a key, wherever it is nested.
+
+    Keys get the aggressive substring match: a field named `model_thoughts`
+    should fail, and it should fail whatever the file's formatting — which is
+    also why this walks the parsed document rather than the lines, so a minified
+    fixture is scanned as thoroughly as a formatted one.
+    """
+    errors: list[str] = []
+    if isinstance(node, dict):
+        for key, value in node.items():
+            normalized = str(key).lower().replace("-", "_")
+            for term in FORBIDDEN_FIELD_TERMS:
+                if term in normalized:
+                    errors.append(f"chain-of-thought key in {relative} at {path}.{key}: {term}")
+            errors.extend(key_errors(value, relative, f"{path}.{key}"))
+    elif isinstance(node, list):
+        for index, item in enumerate(node):
+            errors.extend(key_errors(item, relative, f"{path}[{index}]"))
+    return errors
+
+
+def value_errors(node: object, relative: str, path: str = "$") -> list[str]:
+    """Forbidden vocabulary in a value, matched as words rather than substrings.
+
+    Values carry prose a person wrote, so the prose vocabulary applies: it is
+    word-bounded and excludes bare `thinking` and `thoughts`. Matching those as
+    substrings failed "Our thinking has changed" and "Rethinking the frame",
+    and a check that refuses ordinary sentences is a check somebody switches
+    off.
+    """
+    errors: list[str] = []
+    if isinstance(node, dict):
+        for key, value in node.items():
+            errors.extend(value_errors(value, relative, f"{path}.{key}"))
+    elif isinstance(node, list):
+        for index, item in enumerate(node):
+            errors.extend(value_errors(item, relative, f"{path}[{index}]"))
+    elif isinstance(node, str):
+        match = PROSE_PATTERN.search(node)
+        if match:
+            errors.append(f"chain-of-thought term in {relative} at {path}: {match.group(0)}")
+    return errors
+
+
 def chain_of_thought_errors() -> list[str]:
-    """Fail on chain-of-thought vocabulary, naming file, line, and matched term."""
+    """Fail on chain-of-thought vocabulary, naming file, location, and matched term."""
     errors: list[str] = []
     for path in scan_paths():
         relative = path.relative_to(ROOT).as_posix()
@@ -173,12 +236,22 @@ def chain_of_thought_errors() -> list[str]:
             text = path.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             continue
+
+        if path.suffix in PARSEABLE_SUFFIXES:
+            for document in _documents(text, path.suffix):
+                errors.extend(key_errors(document, relative))
+                errors.extend(value_errors(document, relative))
+            continue
+
         machine_readable = path.suffix in MACHINE_READABLE_SUFFIXES
         for number, line in enumerate(text.splitlines(), start=1):
             lowered = line.lower()
             if machine_readable:
+                # No parser for YAML here, so the line scan stays — but with the
+                # same word boundaries values get above.
                 for term in FORBIDDEN_FIELD_TERMS:
-                    if term in lowered.replace("-", "_"):
+                    if re.search(rf"(?<![A-Za-z0-9]){re.escape(term)}(?![A-Za-z0-9])",
+                                 lowered.replace("-", "_")):
                         errors.append(f"chain-of-thought term in {relative}:{number}: {term}")
                 continue
             if not PROSE_PATTERN.search(line):
