@@ -412,6 +412,7 @@ def story_map_errors() -> list[str]:
 
 
 COLUMN_LABEL = re.compile(r"`(column:[a-z-]+)`")
+COLUMN_PREFIX = "column:"
 
 
 def backbone_columns() -> list[str]:
@@ -433,9 +434,9 @@ def story_placement_errors(issues: list[dict], columns: list[str]) -> list[str]:
         number = issue.get("number")
         labels = {item["name"] for item in issue.get("labels", [])}
         placed = sorted(labels & known)
-        unknown = sorted({item for item in labels if item.startswith("column:")} - known)
+        unknown = sorted({item for item in labels if item.startswith(COLUMN_PREFIX)} - known)
         if unknown:
-            errors.append(f"issue #{number} carries unknown column labels {unknown}")
+            errors.append(f"issue #{number} carries unknown column labels {', '.join(unknown)}")
         if len(placed) != 1:
             errors.append(
                 f"issue #{number} has {len(placed)} journey-position labels {placed}, expected exactly one"
@@ -489,7 +490,7 @@ def label_registry_errors(labels: list[str], columns: list[str]) -> list[str]:
     when some issue carries it, and no issue carries one yet — so the drift
     would surface long after whoever caused it had moved on.
     """
-    on_tracker = {name for name in labels if name.startswith("column:")}
+    on_tracker = {name for name in labels if name.startswith(COLUMN_PREFIX)}
     declared = set(columns)
     errors: list[str] = []
     for missing in sorted(declared - on_tracker):
