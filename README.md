@@ -76,6 +76,9 @@ python scripts/validate_repo.py
 python evals/run.py
 ```
 
+The evaluator includes the worked [exemplar corpus](corpus/README.md), which
+is a useful starting point for understanding the expected reasoning behaviour.
+
 The first implementation milestone is a vertical slice that accepts an intake, produces a framing ladder, asks for human approval, and writes a portable checkpoint — milestone [`M1`](https://github.com/tinix84/frameshift/milestone/2).
 
 ## Runtime portability

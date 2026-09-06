@@ -1,7 +1,7 @@
 {
   "id": "approval-gates-accept-a-bound-approval",
   "check": "approval_binding",
-  "session": "evals/fixtures/approval/gates.session.json",
+  "session": "approval/gates.session.json",
   "expect": {
     "covers_gates": true
   },

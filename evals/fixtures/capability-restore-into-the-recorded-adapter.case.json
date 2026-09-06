@@ -1,7 +1,7 @@
 {
   "id": "capability-restore-into-the-recorded-adapter",
   "check": "capability_compatibility",
-  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "artifact": "reference.checkpoint.json",
   "adapter": "adapters/generic/capabilities.json",
   "expect": {
     "outcome": "compatible",

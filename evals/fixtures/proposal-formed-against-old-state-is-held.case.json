@@ -1,12 +1,12 @@
 {
   "id": "proposal-formed-against-old-state-is-held",
   "check": "proposal_admission",
-  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "artifact": "reference.checkpoint.json",
   "at": [
     "state"
   ],
   "revision": 4,
-  "result": "evals/fixtures/framing-solution-disguised.result.json",
+  "result": "framing-solution-disguised.result.json",
   "expect": {
     "outcome": "held",
     "staleness": "stale",

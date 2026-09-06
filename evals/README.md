@@ -24,6 +24,11 @@ A case file (`<id>.case.json`) declares the named check that evaluates it:
 }
 ```
 
+Artifact paths are resolved relative to the directory containing the case.
+This makes a case directory portable. Contract resources such as schemas and
+adapter manifests are loaded explicitly from the repository by the checks that
+own them.
+
 The runner resolves `check` against `REGISTRY` in `checks/__init__.py` and holds
 no check logic itself. An unknown or missing check name fails the case with a
 named error; it is never skipped.
