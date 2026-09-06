@@ -1,6 +1,6 @@
 # ADR-0013: The first slice's event log is append-only JSON lines
 
-- Status: accepted
+- Status: accepted; superseded in part by ADR-0015 for atomic commits and concurrent-writer handling; event format and replay rules stand
 - Date: 2026-08-31
 - Deciders: initial maintainers
 - Supersedes: none
