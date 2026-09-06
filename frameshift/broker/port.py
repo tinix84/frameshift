@@ -16,8 +16,8 @@ approval to the *content* it approves; this binds a tool approval to the
 have their signature spent on "send that file somewhere", because both are tool
 requests from the same session at the same revision.
 
-Everything a request declares — the destination, the data classes leaving, the
-side effect, whether it can be undone — is there because an approver is agreeing
+Everything a request declares â€” the destination, the data classes leaving, the
+side effect, whether it can be undone â€” is there because an approver is agreeing
 to those and not merely to an operation name. A request may not claim a weaker
 approval requirement or a milder side effect than the capability's own manifest
 declares, for the same reason #126 refuses a capability downgrade on restore.
@@ -37,11 +37,12 @@ CAPABILITY_UNAVAILABLE = "capability_unavailable"
 DATA_CLASS_NOT_ALLOWED = "data_class_not_allowed"
 TOOL_POLICY_DENIED = "tool_policy_denied"
 SCHEMA_INVALID = "schema_invalid"
+RETRY_CONFIRMATION_REQUIRED = "retry_confirmation_required"
 
 REQUEST_SCHEMA = "tool-request.schema.json"
 RESULT_SCHEMA = "tool-result.schema.json"
 
-# Weakest gate first, least severe effect first — the same orderings the restore
+# Weakest gate first, least severe effect first â€” the same orderings the restore
 # comparison uses, and for the same reason.
 APPROVAL_STRENGTH = ("never", "policy", "each_call")
 SIDE_EFFECT_SEVERITY = ("none", "reversible", "external", "irreversible")
@@ -57,6 +58,23 @@ def _capability(capability_id: str, manifest: dict) -> dict | None:
         if isinstance(item, dict) and item.get("id") == capability_id:
             return item
     return None
+
+
+def alternatives(capability_id: str, manifest: dict) -> list[str]:
+    """Return available capabilities exposing the same operation."""
+    requested = _capability(capability_id, manifest)
+    if requested is None:
+        return sorted(
+            item["id"] for item in manifest.get("capabilities", [])
+            if isinstance(item, dict) and item.get("available")
+        )
+    operations = set(requested.get("operations", []))
+    return sorted(
+        item["id"] for item in manifest.get("capabilities", [])
+        if isinstance(item, dict)
+        and item.get("available")
+        and operations.intersection(item.get("operations", []))
+    )
 
 
 def needs_approval(request: dict) -> bool:
@@ -127,6 +145,76 @@ def authorize(request: dict, manifest: dict, approval: dict | None = None) -> li
                 f"and this request digests to {request_digest(request)}"
             )
     return refusals
+
+
+def execute(
+    request: dict,
+    manifest: dict,
+    executor,
+    approval: dict | None = None,
+    *,
+    prior_requests: dict[str, str] | None = None,
+    retry_approval: dict | None = None,
+    recorded_at: str,
+) -> dict:
+    """Authorize a request, then invoke the injected executor exactly once.
+
+    The executor is a narrow synthetic/runtime seam. It is never called when
+    authorization fails, and its returned value remains untrusted evidence.
+    """
+    from .audit import record
+
+    prior_requests = prior_requests if prior_requests is not None else {}
+    refusals = authorize(request, manifest, approval)
+    if any(item.startswith(SCHEMA_INVALID) for item in refusals):
+        return {"status": "denied", "denied_reason": refusals[0], "audit": None}
+    capability = _capability(request.get("capability_id", ""), manifest)
+    if capability is None or not capability.get("available"):
+        reason = refusals or [f"{CAPABILITY_UNAVAILABLE}: capability is unavailable"]
+        return {
+            "status": "denied",
+            "denied_reason": reason[0],
+            "alternatives": alternatives(request.get("capability_id", ""), manifest),
+            "audit": record(request, reason, recorded_at),
+        }
+    key = request.get("idempotency_key")
+    previous = prior_requests.get(key)
+    retry_confirmed = (
+        retry_approval is not None
+        and retry_approval.get("disposition") == "approved"
+        and retry_approval.get("actor", {}).get("kind") == "human"
+        and retry_approval.get("target_digest") == request_digest(request)
+    )
+    if not refusals and previous is not None and not capability.get("idempotent", False) and not retry_confirmed:
+        refusals = [f"{RETRY_CONFIRMATION_REQUIRED}: capability does not declare idempotency support"]
+    if refusals:
+        return {
+            "status": "denied",
+            "denied_reason": refusals[0],
+            "audit": record(request, refusals, recorded_at),
+        }
+    # Invocation may have caused an effect even when the returned payload is
+    # malformed. Remember the attempt before inspecting output.
+    prior_requests[key] = request_digest(request)
+    result = executor(request)
+    execution_approval = approval or (retry_approval if previous is not None and retry_confirmed else None)
+    if not isinstance(result, dict):
+        return {"status": "failed", "denied_reason": f"{SCHEMA_INVALID}: executor returned {type(result).__name__}", "audit": record(request, [], recorded_at)}
+    result_refusals = accept_result(request, result)
+    if result_refusals:
+        return {
+            "status": "denied",
+            "denied_reason": result_refusals[0],
+            "result": result,
+            # The call was authorized and did execute; malformed output is a
+            # result validation failure, not a pre-execution authorization refusal.
+            "audit": record(request, [], recorded_at, result if "status" in result else None),
+        }
+    return {
+        "status": result["status"],
+        "result": result,
+        "audit": record(request, [], recorded_at, result, execution_approval),
+    }
 
 
 def accept_result(request: dict, result: dict) -> list[str]:

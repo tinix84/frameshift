@@ -20,6 +20,7 @@ from .application import (
 from .approval import approval_binding
 from .artifacts import artifact_conformance
 from .capability import capability_compatibility
+from .broker import broker_refusal
 from .application import decision_record, proposal_admission, request_invariants
 from .checkpoint import checkpoint_digest, checkpoint_integrity
 from .engine_result import engine_result_invariants
@@ -38,6 +39,7 @@ REGISTRY = {
     "approval_binding": approval_binding,
     "artifact_conformance": artifact_conformance,
     "capability_compatibility": capability_compatibility,
+    "broker_refusal": broker_refusal,
     "corpus_across_adapters": corpus_across_adapters,
     "checkpoint_digest": checkpoint_digest,
     "decision_record": decision_record,

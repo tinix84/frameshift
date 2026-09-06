@@ -41,6 +41,12 @@
       },
       "uniqueItems": true
     },
+    "destination": {
+      "anyOf": [
+        {"type": "string", "minLength": 1},
+        {"type": "null"}
+      ]
+    },
     "authorization": {
       "$ref": "#/$defs/authorization"
     },

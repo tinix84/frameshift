@@ -1,0 +1,1 @@
+{"id":"broker-unavailable-capability","check":"broker_refusal","request":"evals/fixtures/reference.tool-request.json","manifest":"adapters/generic/capabilities.json","request_updates":{"capability_id":"model.generated.tool"},"expect_status":"denied","expect_calls":0,"expect_alternatives":true,"reason_contains":["capability_unavailable"]}

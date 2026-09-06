@@ -14,5 +14,6 @@
   "side_effect": "none",
   "reversible": true,
   "approval": "never",
-  "idempotency_key": "read-art_evidence_001-r4"
+  "idempotency_key": "read-art_evidence_001-r4",
+  "destination": "session"
 }

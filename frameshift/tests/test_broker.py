@@ -27,6 +27,8 @@ from frameshift.broker import (  # noqa: E402
     authorize,
     needs_approval,
     request_digest,
+    execute,
+    RETRY_CONFIRMATION_REQUIRED,
 )
 
 FIXTURES = ROOT / "evals" / "fixtures"
@@ -207,6 +209,77 @@ class ResultTests(unittest.TestCase):
         denied["status"] = "denied"
         denied["denied_reason"] = "Workspace policy forbids external reads."
         self.assertEqual(accept_result(request(), denied), [])
+
+
+class ExecutionTests(unittest.TestCase):
+    def test_unavailable_capability_returns_a_structured_gap_and_never_executes(self) -> None:
+        calls = []
+        outcome = execute(dict(request(), capability_id="missing.lookup"), manifest(), calls.append, recorded_at="2026-07-15T09:14:00Z")
+        self.assertEqual(outcome["status"], "denied")
+        self.assertTrue(outcome["alternatives"])
+        self.assertEqual(calls, [])
+
+    def test_policy_denial_happens_before_the_injected_executor(self) -> None:
+        calls = []
+        outcome = execute(dict(request(), operation="delete-everything"), manifest(), calls.append, recorded_at="2026-07-15T09:14:00Z")
+        self.assertEqual(outcome["status"], "denied")
+        self.assertEqual(calls, [])
+        self.assertEqual(outcome["audit"]["authorization"]["outcome"], "refused")
+
+    def test_retry_without_idempotency_support_requires_confirmation(self) -> None:
+        calls = []
+        req = request()
+        profile = copy.deepcopy(manifest())
+        profile["capabilities"][0]["idempotent"] = False
+        first = execute(req, profile, lambda value: (calls.append(value) or result()), recorded_at="2026-07-15T09:14:00Z")
+        self.assertEqual(first["status"], "succeeded")
+        second = execute(req, profile, lambda value: (calls.append(value) or result()), prior_requests={req["idempotency_key"]: request_digest(req)}, recorded_at="2026-07-15T09:14:00Z")
+        self.assertEqual(second["status"], "denied")
+        self.assertTrue(second["denied_reason"].startswith(RETRY_CONFIRMATION_REQUIRED))
+        self.assertEqual(len(calls), 1)
+
+    def test_failed_execution_is_still_a_retry_requiring_confirmation(self) -> None:
+        req = request()
+        prior = {}
+        first = execute(req, manifest(), lambda _: {}, prior_requests=prior, recorded_at="2026-07-15T09:14:00Z")
+        self.assertEqual(first["status"], "denied")
+        second = execute(req, manifest(), lambda _: result(), prior_requests=prior, recorded_at="2026-07-15T09:14:00Z")
+        self.assertTrue(second["denied_reason"].startswith(RETRY_CONFIRMATION_REQUIRED))
+
+    def test_executor_exception_still_records_an_attempt_for_retry(self) -> None:
+        req = request()
+        prior = {}
+        def executor(_):
+            raise RuntimeError("synthetic execution failure")
+        with self.assertRaises(RuntimeError):
+            execute(req, manifest(), executor, prior_requests=prior, recorded_at="2026-07-15T09:14:00Z")
+        second = execute(req, manifest(), lambda _: result(), prior_requests=prior, recorded_at="2026-07-15T09:14:00Z")
+        self.assertTrue(second["denied_reason"].startswith(RETRY_CONFIRMATION_REQUIRED))
+
+    def test_retry_requires_a_human_bound_to_this_request(self) -> None:
+        req = request()
+        for approval in (
+            approval_for(req, actor={"id": "bot", "kind": "runtime"}),
+            approval_for(dict(req, purpose="A different request")),
+        ):
+            outcome = execute(req, manifest(), lambda _: result(), retry_approval=approval,
+                              prior_requests={req["idempotency_key"]: request_digest(req)},
+                              recorded_at="2026-07-15T09:14:00Z")
+            self.assertTrue(outcome["denied_reason"].startswith(RETRY_CONFIRMATION_REQUIRED))
+        approval = approval_for(req)
+        outcome = execute(req, manifest(), lambda _: result(), retry_approval=approval,
+                          prior_requests={req["idempotency_key"]: request_digest(req)},
+                          recorded_at="2026-07-15T09:14:00Z")
+        self.assertEqual(outcome["audit"]["authorization"]["approved_by"], approval["actor"])
+
+    def test_executed_audit_records_destination_and_result_digest(self) -> None:
+        req = request()
+        outcome = execute(req, manifest(), lambda _: result(), recorded_at="2026-07-15T09:14:00Z")
+        self.assertEqual(outcome["audit"]["capability_id"], req["capability_id"])
+        self.assertEqual(outcome["audit"]["operation"], req["operation"])
+        self.assertEqual(outcome["audit"]["data_classes"], req["data_classes"])
+        self.assertEqual(outcome["audit"]["destination"], req["destination"])
+        self.assertEqual(outcome["audit"]["result_digest"], result()["digest"])
 
 
 if __name__ == "__main__":
