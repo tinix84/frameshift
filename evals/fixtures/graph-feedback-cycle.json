@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0.0",
+  "nodes": [
+    {"id": "node_a", "type": "factor", "label": "A", "status": "proposed", "confidence": "medium", "provenance": {"kind": "inferred", "source_ids": ["intake_graph"]}},
+    {"id": "node_b", "type": "mechanism", "label": "B", "status": "proposed", "confidence": "medium", "provenance": {"kind": "inferred", "source_ids": ["intake_graph"]}}
+  ],
+  "edges": [
+    {"id": "edge_ab", "source": "node_a", "target": "node_b", "type": "contributes_to", "status": "proposed", "confidence": "medium", "provenance": {"kind": "inferred", "source_ids": ["intake_graph"]}},
+    {"id": "edge_ba", "source": "node_b", "target": "node_a", "type": "contributes_to", "status": "proposed", "confidence": "medium", "provenance": {"kind": "inferred", "source_ids": ["intake_graph"]}}
+  ]
+}
