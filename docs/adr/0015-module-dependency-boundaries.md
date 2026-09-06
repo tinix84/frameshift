@@ -91,7 +91,7 @@ MCP can reach broker checks through orchestration without importing the broker.
 Dynamic imports cannot bypass the boundaries. Static import checks establish
 structure, not correct behavior of injected objects, human approval, or policy.
 Those guarantees require behavioral evidence in addition to architecture checks.
-The pinned import-linter selected in ADR-0009 enforces the import graph; any
+The import-linter dependency named by ADR-0009 enforces the Python import graph; any
 coverage gaps must be handled explicitly rather than called a passed guarantee.
 
 Existing broker imports of persistence hashing and orchestration error codes
