@@ -43,16 +43,28 @@
     },
     "destination": {
       "anyOf": [
-        {"type": "string", "minLength": 1},
-        {"type": "null"}
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
       ]
     },
     "authorization": {
       "$ref": "#/$defs/authorization"
     },
     "result_digest": {
-      "description": "Absent when nothing ran.",
-      "$ref": "common.schema.json#/$defs/digest"
+      "description": "Digest of accepted returned evidence; null explicitly means no valid result was available after execution.",
+      "anyOf": [
+        {
+          "$ref": "common.schema.json#/$defs/digest"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "result_status": {
       "type": "string",
@@ -68,6 +80,11 @@
     },
     "recorded_at": {
       "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "execution_error": {
+      "type": "string",
+      "maxLength": 2000,
+      "description": "Bounded execution or result-validation error after authorization; does not change the recorded authorization outcome."
     }
   },
   "additionalProperties": false,

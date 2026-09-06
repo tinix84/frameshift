@@ -193,23 +193,23 @@ def execute(
             "denied_reason": refusals[0],
             "audit": record(request, refusals, recorded_at),
         }
-    # Invocation may have caused an effect even when the returned payload is
-    # malformed. Remember the attempt before inspecting output.
-    prior_requests[key] = request_digest(request)
-    result = executor(request)
     execution_approval = approval or (retry_approval if previous is not None and retry_confirmed else None)
-    if not isinstance(result, dict):
-        return {"status": "failed", "denied_reason": f"{SCHEMA_INVALID}: executor returned {type(result).__name__}", "audit": record(request, [], recorded_at)}
+
+    def failed(reason: str) -> dict:
+        entry = record(request, [], recorded_at, approval=execution_approval)
+        entry.update(result_status="failed", result_digest=None, execution_error=reason)
+        return {"status": "failed", "denied_reason": reason, "audit": entry}
+
+    # An invocation can cause an effect before it raises or returns malformed
+    # output. Preserve both retry bookkeeping and an honest failure audit.
+    prior_requests[key] = request_digest(request)
+    try:
+        result = executor(request)
+    except Exception as exc:
+        return failed(f"execution_failed: {type(exc).__name__}")
     result_refusals = accept_result(request, result)
     if result_refusals:
-        return {
-            "status": "denied",
-            "denied_reason": result_refusals[0],
-            "result": result,
-            # The call was authorized and did execute; malformed output is a
-            # result validation failure, not a pre-execution authorization refusal.
-            "audit": record(request, [], recorded_at, result if "status" in result else None),
-        }
+        return failed(result_refusals[0])
     return {
         "status": result["status"],
         "result": result,

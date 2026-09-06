@@ -242,7 +242,7 @@ class ExecutionTests(unittest.TestCase):
         req = request()
         prior = {}
         first = execute(req, manifest(), lambda _: {}, prior_requests=prior, recorded_at="2026-07-15T09:14:00Z")
-        self.assertEqual(first["status"], "denied")
+        self.assertEqual(first["status"], "failed")
         second = execute(req, manifest(), lambda _: result(), prior_requests=prior, recorded_at="2026-07-15T09:14:00Z")
         self.assertTrue(second["denied_reason"].startswith(RETRY_CONFIRMATION_REQUIRED))
 
@@ -251,8 +251,11 @@ class ExecutionTests(unittest.TestCase):
         prior = {}
         def executor(_):
             raise RuntimeError("synthetic execution failure")
-        with self.assertRaises(RuntimeError):
-            execute(req, manifest(), executor, prior_requests=prior, recorded_at="2026-07-15T09:14:00Z")
+        first = execute(req, manifest(), executor, prior_requests=prior, recorded_at="2026-07-15T09:14:00Z")
+        self.assertEqual(first["status"], "failed")
+        self.assertEqual(first["audit"]["authorization"]["outcome"], "allowed")
+        self.assertIsNone(first["audit"]["result_digest"])
+        self.assertEqual(first["audit"]["execution_error"], "execution_failed: RuntimeError")
         second = execute(req, manifest(), lambda _: result(), prior_requests=prior, recorded_at="2026-07-15T09:14:00Z")
         self.assertTrue(second["denied_reason"].startswith(RETRY_CONFIRMATION_REQUIRED))
 

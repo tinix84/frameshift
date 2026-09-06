@@ -17,6 +17,8 @@ def broker_refusal(case: dict, load) -> list[str]:
 
     def executor(value):
         calls.append(value)
+        if case.get("executor_raises"):
+            raise RuntimeError("synthetic executor failure")
         return result
 
     outcome = execute(
@@ -42,12 +44,12 @@ def broker_refusal(case: dict, load) -> list[str]:
             if field not in (audit or {}):
                 errors.append(f"audit missing {field}")
     if audit:
-        errors.extend(record_violations(audit, request, result if calls else None))
+        errors.extend(record_violations(audit, request, result if calls and "execution_error" not in audit else None))
     if case.get("expect_audit_fields") and calls:
         for field in ("capability_id", "operation", "data_classes", "destination"):
             if (audit or {}).get(field) != request.get(field):
                 errors.append(f"audit {field} does not match the executed request")
-        if (audit or {}).get("result_digest") != result.get("digest"):
+        if (audit or {}).get("result_digest") != (result.get("digest") if isinstance(result, dict) else None):
             errors.append("audit result digest does not match the returned evidence")
     if case.get("expect_untrusted_output"):
         if outcome.get("result") != original_result or result != original_result:
