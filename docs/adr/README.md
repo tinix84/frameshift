@@ -13,4 +13,5 @@ ADRs capture durable, cross-cutting decisions. Status values are `proposed`, `ac
 - [ADR-0009: MCP server as the runtime boundary](0009-mcp-server-runtime-boundary.md)
 - [ADR-0010: Four reasoning engines, framing first](0010-four-reasoning-engines.md)
 - [ADR-0011: Problem framing is solution-neutral](0011-solution-neutral-problem-framing.md)
+- [ADR-0014: Trusted client confirmation for human approvals](0014-trusted-client-human-confirmation.md)
 - [ADR-0015: Enforce module boundaries around orchestration](0015-module-dependency-boundaries.md)
