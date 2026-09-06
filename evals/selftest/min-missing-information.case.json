@@ -1,0 +1,6 @@
+{
+  "id": "selftest-min-missing-information",
+  "check": "engine_result_invariants",
+  "artifact": "min-missing-information.result.json",
+  "expect": {"min_missing_information": 1}
+}
