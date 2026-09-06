@@ -37,3 +37,4 @@ Every ADR is paired with the issue that makes it verifiable; ADR-0008 is a wayfi
 | [0011](docs/adr/0011-solution-neutral-problem-framing.md) | 2026-08-19 | Problem framing is solution-neutral | [#69](https://github.com/tinix84/frameshift/issues/69) |
 | [0012](docs/adr/0012-typed-provenance-namespaces.md) | 2026-08-31 | Provenance cites a typed, open namespace | [#115](https://github.com/tinix84/frameshift/issues/115) |
 | [0013](docs/adr/0013-append-only-event-log.md) | 2026-08-31 | The first slice's event log is append-only JSON lines | [#37](https://github.com/tinix84/frameshift/issues/37) |
+| [0014](docs/adr/0014-trusted-client-human-confirmation.md) | 2026-09-06 | Native client confirmation under an operator-attested configuration | [Bind approvals to a trusted human confirmation](https://github.com/tinix84/frameshift/issues/169) |
