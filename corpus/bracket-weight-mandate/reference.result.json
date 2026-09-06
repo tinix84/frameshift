@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0.0",
+  "execution_id": "exec_bracket_weight_001",
+  "engine": "problem_framing",
+  "input_revision": 1,
+  "status": "partial",
+  "proposals": [
+    {"id": "prop_bracket_classify_001", "kind": "statement_classification", "operation": "add", "value": {"statement_id": "stmt_bracket_weight_001", "primary_role": "requirement", "secondary_roles": ["proposal"]}, "provenance": {"kind": "inferred", "source_ids": ["stmt_bracket_weight_001"]}},
+    {"id": "prop_bracket_ladder_001", "kind": "abstraction_ladder", "operation": "add", "value": {"levels": ["component"], "top_outcome": "Reduce mounting bracket mass while retaining required strength."}, "provenance": {"kind": "inferred", "source_ids": ["stmt_bracket_weight_001"]}},
+    {"id": "prop_bracket_frame_001", "kind": "problem_frame", "operation": "add", "value": {"question": "How might we reduce mounting bracket mass while retaining required strength within the supplier component boundary?", "abstraction_level": "component", "status": "proposed"}, "provenance": {"kind": "inferred", "source_ids": ["stmt_bracket_weight_001"]}}
+  ],
+  "rationale_summaries": [
+    "The supplier engineer owns the bracket design trade-off, so the frame stays at the component level named by the mandate.",
+    "The customer-owned vehicle payload outcome is outside this boundary and must be recorded as an ownership question before any higher frame is proposed."
+  ],
+  "uncertainties": [{"id": "unc_bracket_001", "summary": "The strength margin, load cases, and allowable mass reduction are not stated.", "source_ids": ["stmt_bracket_weight_001"]}],
+  "conflicts": [],
+  "missing_information": [{"id": "miss_bracket_001", "summary": "Confirm the customer-owned vehicle payload outcome and the supplier's component authority before widening the frame.", "source_ids": ["stmt_bracket_weight_001"]}],
+  "requested_capabilities": [],
+  "required_checkpoints": ["intake_correction", "frame_selection"],
+  "warnings": ["The higher vehicle payload and customer outcome frame is out of scope for this supplier component mandate."]
+}
