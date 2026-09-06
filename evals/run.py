@@ -25,14 +25,7 @@ from evals.checks import REGISTRY  # noqa: E402
 
 def load(relative: str, case_dir: Path | None = None) -> object:
     """Load a case artifact beside the case; static contract resources stay rooted."""
-    if case_dir:
-        repository_resources = ("schemas/", "adapters/", "prompts/", "docs/")
-        if relative.startswith(repository_resources):
-            candidate = ROOT / relative
-        else:
-            candidate = case_dir / relative
-    else:
-        candidate = ROOT / relative
+    candidate = (case_dir if case_dir is not None else ROOT) / relative
     with candidate.open("r", encoding="utf-8") as handle:
         return json.load(handle)
 
@@ -45,10 +38,7 @@ def evaluate(case: dict, loader=None) -> list[str]:
     if check is None:
         return [f"unknown check: {name} (known: {sorted(REGISTRY)})"]
     if loader is None:
-        loader = lambda reference: load(
-            reference[len("evals/fixtures/"):] if reference.startswith("evals/fixtures/") else reference,
-            FIXTURES,
-        )
+        loader = lambda reference: load(reference, FIXTURES)
     return check(case, loader)
 
 

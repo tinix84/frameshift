@@ -119,7 +119,7 @@ class CaseWiringTests(unittest.TestCase):
         case = run.load("evals/fixtures/replay-reproduces-the-snapshot.case.json")
 
         def load(relative: str) -> object:
-            artifact = run.load(relative)
+            artifact = run.load(relative, run.FIXTURES)
             if relative == case["artifact"]:
                 artifact = dict(artifact, state_digest="sha256:" + "0" * 64)
             return artifact

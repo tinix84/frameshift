@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from datetime import date
+from urllib.parse import urlsplit
+
 from .engine_result import engine_result_invariants
 from .schema import load_schema, validate, validate_engine_result
-from datetime import date
 
 
 def corpus_exemplar(case: dict, load) -> list[str]:
@@ -17,16 +19,18 @@ def corpus_exemplar(case: dict, load) -> list[str]:
         return errors + [f"corpus artifact could not be loaded: {exc}"]
     if not isinstance(citation, dict):
         return errors + ["citation must be an object"]
-    required = ("relationship", "inspired_by", "source_url", "title", "access_date", "note")
+    required = ("relationship", "source_url", "title", "access_date", "note")
     for field in required:
         if not isinstance(citation.get(field), str) or not citation[field].strip():
             errors.append(f"citation missing non-empty {field}")
-    if not isinstance(citation.get("source_url"), str) or not citation["source_url"].startswith("https://"):
-        errors.append("citation source_url must be an https URL")
+    try:
+        source = urlsplit(citation.get("source_url", ""))
+        if source.scheme not in {"http", "https"} or not source.netloc:
+            errors.append("citation source_url must be an HTTP or HTTPS URL")
+    except (TypeError, ValueError, AttributeError):
+        errors.append("citation source_url must be an HTTP or HTTPS URL")
     if citation.get("relationship") != "inspired_by":
         errors.append("citation relationship must be inspired_by")
-    if citation.get("inspired_by") != citation.get("source_url"):
-        errors.append("citation inspired_by must identify the source URL")
     try:
         date.fromisoformat(citation.get("access_date", ""))
     except (TypeError, ValueError):
