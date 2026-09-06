@@ -86,6 +86,12 @@ def reference_violations(session: dict) -> list[str]:
             )
 
     violations.extend(provenance_violations(session, addressable))
+    for index, edge in enumerate(session.get("graph", {}).get("edges", [])):
+        path = f"$.graph.edges[{index}]"
+        if edge.get("source") == edge.get("target") and edge.get("feedback_loop") is not True:
+            violations.append(f"{INVARIANT_VIOLATION}: self-loop at {path} requires feedback_loop: true")
+        if edge.get("type") == "causes" and "owner" not in edge:
+            violations.append(f"{INVARIANT_VIOLATION}: {path}.owner is required for a causes edge")
     return violations
 
 

@@ -1,8 +1,14 @@
-"""Graph schema and cross-field invariants from ADR-0003."""
+"""Graph schema and cross-field invariants from ADR-0003.
+
+Standalone graphs can resolve ``node_`` provenance and validate its namespace;
+other session-local citations require the enclosing session validator because
+their collections are outside the graph contract.
+"""
 
 from __future__ import annotations
 
 from . import errors, schema
+from .session import EXTERNAL_PREFIXES, SESSION_LOCAL_PREFIXES, walk_source_ids
 
 
 def graph_violations(graph: dict, *, path_prefix: str = "$.edges") -> list[str]:
@@ -27,6 +33,17 @@ def graph_violations(graph: dict, *, path_prefix: str = "$.edges") -> list[str]:
                     f"{errors.INVARIANT_VIOLATION}: dangling reference, {path_prefix}[{index}].{endpoint} "
                     f"names {edge.get(endpoint)!r}, which is not a node in this graph"
                 )
+    for source, path in walk_source_ids(graph):
+        if source.startswith(EXTERNAL_PREFIXES):
+            continue
+        if not source.startswith(SESSION_LOCAL_PREFIXES):
+            violations.append(
+                f"{errors.INVARIANT_VIOLATION}: undeclared provenance namespace, {path} cites {source!r}"
+            )
+        elif source.startswith("node_") and source not in nodes:
+            violations.append(
+                f"{errors.INVARIANT_VIOLATION}: dangling reference, {path} cites {source!r}, which is not a node in this graph"
+            )
     return violations
 
 
