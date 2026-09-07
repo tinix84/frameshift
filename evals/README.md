@@ -79,8 +79,8 @@ is evaluated.
 `fixtures/reference.checkpoint.json` is the golden artifact: every later
 adapter, encoder, and migration is measured against its digests. Its
 canonicalization rules live in `checks/canonical.py`, and the `validate`
-workflow hashes it on Linux, macOS, and Windows so "the same digest
-everywhere" is a CI result rather than a claim.
+workflow currently hashes it on Windows. Cross-platform digest agreement is
+not currently exercised by CI.
 
 Changing it changes the recorded digests in
 `fixtures/checkpoint-digest-stability.case.json`. If a change is semantic that
