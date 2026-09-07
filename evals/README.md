@@ -31,6 +31,8 @@ own them.
 
 By default discovery recursively reads both `evals/fixtures/` and `corpus/`.
 Use `--root <directory>` to select a root, or repeat the flag for several roots.
+For example, the negative self-test root runs with
+`python evals/run.py --root evals/selftest`.
 Duplicate case IDs are a hard error naming both locations. A corpus directory
 contains a narrative, a canonical intake statement, an EngineResult, a case,
 and a citation with `relationship: inspired_by`, source URL, title, access date,
@@ -54,6 +56,18 @@ entry. The runner does not change.
 
 Runtime adapters should capture actual `EngineResult` JSON and feed it to the
 same named checks rather than adding a second entry point.
+
+Engine-result expectations are optional. In addition to the positive
+expectations shown above, a case may declare `forbidden_proposal_kinds`,
+`forbid_checkpoints`, `max_abstraction_level`, and
+`min_missing_information`. The abstraction ladder ordering is explicit:
+`component < subsystem < system < product < business`. Lateral session enum
+values (`lifecycle`, `operations`, `supply_chain`, and `portfolio`) are not
+rankable and cause a validation error when used in a ceiling comparison.
+
+`min_missing_information` is a floor for hand-authored reference artifacts,
+not a quality measure. Counting entries rewards padding once real engine output
+is evaluated.
 
 ## The reference checkpoint
 

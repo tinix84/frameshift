@@ -1,0 +1,6 @@
+{
+  "id": "selftest-max-abstraction-level",
+  "check": "engine_result_invariants",
+  "artifact": "max-abstraction-level.result.json",
+  "expect": {"max_abstraction_level": "system"}
+}

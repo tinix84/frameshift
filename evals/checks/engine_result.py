@@ -2,12 +2,46 @@
 
 from __future__ import annotations
 
+from .schema import load_schema
+
+
+# This is deliberately explicit data.  The session schema's enum is a set and
+# also contains lateral boundary values, so enum declaration order is not a
+# usable abstraction ranking.
+LADDER_ORDER = ("component", "subsystem", "system", "product", "business")
+LADDER_RANK = {level: rank for rank, level in enumerate(LADDER_ORDER)}
+
+
+def _session_abstraction_levels() -> set[str]:
+    schema = load_schema("session.schema.json")
+    return set(schema["$defs"]["frame"]["properties"]["abstraction_level"]["enum"])
+
+
+def _level_errors(level: object, location: str, ceiling: str) -> list[str]:
+    if not isinstance(level, str) or level not in LADDER_RANK:
+        return [f"non-ladder abstraction level {level!r} at {location} cannot be ranked"]
+    if LADDER_RANK[level] > LADDER_RANK[ceiling]:
+        return [f"{location} abstraction level {level!r} exceeds maximum {ceiling!r}"]
+    return []
+
 
 def engine_result_invariants(case: dict, load) -> list[str]:
     """Check a reference engine result against a case's declared expectations."""
     artifact = load(case["artifact"])
     expect = case["expect"]
     errors: list[str] = []
+
+    def string_list(name: str) -> set[str]:
+        value = expect.get(name, [])
+        if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
+            errors.append(f"{name} must be a list of strings")
+            return set()
+        return set(value)
+
+    schema_levels = _session_abstraction_levels()
+    missing_schema_levels = set(LADDER_ORDER) - schema_levels
+    if missing_schema_levels:
+        errors.append(f"ladder ordering is not a subset of session schema enum: {sorted(missing_schema_levels)}")
 
     if artifact.get("schema_version") != "1.0.0":
         errors.append("schema_version must be 1.0.0")
@@ -31,5 +65,44 @@ def engine_result_invariants(case: dict, load) -> list[str]:
         forbidden = [item for item in artifact.get("proposals", []) if item.get("kind") == "approval"]
         if forbidden:
             errors.append("engine result must not propose approval objects")
+
+    forbidden_kinds = string_list("forbidden_proposal_kinds")
+    found_forbidden = proposal_kinds & forbidden_kinds
+    if found_forbidden:
+        errors.append(f"forbidden proposal kinds were proposed: {sorted(found_forbidden)}")
+
+    forbidden_checkpoints = string_list("forbid_checkpoints")
+    found_checkpoints = checkpoints & forbidden_checkpoints
+    if found_checkpoints:
+        errors.append(f"forbidden checkpoints were required: {sorted(found_checkpoints)}")
+
+    if "min_missing_information" in expect:
+        minimum = expect["min_missing_information"]
+        if isinstance(minimum, bool) or not isinstance(minimum, int) or minimum < 0:
+            errors.append("min_missing_information must be a non-negative integer")
+        else:
+            actual = len(artifact.get("missing_information", []))
+            if actual < minimum:
+                errors.append(f"{actual} missing information entries, expects at least {minimum}")
+
+    if "max_abstraction_level" in expect:
+        ceiling = expect["max_abstraction_level"]
+        if not isinstance(ceiling, str) or ceiling not in LADDER_RANK:
+            errors.append(f"non-ladder maximum abstraction level {ceiling!r} cannot be ranked")
+        else:
+            for index, proposal in enumerate(artifact.get("proposals", [])):
+                value = proposal.get("value", {})
+                if not isinstance(value, dict):
+                    errors.append(f"proposal[{index}].value must be an object for abstraction comparison")
+                    continue
+                if proposal.get("kind") == "problem_frame":
+                    errors.extend(_level_errors(value.get("abstraction_level"), f"proposal[{index}].value", ceiling))
+                if proposal.get("kind") == "abstraction_ladder":
+                    levels = value.get("levels")
+                    if not isinstance(levels, list):
+                        errors.append(f"proposal[{index}].value.levels must be a list for abstraction comparison")
+                        continue
+                    for level_index, level in enumerate(levels):
+                        errors.extend(_level_errors(level, f"proposal[{index}].value.levels[{level_index}]", ceiling))
 
     return errors

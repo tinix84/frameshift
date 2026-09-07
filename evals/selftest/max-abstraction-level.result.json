@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.0.0",
+  "proposals": [
+    {"kind": "problem_frame", "value": {"abstraction_level": "product"}},
+    {"kind": "abstraction_ladder", "value": {"levels": ["component", "business"]}}
+  ],
+  "required_checkpoints": [],
+  "missing_information": []
+}

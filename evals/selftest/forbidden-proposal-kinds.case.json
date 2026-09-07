@@ -1,0 +1,6 @@
+{
+  "id": "selftest-forbidden-proposal-kinds",
+  "check": "engine_result_invariants",
+  "artifact": "forbidden-proposal-kinds.result.json",
+  "expect": {"forbidden_proposal_kinds": ["problem_frame"]}
+}
