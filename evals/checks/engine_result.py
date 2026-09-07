@@ -51,6 +51,20 @@ def engine_result_invariants(case: dict, load) -> list[str]:
     if missing_kinds:
         errors.append(f"missing proposal kinds: {sorted(missing_kinds)}")
 
+    if "expected_ladder_levels" in expect:
+        levels = expect["expected_ladder_levels"]
+        if not isinstance(levels, list) or not levels or any(
+            not isinstance(level, str) or level not in LADDER_RANK for level in levels
+        ):
+            errors.append("expected_ladder_levels must be a non-empty list of ranked levels")
+        elif not any(
+            proposal.get("kind") == "abstraction_ladder"
+            and isinstance(proposal.get("value"), dict)
+            and proposal["value"].get("levels") == levels
+            for proposal in artifact.get("proposals", [])
+        ):
+            errors.append(f"no abstraction ladder matches expected levels: {levels}")
+
     checkpoints = set(artifact.get("required_checkpoints", []))
     missing_checkpoints = set(expect.get("required_checkpoints", [])) - checkpoints
     if missing_checkpoints:

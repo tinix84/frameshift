@@ -242,13 +242,20 @@ class StoryMapCheckTests(unittest.TestCase):
         result = run_validator()
         self.assertEqual(result.returncode, 0, result.stdout)
 
-    def test_both_committed_exemplars_have_a_fixture(self) -> None:
-        for name in ("battery-single-source", "kafka-in-disguise"):
-            with self.subTest(exemplar=name):
-                self.assertIn(f"`{name}`", self.text())
-                self.assertTrue(
-                    list((ROOT / "evals" / "fixtures").glob(f"{name}.*")), name
-                )
+    def test_story_map_and_corpus_name_the_same_exemplars(self) -> None:
+        module = validator_module()
+        mapped = set(module.EXEMPLAR.findall(self.text().partition("## Exemplars")[2]))
+        corpus = {
+            path.parent.name
+            for path in (ROOT / "corpus").glob("*/*.case.json")
+            if path.is_file()
+        }
+        self.assertEqual(mapped, corpus)
+
+    def test_a_corpus_only_case_is_a_runnable_twin(self) -> None:
+        self.assertTrue((ROOT / "corpus" / "battery-cost-structure").is_dir())
+        with patch.object(Path, "rglob", return_value=iter(())):
+            self.assertEqual(validator_module().story_map_errors(), [])
 
     def test_an_exemplar_without_a_fixture_fails(self) -> None:
         self.rewrite(self.text().replace(
@@ -256,7 +263,14 @@ class StoryMapCheckTests(unittest.TestCase):
         result = run_validator()
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("nobody-can-run-this", result.stdout)
-        self.assertIn("has no fixture", result.stdout)
+        self.assertIn("has no fixture or corpus case", result.stdout)
+
+    def test_a_corpus_exemplar_missing_from_the_map_fails(self) -> None:
+        line = next(line for line in self.text().splitlines(keepends=True) if "`tunnel-lights`" in line)
+        self.rewrite(self.text().replace(line, "", 1))
+        result = run_validator()
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("corpus exemplar tunnel-lights is missing", result.stdout)
 
     def test_a_map_without_a_north_star_fails(self) -> None:
         self.rewrite(self.text().replace("## North Star", "## Vision", 1))

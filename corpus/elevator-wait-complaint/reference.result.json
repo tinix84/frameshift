@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0.0",
+  "execution_id": "exec_elevator_wait_001",
+  "engine": "problem_framing",
+  "input_revision": 1,
+  "status": "partial",
+  "proposals": [
+    {"id": "prop_elevator_classify_001", "kind": "statement_classification", "operation": "add", "value": {"statement_id": "stmt_elevator_wait_001", "primary_role": "proposal", "secondary_roles": []}, "provenance": {"kind": "inferred", "source_ids": ["stmt_elevator_wait_001"]}},
+    {"id": "prop_elevator_ladder_001", "kind": "abstraction_ladder", "operation": "add", "value": {"levels": ["component", "product"], "top_outcome": "Improve perceived wait for the defined people and context."}, "provenance": {"kind": "inferred", "source_ids": ["stmt_elevator_wait_001"], "note": "The experience measure is proposed for human confirmation."}}
+  ],
+  "rationale_summaries": ["The request names speed, while the complaint concerns a waiting experience whose measure is not defined.", "The framing step changes what is measured before selecting an intervention."],
+  "uncertainties": [{"id": "unc_elevator_wait_001", "summary": "The target population, perceived-wait measure, baseline, and relationship to elapsed wait are unknown.", "source_ids": ["stmt_elevator_wait_001"]}],
+  "conflicts": [],
+  "missing_information": [{"id": "miss_elevator_wait_001", "summary": "Define the perceived-wait outcome and its accountable owner.", "source_ids": ["stmt_elevator_wait_001"]}],
+  "requested_capabilities": [], "required_checkpoints": ["intake_correction"],
+  "warnings": ["No elevator speed intervention is approved; the measure requires human confirmation."]
+}

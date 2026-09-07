@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0.0",
+  "execution_id": "exec_headphones_everyone_001",
+  "engine": "problem_framing",
+  "input_revision": 1,
+  "status": "partial",
+  "proposals": [
+    {"id": "prop_headphones_classify_001", "kind": "statement_classification", "operation": "add", "value": {"statement_id": "stmt_headphones_001", "primary_role": "proposal", "secondary_roles": []}, "provenance": {"kind": "inferred", "source_ids": ["stmt_headphones_001"]}},
+    {"id": "prop_headphones_ladder_001", "kind": "abstraction_ladder", "operation": "add", "value": {"levels": ["component"], "top_outcome": "Identify the owner and outcome for the shared meeting-scheduling condition before choosing an intervention."}, "provenance": {"kind": "inferred", "source_ids": ["stmt_headphones_001"], "note": "The absent-owner reframe is a proposal for human confirmation."}}
+  ],
+  "rationale_summaries": ["The intake proposes equipment, but the shared condition and the decision owner are not stated.", "Surfacing the meeting-scheduling owner is necessary before comparing equipment or process options that the requester may not control."],
+  "uncertainties": [{"id": "unc_headphones_001", "summary": "The meeting-scheduling owner, affected people, and desired outcome are unknown; the scheduling practice itself has not been established as an observed fact.", "source_ids": ["stmt_headphones_001"]}],
+  "conflicts": [],
+  "missing_information": [{"id": "miss_headphones_001", "summary": "Identify the absent owner of the meeting-scheduling decision and ask them to name the outcome.", "source_ids": ["stmt_headphones_001"]}],
+  "requested_capabilities": [], "required_checkpoints": ["intake_correction"],
+  "warnings": ["The result surfaces ownership and does not approve headphones or any other intervention."]
+}

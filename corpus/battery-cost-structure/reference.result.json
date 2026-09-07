@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0.0",
+  "execution_id": "exec_battery_cost_structure_001",
+  "engine": "problem_framing",
+  "input_revision": 1,
+  "status": "partial",
+  "proposals": [
+    {
+      "id": "prop_battery_classify_001",
+      "kind": "statement_classification",
+      "operation": "add",
+      "value": {"statement_id": "stmt_battery_cost_001", "primary_role": "proposal", "secondary_roles": []},
+      "provenance": {"kind": "inferred", "source_ids": ["stmt_battery_cost_001"], "note": "The intake proposes a component purchasing action."}
+    },
+    {
+      "id": "prop_battery_ladder_001",
+      "kind": "abstraction_ladder",
+      "operation": "add",
+      "value": {"levels": ["component", "product"], "top_outcome": "Name and improve the product cost structure against an owned cost target."},
+      "provenance": {"kind": "inferred", "source_ids": ["stmt_battery_cost_001"], "note": "The product-level cost outcome is a framing proposal, pending human confirmation."}
+    }
+  ],
+  "rationale_summaries": [
+    "The request names a cell supplier, but the outcome and product-level cost target are not stated.",
+    "Moving from component to product keeps supplier qualification as one possible lever while exposing the cost structure that an owner must confirm."
+  ],
+  "uncertainties": [
+    {"id": "unc_battery_cost_001", "summary": "The current cost structure, target, dominant drivers, and accountable owner are unknown.", "source_ids": ["stmt_battery_cost_001"]}
+  ],
+  "conflicts": [],
+  "missing_information": [
+    {"id": "miss_battery_cost_001", "summary": "Name the product cost outcome and its accountable owner.", "source_ids": ["stmt_battery_cost_001"]},
+    {"id": "miss_battery_cost_002", "summary": "Establish the current product cost structure before comparing interventions.", "source_ids": ["stmt_battery_cost_001"]}
+  ],
+  "requested_capabilities": [],
+  "required_checkpoints": ["intake_correction"],
+  "warnings": ["The product cost reframe is a proposal for human confirmation; no supplier or cost driver is approved."]
+}
