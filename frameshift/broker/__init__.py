@@ -8,9 +8,12 @@ from .port import (
     DATA_CLASS_NOT_ALLOWED,
     TOOL_POLICY_DENIED,
     accept_result,
+    alternatives,
     authorize,
+    execute,
     needs_approval,
     request_digest,
+    RETRY_CONFIRMATION_REQUIRED,
 )
 
 __all__ = [
@@ -20,9 +23,12 @@ __all__ = [
     "DATA_CLASS_NOT_ALLOWED",
     "TOOL_POLICY_DENIED",
     "accept_result",
+    "alternatives",
+    "execute",
     "record",
     "record_violations",
     "authorize",
     "needs_approval",
     "request_digest",
+    "RETRY_CONFIRMATION_REQUIRED",
 ]

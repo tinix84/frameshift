@@ -1,0 +1,14 @@
+{
+  "id": "broker-nested-redirect-untrusted",
+  "check": "broker_refusal",
+  "request": "evals/fixtures/reference.tool-request.json",
+  "manifest": "adapters/generic/capabilities.json",
+  "result": "evals/fixtures/broker-nested-redirect.result.json",
+  "expect_status": "succeeded",
+  "expect_calls": 1,
+  "expect_audit_fields": [
+    "provenance",
+    "result_digest"
+  ],
+  "expect_untrusted_output": true
+}
