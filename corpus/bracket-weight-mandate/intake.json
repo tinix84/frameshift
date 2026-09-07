@@ -1,0 +1,8 @@
+{
+  "id": "stmt_bracket_weight_001",
+  "text": "Remove mass from the mounting bracket while preserving its required strength.",
+  "primary_role": "proposal",
+  "secondary_roles": ["requirement"],
+  "status": "draft",
+  "provenance": {"kind": "observed", "source_ids": ["intake_bracket_weight_001"]}
+}

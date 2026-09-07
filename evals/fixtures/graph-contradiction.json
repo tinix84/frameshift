@@ -1,0 +1,8 @@
+{
+  "schema_version": "1.0.0",
+  "nodes": [
+    {"id": "node_claim", "type": "hypothesis", "label": "Claim", "status": "proposed", "confidence": "medium", "provenance": {"kind": "inferred", "source_ids": ["intake_graph"]}},
+    {"id": "node_counter", "type": "hypothesis", "label": "Counterclaim", "status": "proposed", "confidence": "medium", "provenance": {"kind": "inferred", "source_ids": ["intake_graph"]}}
+  ],
+  "edges": [{"id": "edge_contradicts", "source": "node_counter", "target": "node_claim", "type": "contradicts", "status": "proposed", "confidence": "medium", "provenance": {"kind": "inferred", "source_ids": ["intake_graph"]}}]
+}

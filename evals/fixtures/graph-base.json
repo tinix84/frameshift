@@ -1,0 +1,8 @@
+{
+  "schema_version": "1.0.0",
+  "nodes": [
+    {"id": "node_a", "type": "factor", "label": "A", "status": "proposed", "confidence": "medium", "provenance": {"kind": "inferred", "source_ids": ["intake_graph"]}},
+    {"id": "node_b", "type": "outcome", "label": "B", "status": "proposed", "confidence": "medium", "provenance": {"kind": "inferred", "source_ids": ["intake_graph"]}}
+  ],
+  "edges": []
+}

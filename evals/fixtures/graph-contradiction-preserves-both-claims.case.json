@@ -1,0 +1,6 @@
+{
+  "id": "graph-contradiction-preserves-both-claims",
+  "check": "graph_invariants",
+  "artifact": "graph-contradiction.json",
+  "expect": {"outcome": "valid"}
+}

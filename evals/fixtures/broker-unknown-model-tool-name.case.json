@@ -1,0 +1,1 @@
+{"id":"broker-unknown-model-tool-name","check":"broker_refusal","request":"reference.tool-request.json","manifest":"../../adapters/generic/capabilities.json","request_updates":{"capability_id":"shell.exec"},"expect_status":"denied","expect_calls":0,"reason_contains":["capability_unavailable"]}

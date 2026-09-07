@@ -1,0 +1,6 @@
+{
+  "schema_version": "1.0.0",
+  "proposals": [],
+  "required_checkpoints": ["frame_selection"],
+  "missing_information": []
+}

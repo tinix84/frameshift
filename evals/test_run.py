@@ -161,6 +161,5 @@ class DispatchTests(unittest.TestCase):
         kinds = {proposal.get("kind") for proposal in result["proposals"]}
         self.assertNotIn("problem_frame", kinds)
 
-
 if __name__ == "__main__":
     unittest.main()

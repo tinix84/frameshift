@@ -1,0 +1,6 @@
+{
+  "id": "selftest-forbid-checkpoints",
+  "check": "engine_result_invariants",
+  "artifact": "forbid-checkpoints.result.json",
+  "expect": {"forbid_checkpoints": ["frame_selection"]}
+}

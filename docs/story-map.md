@@ -87,6 +87,8 @@ Where the twin lives is the harness's decision, not this file's.
 | `battery-cost-structure` | A component cost action that needs a product cost-structure outcome |
 | `elevator-wait-complaint` | A speed request whose useful measure is perceived wait |
 | `headphones-for-everyone` | A purchase request with an absent meeting-scheduling owner |
+| `tunnel-lights` | A reminder mechanism whose repeated prompts obscure the active fault signal |
+| `bracket-weight-mandate` | A component mandate whose higher outcome belongs to the customer |
 
 ## How this connects to the tracker
 
