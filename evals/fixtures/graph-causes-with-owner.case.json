@@ -1,35 +1,7 @@
 {
   "id": "graph-causes-with-owner",
   "check": "graph_invariants",
-  "artifact": "graph-base.json",
-  "mutate": [
-    {
-      "path": [
-        "edges"
-      ],
-      "value": [
-        {
-          "id": "edge_cause",
-          "source": "node_a",
-          "target": "node_b",
-          "type": "causes",
-          "status": "proposed",
-          "confidence": "medium",
-          "provenance": {
-            "kind": "sourced",
-            "source_ids": [
-              "intake_graph"
-            ]
-          },
-          "owner": {
-            "id": "actor_owner",
-            "kind": "human"
-          }
-        }
-      ]
-    }
-  ],
-  "expect": {
-    "outcome": "valid"
-  }
+  "artifact": "evals/fixtures/graph-base.json",
+  "mutate": [{"path": ["edges"], "value": [{"id": "edge_cause", "source": "node_a", "target": "node_b", "type": "causes", "status": "proposed", "confidence": "medium", "provenance": {"kind": "sourced", "source_ids": ["intake_graph"]}, "owner": {"id": "actor_owner", "kind": "human"}}]}],
+  "expect": {"outcome": "valid"}
 }

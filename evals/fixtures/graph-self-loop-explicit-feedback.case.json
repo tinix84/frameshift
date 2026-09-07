@@ -1,32 +1,7 @@
 {
   "id": "graph-self-loop-explicit-feedback",
   "check": "graph_invariants",
-  "artifact": "graph-base.json",
-  "mutate": [
-    {
-      "path": [
-        "edges"
-      ],
-      "value": [
-        {
-          "id": "edge_self",
-          "source": "node_a",
-          "target": "node_a",
-          "type": "contributes_to",
-          "status": "proposed",
-          "confidence": "medium",
-          "provenance": {
-            "kind": "inferred",
-            "source_ids": [
-              "intake_graph"
-            ]
-          },
-          "feedback_loop": true
-        }
-      ]
-    }
-  ],
-  "expect": {
-    "outcome": "valid"
-  }
+  "artifact": "evals/fixtures/graph-base.json",
+  "mutate": [{"path": ["edges"], "value": [{"id": "edge_self", "source": "node_a", "target": "node_a", "type": "contributes_to", "status": "proposed", "confidence": "medium", "provenance": {"kind": "inferred", "source_ids": ["intake_graph"]}, "feedback_loop": true}]}],
+  "expect": {"outcome": "valid"}
 }
