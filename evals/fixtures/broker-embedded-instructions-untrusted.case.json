@@ -1,9 +1,9 @@
 {
   "id": "broker-embedded-instructions-untrusted",
   "check": "broker_refusal",
-  "request": "reference.tool-request.json",
-  "manifest": "../../adapters/generic/capabilities.json",
-  "result": "broker-embedded-instructions.result.json",
+  "request": "evals/fixtures/reference.tool-request.json",
+  "manifest": "adapters/generic/capabilities.json",
+  "result": "evals/fixtures/broker-embedded-instructions.result.json",
   "expect_status": "succeeded",
   "expect_calls": 1,
   "expect_audit_fields": [
