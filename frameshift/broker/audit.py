@@ -46,6 +46,7 @@ def record(
         },
         "recorded_at": recorded_at,
     }
+    entry["destination"] = request.get("destination")
     if approval is not None:
         actor = approval.get("actor")
         if actor is not None:

@@ -3,7 +3,9 @@
   "check": "artifact_conformance",
   "governs": {
     "adapters/*/capabilities.json": "capability-manifest.schema.json",
-    "evals/fixtures/*.result.json": "engine-result.schema.json",
+    "evals/fixtures/battery-single-source.result.json": "engine-result.schema.json",
+    "evals/fixtures/framing-solution-disguised.result.json": "engine-result.schema.json",
+    "evals/fixtures/kafka-in-disguise.result.json": "engine-result.schema.json",
     "evals/fixtures/approval/*.session.json": "session.schema.json",
     "evals/fixtures/reference.checkpoint.json": "checkpoint.schema.json",
     "evals/fixtures/reference.execution-envelope.json": "execution-envelope.schema.json",

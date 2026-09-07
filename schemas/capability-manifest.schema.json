@@ -28,6 +28,7 @@
           "side_effect": {"type": "string", "enum": ["none", "reversible", "external", "irreversible"]},
           "approval": {"type": "string", "enum": ["never", "policy", "each_call"]},
           "available": {"type": "boolean"},
+          "idempotent": {"type": "boolean"},
           "data_classes": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
           "limitations": {"type": "array", "items": {"type": "string"}}
         },

@@ -1,12 +1,13 @@
 {
   "schema_version": "1.0.0",
   "request_id": "tool_read_001",
-  "request_digest": "sha256:eef58abdd5ca9107280673678f3839ae5a0a785a4585001d2dd2808b77fd5cff",
+  "request_digest": "sha256:7b5d6e72c1bd9f1e078ff121c01b5f2e23e522cf17ee0281dec8df0e3a8a3c85",
   "capability_id": "artifact.read",
   "operation": "read-inline",
   "data_classes": [
     "user-provided"
   ],
+  "destination": "session",
   "authorization": {
     "outcome": "allowed",
     "refusals": []
