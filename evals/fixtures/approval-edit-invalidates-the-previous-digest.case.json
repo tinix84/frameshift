@@ -1,7 +1,7 @@
 {
   "id": "approval-edit-invalidates-the-previous-digest",
   "check": "approval_binding",
-  "session": "evals/fixtures/approval/gates.session.json",
+  "session": "approval/gates.session.json",
   "attempts": [
     {
       "id": "sign-off-does-not-carry-across-an-edit",

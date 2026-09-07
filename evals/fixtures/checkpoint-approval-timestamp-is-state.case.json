@@ -1,7 +1,7 @@
 {
   "id": "checkpoint-approval-timestamp-is-state",
   "check": "checkpoint_integrity",
-  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "artifact": "reference.checkpoint.json",
   "mutate": {
     "level": "state",
     "path": [

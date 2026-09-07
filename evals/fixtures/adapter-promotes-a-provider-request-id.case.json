@@ -1,7 +1,7 @@
 {
   "id": "adapter-promotes-a-provider-request-id",
   "check": "adapter_round_trip",
-  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "artifact": "reference.checkpoint.json",
   "adapters": [
     "echo",
     "request_id_promoting"

@@ -1,7 +1,7 @@
 {
   "id": "application-encoder-matches-the-reference",
   "check": "application_encoder",
-  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "artifact": "reference.checkpoint.json",
   "expect": {
     "byte_identical": true,
     "invariant_under": [

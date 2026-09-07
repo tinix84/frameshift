@@ -25,6 +25,10 @@ its own code.
 from __future__ import annotations
 
 from . import errors
+from pathlib import Path
+import json
+
+ROOT = Path(__file__).resolve().parents[2]
 
 DOWNGRADE = errors.CAPABILITY_DOWNGRADE_REFUSED
 
@@ -102,7 +106,8 @@ def _apply(document: dict, mutations: list[dict]) -> None:
 def capability_compatibility(case: dict, load) -> list[str]:
     """Compare a checkpoint's recorded profile against the adapter restoring it."""
     checkpoint = load(case["artifact"])
-    adapter_profile = load(case["adapter"])
+    with (ROOT / case["adapter"]).open("r", encoding="utf-8") as handle:
+        adapter_profile = json.load(handle)
     expect = case["expect"]
     errors: list[str] = []
 

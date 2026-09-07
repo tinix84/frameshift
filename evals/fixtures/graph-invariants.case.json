@@ -1,6 +1,6 @@
 {
   "id": "graph-feedback-cycle-is-valid",
   "check": "graph_invariants",
-  "artifact": "evals/fixtures/graph-feedback-cycle.json",
+  "artifact": "graph-feedback-cycle.json",
   "expect": {"outcome": "valid"}
 }

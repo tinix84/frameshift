@@ -164,7 +164,7 @@ class CaseWiringTests(unittest.TestCase):
         case = run.load("evals/fixtures/capability-restore-into-the-recorded-adapter.case.json")
 
         def load(relative: str) -> object:
-            artifact = run.load(relative)
+            artifact = run.load(relative, run.FIXTURES)
             if relative == case["artifact"]:
                 artifact = {key: value for key, value in artifact.items() if key != "capability_profile"}
             return artifact

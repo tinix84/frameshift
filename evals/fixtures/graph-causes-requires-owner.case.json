@@ -1,7 +1,7 @@
 {
   "id": "graph-causes-requires-owner",
   "check": "graph_invariants",
-  "artifact": "evals/fixtures/graph-base.json",
+  "artifact": "graph-base.json",
   "mutate": [{"path": ["edges"], "value": [{"id": "edge_cause", "source": "node_a", "target": "node_b", "type": "causes", "status": "proposed", "confidence": "medium", "provenance": {"kind": "inferred", "source_ids": ["intake_graph"]}}]}],
   "expect": {"outcome": "invalid", "violations_naming": ["$.edges[0].owner"]}
 }

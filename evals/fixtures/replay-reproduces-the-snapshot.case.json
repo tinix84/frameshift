@@ -1,7 +1,7 @@
 {
   "id": "replay-reproduces-the-snapshot",
   "check": "replay_equivalence",
-  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "artifact": "reference.checkpoint.json",
   "log": "evals/fixtures/reference.events.jsonl",
   "expect": {
     "outcome": "equivalent"

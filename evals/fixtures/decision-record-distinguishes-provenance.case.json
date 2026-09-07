@@ -1,7 +1,7 @@
 {
   "id": "decision-record-distinguishes-provenance",
   "check": "decision_record",
-  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "artifact": "reference.checkpoint.json",
   "at": [
     "state"
   ],

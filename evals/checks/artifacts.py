@@ -60,7 +60,10 @@ def artifact_conformance(case: dict, load) -> list[str]:
     violations: list[str] = []
     for relative, name in pairs:
         try:
-            artifact = load(relative)
+            # Governed artifacts are repository resources discovered by the
+            # mapping; their paths are intentionally independent of case dirs.
+            with (ROOT / relative).open("r", encoding="utf-8") as handle:
+                artifact = json.load(handle)
         except (OSError, json.JSONDecodeError) as exc:
             violations.append(f"{relative} could not be read: {exc}")
             continue

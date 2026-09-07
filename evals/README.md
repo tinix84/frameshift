@@ -19,10 +19,22 @@ A case file (`<id>.case.json`) declares the named check that evaluates it:
 {
   "id": "framing-solution-disguised",
   "check": "engine_result_invariants",
-  "artifact": "evals/fixtures/framing-solution-disguised.result.json",
+  "artifact": "framing-solution-disguised.result.json",
   "expect": { "min_rationale_summaries": 2 }
 }
 ```
+
+Artifact paths are resolved relative to the directory containing the case.
+This makes a case directory portable. Contract resources such as schemas and
+adapter manifests are loaded explicitly from the repository by the checks that
+own them.
+
+By default discovery recursively reads both `evals/fixtures/` and `corpus/`.
+Use `--root <directory>` to select a root, or repeat the flag for several roots.
+Duplicate case IDs are a hard error naming both locations. A corpus directory
+contains a narrative, a canonical intake statement, an EngineResult, a case,
+and a citation with `relationship: inspired_by`, source URL, title, access date,
+and a note distinguishing invented details from the source's contribution.
 
 The runner resolves `check` against `REGISTRY` in `checks/__init__.py` and holds
 no check logic itself. An unknown or missing check name fails the case with a

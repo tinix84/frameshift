@@ -1,0 +1,11 @@
+{
+  "id": "stmt_001",
+  "text": "We should use Kafka.",
+  "primary_role": "proposal",
+  "status": "draft",
+  "provenance": {
+    "kind": "observed",
+    "source_ids": [],
+    "note": "Synthetic request as it arrived."
+  }
+}

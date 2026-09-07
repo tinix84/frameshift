@@ -22,7 +22,7 @@ CASE = "evals/fixtures/adapter-conformance-report.case.json"
 
 def build(transports: list[str], corpus: set[str] | None = None) -> dict:
     declared = set(run.load(CASE)["corpus"]) if corpus is None else corpus
-    return adapter.conformance_report(run.load, transports, declared)
+    return adapter.conformance_report(lambda name: run.load(name, run.FIXTURES), transports, declared)
 
 
 def verdicts(report: dict) -> dict[str, str]:

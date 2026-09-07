@@ -1,7 +1,7 @@
 {
   "id": "capability-restore-refuses-a-weakened-approval",
   "check": "capability_compatibility",
-  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "artifact": "reference.checkpoint.json",
   "adapter": "adapters/generic/capabilities.json",
   "mutate_recorded": [
     {

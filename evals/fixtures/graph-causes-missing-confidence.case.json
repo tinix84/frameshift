@@ -1,7 +1,7 @@
 {
   "id": "graph-causes-missing-confidence",
   "check": "graph_invariants",
-  "artifact": "evals/fixtures/graph-base.json",
+  "artifact": "graph-base.json",
   "mutate": [{"path": ["edges"], "value": [{"id": "edge_cause", "source": "node_a", "target": "node_b", "type": "causes", "status": "proposed", "provenance": {"kind": "inferred", "source_ids": ["intake_graph"]}, "owner": {"id": "actor_owner", "kind": "human"}}]}],
   "expect": {"outcome": "invalid", "violations_naming": ["missing required property 'confidence'"]}
 }

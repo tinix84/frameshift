@@ -6,8 +6,8 @@
     "id": "frameshift.repair-structured-output.v1",
     "version": "1.0.0"
   },
-  "invalid": "evals/fixtures/repair/unnamed-engine.invalid.json",
-  "repaired": "evals/fixtures/repair/unnamed-engine.repaired.json",
+  "invalid": "repair/unnamed-engine.invalid.json",
+  "repaired": "repair/unnamed-engine.repaired.json",
   "expect": {
     "outcome": "unrepairable",
     "attempts": 1,

@@ -1,7 +1,7 @@
 {
   "id": "checkpoint-restore-is-not-an-action",
   "check": "checkpoint_integrity",
-  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "artifact": "reference.checkpoint.json",
   "expect": {
     "outcome": "verified",
     "pending_proposal_ids": [

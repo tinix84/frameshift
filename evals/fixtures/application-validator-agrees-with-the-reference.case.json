@@ -1,7 +1,7 @@
 {
   "id": "application-validator-agrees-with-the-reference",
   "check": "application_validator",
-  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "artifact": "reference.checkpoint.json",
   "at": [
     "state"
   ],

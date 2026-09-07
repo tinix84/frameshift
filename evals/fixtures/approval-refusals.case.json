@@ -1,7 +1,7 @@
 {
   "id": "approval-refusals",
   "check": "approval_binding",
-  "session": "evals/fixtures/approval/gates.session.json",
+  "session": "approval/gates.session.json",
   "attempts": [
     {
       "id": "no-approval",

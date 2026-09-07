@@ -1,7 +1,7 @@
 {
   "id": "session-approval-target-is-unaddressable",
   "check": "session_invariants",
-  "artifact": "evals/fixtures/reference.checkpoint.json",
+  "artifact": "reference.checkpoint.json",
   "at": [
     "state"
   ],
