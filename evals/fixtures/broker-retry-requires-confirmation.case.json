@@ -1,0 +1,1 @@
+{"id":"broker-retry-requires-confirmation","check":"broker_refusal","request":"reference.tool-request.json","manifest":"../../adapters/generic/capabilities.json","prior_requests":{"read-art_evidence_001-r4":"sha256:0000000000000000000000000000000000000000000000000000000000000000"},"expect_status":"denied","expect_calls":0,"reason_contains":["retry_confirmation_required"]}

@@ -149,6 +149,17 @@ class InvariantTests(unittest.TestCase):
         self.assertIn("$.title", found[0])
         self.assertTrue(any(invariants.INVARIANT_VIOLATION in item for item in found))
 
+    def test_a_causes_edge_without_owner_is_caught(self) -> None:
+        state = reference_session()
+        state["graph"]["edges"][0]["type"] = "causes"
+        self.assertTrue(any("owner is required" in item for item in invariants.session_violations(state)))
+
+    def test_a_self_loop_without_feedback_flag_is_caught(self) -> None:
+        state = reference_session()
+        edge = state["graph"]["edges"][0]
+        edge["source"] = edge["target"]
+        self.assertTrue(any("feedback_loop: true" in item for item in invariants.session_violations(state)))
+
 
 if __name__ == "__main__":
     unittest.main()

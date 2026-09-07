@@ -11,6 +11,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+TRACKER_REPOSITORY = "tinix84/frameshift"
 REQUIRED = [
     "README.md",
     "LICENSE",
@@ -451,7 +452,8 @@ def fetch_story_issues() -> list[dict] | None:
     try:
         result = subprocess.run(
             ["gh", "issue", "list", "--label", "story", "--state", "open",
-             "--limit", "200", "--json", "number,labels,milestone"],
+             "--repo", TRACKER_REPOSITORY, "--limit", "200",
+             "--json", "number,labels,milestone"],
             capture_output=True, text=True, timeout=60, check=False,
         )
     except (OSError, subprocess.SubprocessError):
@@ -465,10 +467,16 @@ def fetch_story_issues() -> list[dict] | None:
 
 
 def fetch_labels() -> list[str] | None:
-    """Label names on the tracker, or None when `gh` cannot answer."""
+    """Label names on the tracker, or None when `gh` cannot answer.
+
+    Request one more than the supported set so a full page cannot be mistaken
+    for a complete registry. A result beyond that boundary is reported as
+    unavailable rather than being used as a partial registry.
+    """
     try:
         result = subprocess.run(
-            ["gh", "label", "list", "--limit", "200", "--json", "name"],
+            ["gh", "label", "list", "--repo", TRACKER_REPOSITORY,
+             "--limit", "201", "--json", "name"],
             capture_output=True, text=True, timeout=60, check=False,
         )
     except (OSError, subprocess.SubprocessError):
@@ -476,7 +484,8 @@ def fetch_labels() -> list[str] | None:
     if result.returncode != 0:
         return None
     try:
-        return [item["name"] for item in json.loads(result.stdout)]
+        labels = [item["name"] for item in json.loads(result.stdout)]
+        return None if len(labels) > 200 else labels
     except (json.JSONDecodeError, KeyError, TypeError):
         return None
 
@@ -503,24 +512,24 @@ def label_registry_errors(labels: list[str], columns: list[str]) -> list[str]:
 
 
 def story_tracker_errors() -> list[str]:
-    """The third story-map check, skipped with a notice when `gh` is unavailable."""
+    """Run the independent live tracker checks and report each skip clearly."""
     if not (ROOT / STORY_MAP).is_file():
         return []  # story_map_errors already reports the missing file
     columns = backbone_columns()
     if len(columns) != 9:
         return [f"{STORY_MAP} declares {len(columns)} column labels, expected nine"]
 
-    issues = fetch_story_issues()
-    if issues is None:
-        print(f"note: skipping the story placement check, gh is unavailable ({len(columns)} columns declared)")
-        return []
-
     errors: list[str] = []
     labels = fetch_labels()
     if labels is None:
-        print("note: skipping the label registry check, gh could not list labels")
+        print("note: skipping the label registry check, gh could not list labels or returned a truncated page")
     else:
         errors.extend(label_registry_errors(labels, columns))
+
+    issues = fetch_story_issues()
+    if issues is None:
+        print(f"note: skipping the story placement check, gh is unavailable ({len(columns)} columns declared)")
+        return errors
 
     # A check over an empty set passes silently, which is how a checker starts
     # manufacturing confidence. Say how many were examined.

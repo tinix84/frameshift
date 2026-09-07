@@ -19,11 +19,13 @@ from .application import (
 )
 from .approval import approval_binding
 from .artifacts import artifact_conformance
+from .broker import broker_refusal
 from .capability import capability_compatibility
 from .corpus import corpus_exemplar
 from .application import decision_record, proposal_admission, request_invariants
 from .checkpoint import checkpoint_digest, checkpoint_integrity
 from .engine_result import engine_result_invariants
+from .graph import graph_invariants
 from .repair import engine_result_repair
 from .replay import replay_equivalence
 from .schema_files import schema_wellformedness
@@ -38,6 +40,7 @@ REGISTRY = {
     "application_validator": application_validator,
     "approval_binding": approval_binding,
     "artifact_conformance": artifact_conformance,
+    "broker_refusal": broker_refusal,
     "capability_compatibility": capability_compatibility,
     "corpus_across_adapters": corpus_across_adapters,
     "corpus_exemplar": corpus_exemplar,
@@ -45,6 +48,7 @@ REGISTRY = {
     "decision_record": decision_record,
     "checkpoint_integrity": checkpoint_integrity,
     "engine_result_invariants": engine_result_invariants,
+    "graph_invariants": graph_invariants,
     "engine_result_repair": engine_result_repair,
     "proposal_admission": proposal_admission,
     "request_invariants": request_invariants,
