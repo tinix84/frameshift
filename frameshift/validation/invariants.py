@@ -115,6 +115,23 @@ def reference_violations(session: dict) -> list[str]:
                 "whose namespace is session-local but which is not addressable in this session"
             )
 
+    violations.extend(graph_violations(session.get("graph", {})))
+    return violations
+
+
+def graph_violations(graph: dict) -> list[str]:
+    """Apply graph rules that JSON Schema cannot express (ADR-0003)."""
+    violations: list[str] = []
+    for index, edge in enumerate(graph.get("edges", [])):
+        path = f"$.graph.edges[{index}]"
+        if edge.get("source") == edge.get("target") and edge.get("feedback_loop") is not True:
+            violations.append(
+                f"{INVARIANT_VIOLATION}: self-loop at {path} requires feedback_loop: true"
+            )
+        if edge.get("type") == "causes" and "owner" not in edge:
+            violations.append(
+                f"{INVARIANT_VIOLATION}: {path}.owner is required for a causes edge"
+            )
     return violations
 
 

@@ -1,0 +1,7 @@
+{
+  "id": "graph-deleted-endpoint",
+  "check": "graph_invariants",
+  "artifact": "graph-base.json",
+  "mutate": [{"path": ["edges"], "value": [{"id": "edge_deleted", "source": "node_a", "target": "node_deleted_001", "type": "supports", "status": "proposed", "confidence": "medium", "provenance": {"kind": "inferred", "source_ids": ["intake_graph"]}}]}],
+  "expect": {"outcome": "invalid", "violations_naming": ["$.edges[0].target", "node_deleted_001"]}
+}

@@ -105,10 +105,28 @@
         "question"
       ],
       "value": ""
+    },
+    {
+      "path": [
+        "graph",
+        "edges",
+        0,
+        "type"
+      ],
+      "value": "causes"
+    },
+    {
+      "path": [
+        "graph",
+        "edges",
+        0,
+        "target"
+      ],
+      "value": "node_factor_001"
     }
   ],
   "expect": {
     "outcome": "agree",
-    "min_faults_detected": 12
+    "min_faults_detected": 14
   }
 }

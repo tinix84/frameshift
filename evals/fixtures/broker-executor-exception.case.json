@@ -1,0 +1,20 @@
+{
+  "id": "broker-executor-exception",
+  "check": "broker_refusal",
+  "request": "reference.tool-request.json",
+  "manifest": "../../adapters/generic/capabilities.json",
+  "expect_status": "failed",
+  "expect_calls": 1,
+  "expect_audit_fields": [
+    "capability_id",
+    "operation",
+    "data_classes",
+    "destination",
+    "result_digest",
+    "execution_error"
+  ],
+  "reason_contains": [
+    "execution_failed"
+  ],
+  "executor_raises": true
+}
