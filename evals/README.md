@@ -58,7 +58,12 @@ Runtime adapters should capture actual `EngineResult` JSON and feed it to the
 same named checks rather than adding a second entry point.
 
 Engine-result expectations are optional. In addition to the positive
-expectations shown above, a case may declare `forbidden_proposal_kinds`,
+expectations shown above, `expected_ladder_levels` requires at least one
+abstraction-ladder proposal with exactly the declared sequence of ranked levels.
+For example, `["component", "product"]` protects a component-to-product reframe
+against missing, reversed, or substituted rungs.
+
+A case may also declare `forbidden_proposal_kinds`,
 `forbid_checkpoints`, `max_abstraction_level`, and
 `min_missing_information`. The abstraction ladder ordering is explicit:
 `component < subsystem < system < product < business`. Lateral session enum

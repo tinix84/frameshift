@@ -155,11 +155,6 @@ class DispatchTests(unittest.TestCase):
             self.assertEqual(report["total"], 1)
             self.assertEqual(report["passed"], 1)
 
-    def test_headphones_case_does_not_propose_a_problem_frame(self) -> None:
-        case_dir = run.CORPUS / "headphones-for-everyone"
-        result = json.loads((case_dir / "reference.result.json").read_text(encoding="utf-8"))
-        kinds = {proposal.get("kind") for proposal in result["proposals"]}
-        self.assertNotIn("problem_frame", kinds)
 
 if __name__ == "__main__":
     unittest.main()

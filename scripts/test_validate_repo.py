@@ -144,7 +144,7 @@ class ChainOfThoughtCheckTests(unittest.TestCase):
 
     def test_forbidden_field_term_in_a_yaml_file_fails(self) -> None:
         # `thoughts` is a field term and not a prose term, so only the machine-
-        # readable pass can catch it â€” which is the point of the case.
+        # readable pass can catch it — which is the point of the case.
         with PlantedFile("adapters/_probe.yml", "steps:\n  - name: model_thoughts\n"):
             result = run_validator()
         self.assertNotEqual(result.returncode, 0, result.stdout)
@@ -266,8 +266,8 @@ class StoryMapCheckTests(unittest.TestCase):
         self.assertIn("has no fixture or corpus case", result.stdout)
 
     def test_a_corpus_exemplar_missing_from_the_map_fails(self) -> None:
-        line = next(line for line in self.text().splitlines() if "`tunnel-lights`" in line)
-        self.rewrite(self.text().replace(line + "\n", "", 1))
+        line = next(line for line in self.text().splitlines(keepends=True) if "`tunnel-lights`" in line)
+        self.rewrite(self.text().replace(line, "", 1))
         result = run_validator()
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("corpus exemplar tunnel-lights is missing", result.stdout)
@@ -442,7 +442,7 @@ class StoryPlacementTests(unittest.TestCase):
                 self.assertEqual(self.module.story_placement_errors(issues, self.columns), [])
 
     def test_the_check_never_passes_silently(self):
-        """Either it examined issues or it said why it could not â€” never nothing.
+        """Either it examined issues or it said why it could not — never nothing.
 
         CI runs with `gh` unauthenticated, so the skip branch is the one
         exercised there; a developer machine takes the other. Both must speak.

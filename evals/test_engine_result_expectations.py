@@ -12,6 +12,27 @@ from evals.checks import engine_result
 
 
 class EngineResultExpectationTests(unittest.TestCase):
+    def test_battery_ladder_rejects_missing_reversed_and_substituted_rungs(self) -> None:
+        directory = run.CORPUS / "battery-cost-structure"
+        case = run.load("battery-cost-structure.case.json", directory)
+        original = run.load(case["artifact"], directory)
+        for levels in (["component"], ["product", "component"], ["component", "business"], []):
+            with self.subTest(levels=levels):
+                result = copy.deepcopy(original)
+                ladder = next(p for p in result["proposals"] if p["kind"] == "abstraction_ladder")
+                ladder["value"]["levels"] = levels
+                errors = run.evaluate(case, lambda name: result if name == case["artifact"] else run.load(name, directory))
+                self.assertTrue(any("no abstraction ladder matches" in error for error in errors), errors)
+        self.assertEqual(run.evaluate(case, lambda name: run.load(name, directory)), [])
+
+    def test_battery_requires_declared_missing_information(self) -> None:
+        directory = run.CORPUS / "battery-cost-structure"
+        case = run.load("battery-cost-structure.case.json", directory)
+        result = run.load(case["artifact"], directory)
+        result["missing_information"] = []
+        errors = run.evaluate(case, lambda name: result if name == case["artifact"] else run.load(name, directory))
+        self.assertTrue(any("missing information entries" in error for error in errors), errors)
+
     def test_each_optional_negative_expectation_is_observed_failing(self) -> None:
         expected = {
             "selftest-forbidden-proposal-kinds": "forbidden proposal kinds",
@@ -66,6 +87,7 @@ class EngineResultExpectationTests(unittest.TestCase):
 
     def test_invalid_expectation_values_are_named_errors(self) -> None:
         for key, values, fragment in (
+            ("expected_ladder_levels", (None, [], "product", [{}], ["operations"]), "non-empty list of ranked levels"),
             ("forbidden_proposal_kinds", (None, "problem_frame", [{}]), "list of strings"),
             ("forbid_checkpoints", (None, "frame_selection", [42]), "list of strings"),
             ("min_missing_information", (-1, "1", True), "non-negative integer"),
