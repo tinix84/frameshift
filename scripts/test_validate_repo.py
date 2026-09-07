@@ -8,10 +8,15 @@ notices it.
 
 from __future__ import annotations
 
+import importlib.util
 import json
+import os
 import subprocess
 import sys
 import unittest
+from contextlib import redirect_stdout
+from io import StringIO
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,11 +24,23 @@ VALIDATOR = ROOT / "scripts" / "validate_repo.py"
 
 
 def run_validator() -> subprocess.CompletedProcess:
-    return subprocess.run(
-        [sys.executable, str(VALIDATOR)],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
+    spec = importlib.util.spec_from_file_location("validate_repo_test_runner", VALIDATOR)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    output = StringIO()
+    labels = (
+        module.backbone_columns()
+        if (ROOT / "docs" / "story-map.md").is_file()
+        else []
+    )
+    labels = labels + ["story", "P1", "documentation"]
+    with patch.object(module, "fetch_story_issues", return_value=[]), \
+         patch.object(module, "fetch_labels", return_value=labels), \
+         redirect_stdout(output):
+        returncode = module.main()
+    return subprocess.CompletedProcess(
+        args=[sys.executable, str(VALIDATOR)], returncode=returncode,
+        stdout=output.getvalue(), stderr="",
     )
 
 
@@ -632,11 +649,72 @@ class LabelRegistryTests(unittest.TestCase):
         self.assertTrue(any("`story` label does not exist" in item for item in errors), errors)
 
     def test_the_live_tracker_agrees_with_the_map(self):
-        """Runs only where gh can answer; CI takes the skip branch."""
+        """Runs only when explicitly opted in; the default suite is hermetic."""
+        if os.environ.get("FRAMESHIFT_LIVE_TRACKER") != "1":
+            self.skipTest("set FRAMESHIFT_LIVE_TRACKER=1 to query tinix84/frameshift")
         labels = self.module.fetch_labels()
         if labels is None:
             self.skipTest("gh is unavailable")
         self.assertEqual(self.module.label_registry_errors(labels, self.columns), [])
+
+    def test_label_check_runs_when_story_issue_fetch_fails(self):
+        labels = list(self.columns)[1:] + ["story"]
+        output = StringIO()
+        with patch.object(self.module, "fetch_story_issues", return_value=None), \
+             patch.object(self.module, "fetch_labels", return_value=labels), \
+             redirect_stdout(output):
+            errors = self.module.story_tracker_errors()
+        self.assertTrue(any("does not exist on the tracker" in item for item in errors), errors)
+        self.assertIn("skipping the story placement check", output.getvalue())
+        self.assertNotIn("skipping the label registry check", output.getvalue())
+
+    def test_each_tracker_skip_notice_names_its_check(self):
+        cases = (
+            (None, list(self.columns) + ["story"], "story placement check", "label registry check"),
+            ([], None, "label registry check", "story placement check"),
+        )
+        for issues, labels, expected, absent in cases:
+            with self.subTest(expected=expected):
+                output = StringIO()
+                with patch.object(self.module, "fetch_story_issues", return_value=issues), \
+                     patch.object(self.module, "fetch_labels", return_value=labels), \
+                     redirect_stdout(output):
+                    self.module.story_tracker_errors()
+                notice = output.getvalue()
+                self.assertIn("skipping the " + expected, notice)
+                self.assertNotIn("skipping the " + absent, notice)
+
+        output = StringIO()
+        with patch.object(self.module, "fetch_story_issues", return_value=None), \
+             patch.object(self.module, "fetch_labels", return_value=None), \
+             redirect_stdout(output):
+            self.module.story_tracker_errors()
+        self.assertIn("skipping the story placement check", output.getvalue())
+        self.assertIn("skipping the label registry check", output.getvalue())
+
+    def test_truncated_label_page_is_not_treated_as_complete(self):
+        response = subprocess.CompletedProcess(
+            args=["gh"], returncode=0,
+            stdout=json.dumps([{"name": str(index)} for index in range(201)]),
+            stderr="",
+        )
+        with patch.object(self.module.subprocess, "run", return_value=response) as run:
+            self.assertIsNone(self.module.fetch_labels())
+        self.assertIn("--repo", run.call_args.args[0])
+        self.assertIn("tinix84/frameshift", run.call_args.args[0])
+
+    def test_live_tracker_is_scoped_to_the_canonical_repository(self):
+        response = subprocess.CompletedProcess(
+            args=["gh"], returncode=0, stdout="[]", stderr="",
+        )
+        with patch.object(self.module.subprocess, "run", return_value=response) as run:
+            self.module.fetch_story_issues()
+            self.module.fetch_labels()
+        commands = [call.args[0] for call in run.call_args_list]
+        self.assertEqual(len(commands), 2)
+        for command in commands:
+            self.assertIn("--repo", command)
+            self.assertIn("tinix84/frameshift", command)
 
 if __name__ == "__main__":
     unittest.main()
