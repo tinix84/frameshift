@@ -1,0 +1,8 @@
+{
+  "id": "stmt_tunnel_lights_001",
+  "text": "Add a reminder mechanism to the tunnel lighting subsystem; repeated prompts must not obscure the active fault signal in the operator panel.",
+  "primary_role": "proposal",
+  "secondary_roles": ["problem"],
+  "status": "draft",
+  "provenance": {"kind": "observed", "source_ids": ["intake_tunnel_lights_001"]}
+}

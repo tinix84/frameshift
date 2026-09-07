@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0.0",
+  "execution_id": "exec_tunnel_lights_001",
+  "engine": "problem_framing",
+  "input_revision": 1,
+  "status": "partial",
+  "proposals": [
+    {"id": "prop_tunnel_classify_001", "kind": "statement_classification", "operation": "add", "value": {"statement_id": "stmt_tunnel_lights_001", "primary_role": "problem", "secondary_roles": ["proposal"]}, "provenance": {"kind": "inferred", "source_ids": ["stmt_tunnel_lights_001"]}},
+    {"id": "prop_tunnel_ladder_001", "kind": "abstraction_ladder", "operation": "add", "value": {"levels": ["subsystem"], "top_outcome": "Keep maintenance reminders from obscuring active fault visibility in the tunnel lighting subsystem."}, "provenance": {"kind": "inferred", "source_ids": ["stmt_tunnel_lights_001"]}},
+    {"id": "prop_tunnel_frame_001", "kind": "problem_frame", "operation": "add", "value": {"question": "How might we preserve active fault visibility while presenting maintenance reminders within the tunnel lighting subsystem?", "abstraction_level": "subsystem", "status": "proposed"}, "provenance": {"kind": "inferred", "source_ids": ["stmt_tunnel_lights_001"]}}
+  ],
+  "rationale_summaries": [
+    "The reminder mechanism creates a new subsystem failure by obscuring the active fault signal in the operator panel.",
+    "The evidence supports a subsystem visibility problem; moving upward would transfer the question to a product or business owner without evidence that a broader outcome is failing."
+  ],
+  "uncertainties": [{"id": "unc_tunnel_001", "summary": "The panel priority, reminder frequency, and acceptable missed-fault rate are not stated.", "source_ids": ["stmt_tunnel_lights_001"]}],
+  "conflicts": [],
+  "missing_information": [{"id": "miss_tunnel_001", "summary": "Define the fault visibility measure and reminder display priority before choosing a mechanism.", "source_ids": ["stmt_tunnel_lights_001"]}, {"id": "miss_tunnel_002", "summary": "Confirm whether a product or business outcome is affected; the current evidence only establishes a subsystem panel failure.", "source_ids": ["stmt_tunnel_lights_001"]}],
+  "requested_capabilities": [],
+  "required_checkpoints": ["intake_correction", "frame_selection"],
+  "warnings": ["A product or business frame is deferred: current evidence establishes a subsystem panel failure, not a broader owned outcome."]
+}
