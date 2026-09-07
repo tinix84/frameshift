@@ -82,9 +82,11 @@ evaluation harness executes — an exemplar nobody can execute is an anecdote.
 Where the twin lives is the harness's decision, not this file's.
 
 | Exemplar | The reasoner arrives with |
-|---|---|
-| `battery-single-source` | A margin problem stated as a component cost, where the real exposure is a sourcing position |
+| --- | --- |
 | `kafka-in-disguise` | A named technology and no stated outcome at all |
+| `battery-cost-structure` | A component cost action that needs a product cost-structure outcome |
+| `elevator-wait-complaint` | A speed request whose useful measure is perceived wait |
+| `headphones-for-everyone` | A purchase request with an absent meeting-scheduling owner |
 
 ## How this connects to the tracker
 

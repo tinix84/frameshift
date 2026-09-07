@@ -403,11 +403,16 @@ def story_map_errors() -> list[str]:
     if not exemplars:
         errors.append(f"{STORY_MAP} names no exemplars")
     fixtures = {path.name for path in (ROOT / "evals" / "fixtures").rglob("*") if path.is_file()}
+    corpus = {
+        path.parent.name
+        for path in (ROOT / "corpus").glob("*/*.case.json")
+        if path.is_file()
+    }
     for name in exemplars:
-        # Where the twin lives is the harness's decision, so the map names the
-        # exemplar and the check looks for a fixture carrying that name.
-        if not any(item.startswith(name + ".") for item in fixtures):
-            errors.append(f"exemplar {name} named in {STORY_MAP} has no fixture under evals/fixtures/")
+        # A corpus case is itself a runnable twin; legacy fixture twins remain
+        # valid for cases that predate the self-contained corpus contract.
+        if not any(item.startswith(name + ".") for item in fixtures) and name not in corpus:
+            errors.append(f"exemplar {name} named in {STORY_MAP} has no fixture or corpus case")
     return errors
 
 

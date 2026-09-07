@@ -1,0 +1,12 @@
+{
+  "id": "corpus-battery-cost-structure",
+  "check": "corpus_exemplar",
+  "artifact": "reference.result.json",
+  "expect": {
+    "required_proposal_kinds": ["statement_classification", "abstraction_ladder"],
+    "required_checkpoints": ["intake_correction"],
+    "min_rationale_summaries": 2,
+    "min_uncertainties": 1,
+    "forbid_approval_proposals": true
+  }
+}

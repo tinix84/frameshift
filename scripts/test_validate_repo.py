@@ -12,6 +12,7 @@ import json
 import subprocess
 import sys
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -127,7 +128,7 @@ class ChainOfThoughtCheckTests(unittest.TestCase):
 
     def test_forbidden_field_term_in_a_yaml_file_fails(self) -> None:
         # `thoughts` is a field term and not a prose term, so only the machine-
-        # readable pass can catch it — which is the point of the case.
+        # readable pass can catch it â€” which is the point of the case.
         with PlantedFile("adapters/_probe.yml", "steps:\n  - name: model_thoughts\n"):
             result = run_validator()
         self.assertNotEqual(result.returncode, 0, result.stdout)
@@ -225,13 +226,20 @@ class StoryMapCheckTests(unittest.TestCase):
         result = run_validator()
         self.assertEqual(result.returncode, 0, result.stdout)
 
-    def test_both_committed_exemplars_have_a_fixture(self) -> None:
-        for name in ("battery-single-source", "kafka-in-disguise"):
+    def test_named_exemplars_have_a_fixture_or_corpus_case(self) -> None:
+        for name in ("kafka-in-disguise", "battery-cost-structure", "elevator-wait-complaint", "headphones-for-everyone"):
             with self.subTest(exemplar=name):
                 self.assertIn(f"`{name}`", self.text())
                 self.assertTrue(
-                    list((ROOT / "evals" / "fixtures").glob(f"{name}.*")), name
+                    list((ROOT / "evals" / "fixtures").glob(f"{name}.*"))
+                    or (ROOT / "corpus" / name).is_dir(),
+                    name,
                 )
+
+    def test_a_corpus_only_case_is_a_runnable_twin(self) -> None:
+        self.assertTrue((ROOT / "corpus" / "battery-cost-structure").is_dir())
+        with patch.object(Path, "rglob", return_value=iter(())):
+            self.assertEqual(validator_module().story_map_errors(), [])
 
     def test_an_exemplar_without_a_fixture_fails(self) -> None:
         self.rewrite(self.text().replace(
@@ -239,7 +247,7 @@ class StoryMapCheckTests(unittest.TestCase):
         result = run_validator()
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("nobody-can-run-this", result.stdout)
-        self.assertIn("has no fixture", result.stdout)
+        self.assertIn("has no fixture or corpus case", result.stdout)
 
     def test_a_map_without_a_north_star_fails(self) -> None:
         self.rewrite(self.text().replace("## North Star", "## Vision", 1))
@@ -411,7 +419,7 @@ class StoryPlacementTests(unittest.TestCase):
                 self.assertEqual(self.module.story_placement_errors(issues, self.columns), [])
 
     def test_the_check_never_passes_silently(self):
-        """Either it examined issues or it said why it could not — never nothing.
+        """Either it examined issues or it said why it could not â€” never nothing.
 
         CI runs with `gh` unauthenticated, so the skip branch is the one
         exercised there; a developer machine takes the other. Both must speak.
