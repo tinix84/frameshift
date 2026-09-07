@@ -1,8 +1,8 @@
 {
   "id": "broker-malformed-result",
   "check": "broker_refusal",
-  "request": "evals/fixtures/reference.tool-request.json",
-  "manifest": "adapters/generic/capabilities.json",
+  "request": "reference.tool-request.json",
+  "manifest": "../../adapters/generic/capabilities.json",
   "expect_status": "failed",
   "expect_calls": 1,
   "expect_audit_fields": [

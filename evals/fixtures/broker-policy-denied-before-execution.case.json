@@ -1,1 +1,14 @@
-{"id":"broker-policy-denied-before-execution","check":"broker_refusal","request":"evals/fixtures/reference.tool-request.json","manifest":"adapters/generic/capabilities.json","request_updates":{"operation":"delete-everything"},"expect_status":"denied","expect_calls":0,"reason_contains":["tool_policy_denied"]}
+{
+  "id": "broker-policy-denied-before-execution",
+  "check": "broker_refusal",
+  "request": "reference.tool-request.json",
+  "manifest": "../../adapters/generic/capabilities.json",
+  "request_updates": {
+    "operation": "delete-everything"
+  },
+  "expect_status": "denied",
+  "expect_calls": 0,
+  "reason_contains": [
+    "tool_policy_denied"
+  ]
+}
