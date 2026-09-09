@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from frameshift.orchestration import phases, transitions  # noqa: E402
-from frameshift.broker.confirmation import bind_native_response, build_request  # noqa: E402
+from frameshift.broker.confirmation import bind_confirmation_response, build_request  # noqa: E402
 
 SESSION = ROOT / "evals" / "fixtures" / "approval" / "gates.session.json"
 OWNER = {"id": "user_lead_eng", "kind": "human", "role": "decision_owner"}
@@ -81,10 +81,11 @@ def confirmed(state: dict, target_id: str, actor: dict = OWNER, **overrides):
     response = {
         "request_id": request["id"],
         "request_digest": request["request_digest"],
-        "action": "accept",
-        "content": {"disposition": "approved"},
+        "status": "submitted",
+        "disposition": "approved",
+        "edited_proposal": None,
     }
-    result = bind_native_response(
+    result = bind_confirmation_response(
         request,
         response,
         attestation,

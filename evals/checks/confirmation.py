@@ -21,16 +21,17 @@ def trusted_confirmation(case: dict, load) -> list[str]:
     native = {
         "request_id": request["id"],
         "request_digest": request["request_digest"],
-        "action": "accept",
-        "content": {"disposition": "approved"},
+        "status": "submitted",
+        "disposition": "approved",
+        "edited_proposal": None,
     }
     accepted = workflow.complete(
         request["id"], native, attestation, confirmed_at="2026-09-09T10:01:00Z"
     )
-    if accepted["outcome"] != "accepted":
+    if accepted["outcome"] != "confirmed":
         errors.append(f"native confirmation was {accepted['outcome']}: {accepted['detail']}")
-    elif [item["type"] for item in accepted["events"]] != ["approval.recorded", "phase.changed"]:
-        errors.append(f"native confirmation emitted unexpected events: {accepted['events']}")
+    elif accepted["events"]:
+        errors.append(f"confirmation emitted uncommitted events: {accepted['events']}")
 
     target = transitions.find_target(state, transition["target_id"])
     forged = {

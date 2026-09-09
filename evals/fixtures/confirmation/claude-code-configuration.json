@@ -11,5 +11,5 @@
   "settings_behavior": "restricted mode ignores user, project, and local settings",
   "approval_relevant_managed_configuration": [],
   "mcp_server": "frameshift-confirmation",
-  "mcp_config_digest": "sha256:8ac0b6f11c0cd239b5cc0fff00e91442ef21b9a25bcd1147a662378a852ca4a8"
+  "mcp_config_digest": "sha256:8b6c1a930d5491068540d5ea46b9a4dd303a15c3e67375f8d3ac9a36bdaa9481"
 }

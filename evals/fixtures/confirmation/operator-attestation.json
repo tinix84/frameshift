@@ -3,7 +3,7 @@
   "profile_id": "approval-profile-claude-code-2.1.265",
   "client_id": "claude-code",
   "client_version": "2.1.265",
-  "config_digest": "sha256:b2d93a3f532c0327ee915d2f3c7bf52fa3f2f5ffca637f378d56aa586a3dd811",
+  "config_digest": "sha256:eb556569dafad26f56ca8a074b8000cedbb9a828cb583b6eca2adb65f7e02470",
   "operator": {
     "id": "user_lead_eng",
     "kind": "human",

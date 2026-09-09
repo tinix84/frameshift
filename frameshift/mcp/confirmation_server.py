@@ -1,17 +1,12 @@
 """A narrow MCP server for Claude Code's native confirmation dialog (#205).
 
-This module deliberately uses only JSON-RPC framing from the MCP protocol. The
-repository does not yet carry the SDK dependency owned by #172; keeping this
-slice here preserves the boundary and makes the actual-client path executable.
+This module translates MCP protocol values into provider-neutral application
+values. Bootstrap owns files, configuration, and construction.
 """
 
 from __future__ import annotations
 
-import argparse
 import json
-import sys
-from datetime import datetime, timezone
-from pathlib import Path
 from typing import Callable, TextIO
 
 from frameshift.orchestration.api import ConfirmationWorkflow
@@ -25,16 +20,20 @@ class ConfirmationMcpServer:
         self,
         workflow: ConfirmationWorkflow,
         attestation_loader: Callable[[], dict],
+        profile_loader: Callable[[], dict],
         clock: Callable[[], str],
     ) -> None:
         self._workflow = workflow
         self._attestation_loader = attestation_loader
+        self._profile_loader = profile_loader
         self._clock = clock
         self._form_elicitation = False
+        self._client_info = {}
 
-    def initialize(self, client_capabilities: dict) -> None:
+    def initialize(self, client_capabilities: dict, client_info: dict | None = None) -> None:
         elicitation = client_capabilities.get("elicitation")
         self._form_elicitation = isinstance(elicitation, dict) and "form" in elicitation
+        self._client_info = dict(client_info or {})
 
     def list_tools(self) -> list[dict]:
         return [
@@ -64,25 +63,36 @@ class ConfirmationMcpServer:
                 "unsupported_configuration",
                 "client did not declare native form elicitation support",
             )
+        attestation = self._attestation_loader()
+        profile = self._profile_loader()
+        if (
+            self._client_info.get("name") != profile.get("client_id")
+            or self._client_info.get("version") != profile.get("client_version")
+            or self._client_info.get("name") != attestation.get("client_id")
+            or self._client_info.get("version") != attestation.get("client_version")
+        ):
+            return _pending(
+                "unsupported_configuration",
+                "live MCP client identity does not match the attested approval profile",
+            )
         request = self._workflow.pending(arguments["request_id"])
         if request is None:
             return _pending("approval_stale", "no such pending confirmation request")
 
-        native = elicit(elicitation_parameters(request))
-        # Request identity is supplied by the server. A client or model cannot
-        # redirect its answer by returning replacement identity fields.
-        response = {
-            "request_id": request["id"],
-            "request_digest": request["request_digest"],
-            "action": native.get("action"),
-            "content": native.get("content"),
-        }
-        return self._workflow.complete(
-            request["id"],
-            response,
-            self._attestation_loader(),
-            confirmed_at=self._clock(),
-        )
+        for _ in range(5):
+            native = elicit(elicitation_parameters(request))
+            response = translate_elicitation_response(request, native)
+            result = self._workflow.complete(
+                request["id"],
+                response,
+                self._attestation_loader(),
+                self._profile_loader(),
+                confirmed_at=self._clock(),
+            )
+            if result["outcome"] != "revised":
+                return result
+            request = result["confirmation_request"]
+        return _pending("approval_required", "too many consecutive edits; proposal remains pending")
 
 
 def elicitation_parameters(request: dict) -> dict:
@@ -127,6 +137,23 @@ def elicitation_parameters(request: dict) -> dict:
     }
 
 
+def translate_elicitation_response(request: dict, native: dict) -> dict:
+    """Keep MCP action/content vocabulary at the protocol boundary."""
+    action = native.get("action")
+    content = native.get("content") if isinstance(native.get("content"), dict) else {}
+    status = {"accept": "submitted", "decline": "declined", "cancel": "cancelled"}.get(
+        action,
+        "cancelled",
+    )
+    return {
+        "request_id": request["id"],
+        "request_digest": request["request_digest"],
+        "status": status,
+        "disposition": content.get("disposition") if status == "submitted" else None,
+        "edited_proposal": content.get("edited_proposal") if status == "submitted" else None,
+    }
+
+
 def run_stdio(server: ConfirmationMcpServer, input_stream: TextIO, output_stream: TextIO) -> None:
     """Serve newline-delimited MCP JSON-RPC over stdio."""
     next_request_id = 1
@@ -163,7 +190,7 @@ def run_stdio(server: ConfirmationMcpServer, input_stream: TextIO, output_stream
         rpc_id = message.get("id")
         if method == "initialize":
             params = message.get("params", {})
-            server.initialize(params.get("capabilities", {}))
+            server.initialize(params.get("capabilities", {}), params.get("clientInfo", {}))
             result = {
                 "protocolVersion": params.get("protocolVersion", PROTOCOL_VERSION),
                 "capabilities": {"tools": {}},
@@ -193,34 +220,5 @@ def run_stdio(server: ConfirmationMcpServer, input_stream: TextIO, output_stream
             write({"jsonrpc": "2.0", "id": rpc_id, "result": result})
 
 
-def _load(path: Path) -> dict:
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
-def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
-
-
 def _pending(code: str, detail: str) -> dict:
     return {"outcome": "pending", "code": code, "detail": detail, "events": []}
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Serve one pending FrameShift confirmation over MCP")
-    parser.add_argument("--session", type=Path, required=True)
-    parser.add_argument("--transition", type=Path, required=True)
-    parser.add_argument("--profile", type=Path, required=True)
-    parser.add_argument("--attestation", type=Path, required=True)
-    parser.add_argument("--request-id", default="confirm_live_001")
-    args = parser.parse_args()
-
-    profile = _load(args.profile)
-    workflow = ConfirmationWorkflow(_load(args.session), profile)
-    workflow.prepare(_load(args.transition), _load(args.attestation), request_id=args.request_id)
-    server = ConfirmationMcpServer(workflow, lambda: _load(args.attestation), _utc_now)
-    run_stdio(server, sys.stdin, sys.stdout)
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

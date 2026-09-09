@@ -5,7 +5,7 @@ import copy
 
 from frameshift.broker import execute
 from frameshift.broker.audit import record_violations
-from frameshift.broker.confirmation import bind_native_response, build_request
+from frameshift.broker.confirmation import bind_confirmation_response, build_request
 
 
 def _trusted_native(approval: dict | None, request: dict):
@@ -42,10 +42,11 @@ def _trusted_native(approval: dict | None, request: dict):
     native = {
         "request_id": pending["id"],
         "request_digest": pending["request_digest"],
-        "action": "accept",
-        "content": {"disposition": approval["disposition"]},
+        "status": "submitted",
+        "disposition": approval["disposition"],
+        "edited_proposal": None,
     }
-    return bind_native_response(
+    return bind_confirmation_response(
         pending,
         native,
         attestation,

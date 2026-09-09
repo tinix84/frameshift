@@ -13,6 +13,7 @@ sys.path.insert(0, str(ROOT))
 
 from frameshift.mcp.confirmation_server import ConfirmationMcpServer  # noqa: E402
 from frameshift.orchestration.api import ConfirmationWorkflow  # noqa: E402
+from frameshift.bootstrap import approval_configuration_refusal  # noqa: E402
 
 
 def load_session() -> dict:
@@ -54,9 +55,13 @@ class ConfirmationMcpTests(unittest.TestCase):
         server = ConfirmationMcpServer(
             workflow,
             lambda: dict(ATTESTATION),
+            lambda: dict(PROFILE),
             lambda: "2026-09-09T10:01:00Z",
         )
-        server.initialize({"elicitation": {"form": {}}})
+        server.initialize(
+            {"elicitation": {"form": {}}},
+            {"name": "claude-code", "version": "2.1.265"},
+        )
         return server, request
 
     def test_tool_arguments_carry_only_the_pending_request_id(self) -> None:
@@ -83,7 +88,7 @@ class ConfirmationMcpTests(unittest.TestCase):
             return {"action": "accept", "content": {"disposition": "approved"}}
 
         result = server.call_tool("frameshift_confirm", {"request_id": request["id"]}, elicit)
-        self.assertEqual(result["outcome"], "accepted", result)
+        self.assertEqual(result["outcome"], "confirmed", result)
 
     def test_a_model_cannot_put_an_actor_or_disposition_in_tool_arguments(self) -> None:
         server, request = self.server()
@@ -103,12 +108,57 @@ class ConfirmationMcpTests(unittest.TestCase):
 
     def test_a_client_without_form_elicitation_cannot_approve(self) -> None:
         server, request = self.server()
-        server.initialize({})
+        server.initialize({}, {"name": "claude-code", "version": "2.1.265"})
         called = []
         result = server.call_tool("frameshift_confirm", {"request_id": request["id"]}, called.append)
         self.assertEqual(result["outcome"], "pending")
         self.assertEqual(result["code"], "unsupported_configuration")
         self.assertEqual(called, [])
+
+    def test_an_edit_is_followed_by_a_second_native_dialog_without_model_help(self) -> None:
+        server, request = self.server()
+        calls = []
+
+        def elicit(parameters: dict) -> dict:
+            calls.append(parameters)
+            if len(calls) == 1:
+                edited = json.loads(request["proposal"])
+                edited["status"] = "approved"
+                edited["label"] = "Owner revision."
+                return {
+                    "action": "accept",
+                    "content": {
+                        "disposition": "edited",
+                        "edited_proposal": json.dumps(edited, sort_keys=True, separators=(",", ":")),
+                    },
+                }
+            self.assertIn("Owner revision.", parameters["message"])
+            self.assertIn('"status":"proposed"', parameters["message"])
+            return {"action": "accept", "content": {"disposition": "approved"}}
+
+        result = server.call_tool("frameshift_confirm", {"request_id": request["id"]}, elicit)
+        self.assertEqual(result["outcome"], "confirmed", result)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(result["events"], [])
+
+    def test_a_different_live_client_identity_cannot_elicit(self) -> None:
+        server, request = self.server()
+        server.initialize(
+            {"elicitation": {"form": {}}},
+            {"name": "different-client", "version": "2.1.265"},
+        )
+        calls = []
+        result = server.call_tool("frameshift_confirm", {"request_id": request["id"]}, calls.append)
+        self.assertEqual(result["code"], "unsupported_configuration")
+        self.assertEqual(calls, [])
+
+    def test_a_validated_profile_inside_the_agent_workspace_is_refused(self) -> None:
+        refusal = approval_configuration_refusal(
+            PROFILE,
+            [ROOT / "evals" / "fixtures" / "confirmation" / "operator-attestation.json"],
+            ROOT,
+        )
+        self.assertIn("outside", refusal)
 
 
 if __name__ == "__main__":

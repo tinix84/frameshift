@@ -166,7 +166,7 @@ def application_orchestrator(case: dict, load) -> list[str]:
     this asserts the application reaches the same outcome, code for code, on
     every attempt the corpus declares.
     """
-    from frameshift.broker.confirmation import bind_native_response, build_request
+    from frameshift.broker.confirmation import bind_confirmation_response, build_request
     from frameshift.orchestration import attempt as application_attempt
 
     from . import approval as reference_guard
@@ -228,10 +228,11 @@ def application_orchestrator(case: dict, load) -> list[str]:
                 response = {
                     "request_id": request["id"],
                     "request_digest": request["request_digest"],
-                    "action": "accept",
-                    "content": {"disposition": approval.get("disposition")},
+                    "status": "submitted",
+                    "disposition": approval.get("disposition"),
+                    "edited_proposal": None,
                 }
-                bound = bind_native_response(
+                bound = bind_confirmation_response(
                     request,
                     response,
                     attestation,

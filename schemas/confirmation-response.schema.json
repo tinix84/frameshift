@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frameshift.dev/schemas/confirmation-response.schema.json",
+  "title": "Provider-neutral confirmation response",
+  "type": "object",
+  "required": ["request_id", "request_digest", "status", "disposition", "edited_proposal"],
+  "properties": {
+    "request_id": {"$ref": "common.schema.json#/$defs/id"},
+    "request_digest": {"$ref": "common.schema.json#/$defs/digest"},
+    "status": {"type": "string", "enum": ["submitted", "declined", "cancelled"]},
+    "disposition": {
+      "anyOf": [
+        {"type": "string", "enum": ["approved", "edited", "rejected", "deferred", "evidence_requested"]},
+        {"type": "null"}
+      ]
+    },
+    "edited_proposal": {
+      "anyOf": [
+        {"type": "string", "minLength": 2, "maxLength": 20000},
+        {"type": "null"}
+      ]
+    }
+  },
+  "additionalProperties": false
+}

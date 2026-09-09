@@ -30,7 +30,7 @@ from frameshift.broker import (  # noqa: E402
     execute,
     RETRY_CONFIRMATION_REQUIRED,
 )
-from frameshift.broker.confirmation import bind_native_response, build_request  # noqa: E402
+from frameshift.broker.confirmation import bind_confirmation_response, build_request  # noqa: E402
 
 FIXTURES = ROOT / "evals" / "fixtures"
 OWNER = {"id": "user_lead_eng", "kind": "human", "role": "decision_owner"}
@@ -95,10 +95,11 @@ def confirmed_for(req: dict, **overrides):
     native = {
         "request_id": pending["id"],
         "request_digest": pending["request_digest"],
-        "action": "accept",
-        "content": {"disposition": approval["disposition"]},
+        "status": "submitted",
+        "disposition": approval["disposition"],
+        "edited_proposal": None,
     }
-    result = bind_native_response(
+    result = bind_confirmation_response(
         pending,
         native,
         attestation,

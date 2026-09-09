@@ -62,13 +62,16 @@ def attestation(**overrides) -> dict:
     return value
 
 
-def response(request: dict, **content) -> dict:
-    return {
+def response(request: dict, **overrides) -> dict:
+    value = {
         "request_id": request["id"],
         "request_digest": request["request_digest"],
-        "action": "accept",
-        "content": {"disposition": "approved", **content},
+        "status": "submitted",
+        "disposition": "approved",
+        "edited_proposal": None,
     }
+    value.update(overrides)
+    return value
 
 
 class TrustedConfirmationTests(unittest.TestCase):
@@ -82,9 +85,9 @@ class TrustedConfirmationTests(unittest.TestCase):
             request["id"], response(request), attestation(), confirmed_at="2026-09-09T10:01:00Z"
         )
 
-        self.assertEqual(result["outcome"], "accepted", result)
-        self.assertEqual([item["type"] for item in result["events"]], ["approval.recorded", "phase.changed"])
-        approval = result["events"][0]["payload"]
+        self.assertEqual(result["outcome"], "confirmed", result)
+        self.assertEqual(result["events"], [])
+        approval = result["approval"]
         self.assertEqual(approval["actor"], attestation()["operator"])
         self.assertNotIn("client_id", approval)
         self.assertNotIn("config_digest", approval)
@@ -140,6 +143,18 @@ class TrustedConfirmationTests(unittest.TestCase):
         self.assertEqual(result["outcome"], "pending")
         self.assertEqual(result["code"], "unsupported_configuration")
 
+        workflow = self.workflow()
+        request = workflow.prepare(transition(), attestation(), request_id="confirm_profile_drift_001")
+        result = workflow.complete(
+            request["id"],
+            response(request),
+            attestation(),
+            profile(client_version="2.1.266"),
+            confirmed_at="2026-09-09T10:01:00Z",
+        )
+        self.assertEqual(result["outcome"], "pending")
+        self.assertEqual(result["code"], "unsupported_configuration")
+
     def test_a_stale_or_cross_target_response_cannot_be_replayed(self) -> None:
         workflow = self.workflow()
         request = workflow.prepare(transition(), attestation(), request_id="confirm_bound_001")
@@ -165,31 +180,53 @@ class TrustedConfirmationTests(unittest.TestCase):
         request = workflow.prepare(transition(), attestation(), request_id="confirm_edit_001")
         edited = json.loads(request["proposal"])
         edited["label"] = "Decision revised by the owner."
-        native_response = response(
+        confirmation_response = response(
             request,
             disposition="edited",
             edited_proposal=json.dumps(edited, sort_keys=True, separators=(",", ":")),
         )
 
         result = workflow.complete(
-            request["id"], native_response, attestation(), confirmed_at="2026-09-09T10:01:00Z"
+            request["id"], confirmation_response, attestation(), confirmed_at="2026-09-09T10:01:00Z"
         )
         self.assertEqual(result["outcome"], "revised")
         self.assertEqual(result["events"], [])
         fresh = result["confirmation_request"]
         self.assertNotEqual(fresh["id"], request["id"])
         self.assertNotEqual(fresh["request_digest"], request["request_digest"])
-        self.assertEqual(fresh["session_revision"], request["session_revision"] + 1)
+        self.assertEqual(fresh["session_revision"], request["session_revision"])
         self.assertEqual(json.loads(fresh["proposal"])["label"], "Decision revised by the owner.")
+
+    def test_edit_cannot_promote_status_before_the_fresh_confirmation(self) -> None:
+        workflow = self.workflow()
+        request = workflow.prepare(transition(), attestation(), request_id="confirm_promote_001")
+        edited = json.loads(request["proposal"])
+        edited["status"] = "approved"
+        result = workflow.complete(
+            request["id"],
+            response(
+                request,
+                disposition="edited",
+                edited_proposal=json.dumps(edited, sort_keys=True, separators=(",", ":")),
+            ),
+            attestation(),
+            confirmed_at="2026-09-09T10:01:00Z",
+        )
+        self.assertEqual(json.loads(result["confirmation_request"]["proposal"])["status"], "proposed")
+        self.assertEqual(result["events"], [])
 
     def test_decline_and_cancel_leave_the_proposal_pending(self) -> None:
         for action in ("decline", "cancel"):
             with self.subTest(action=action):
                 workflow = self.workflow()
                 request = workflow.prepare(transition(), attestation(), request_id=f"confirm_{action}_001")
-                native_response = dict(response(request), action=action, content=None)
+                confirmation_response = response(
+                    request,
+                    status="declined" if action == "decline" else "cancelled",
+                    disposition=None,
+                )
                 result = workflow.complete(
-                    request["id"], native_response, attestation(), confirmed_at="2026-09-09T10:01:00Z"
+                    request["id"], confirmation_response, attestation(), confirmed_at="2026-09-09T10:01:00Z"
                 )
                 self.assertEqual(result["outcome"], "pending")
                 self.assertEqual(result["events"], [])

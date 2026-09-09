@@ -5,7 +5,7 @@ from __future__ import annotations
 import copy
 import json
 
-from frameshift.broker.confirmation import bind_native_response, build_request
+from frameshift.broker.confirmation import bind_confirmation_response, build_request
 from frameshift.validation import validate_against
 
 from . import transitions
@@ -17,7 +17,8 @@ class ConfirmationWorkflow:
     def __init__(self, session: dict, approval_profile: dict) -> None:
         self._session = copy.deepcopy(session)
         self._profile = copy.deepcopy(approval_profile)
-        self._pending: dict[str, tuple[dict, dict]] = {}
+        self._pending: dict[str, tuple[dict, dict, dict | None]] = {}
+        self._confirmed = {}
 
     def replace_session(self, session: dict) -> None:
         """Supply current state as persistence will do when #172 connects this API."""
@@ -38,7 +39,7 @@ class ConfirmationWorkflow:
             proposal=json.dumps(target, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
             actor=actor,
         )
-        self._pending[request_id] = (request, dict(transition))
+        self._pending[request_id] = (request, dict(transition), None)
         return copy.deepcopy(request)
 
     def pending(self, request_id: str) -> dict | None:
@@ -50,6 +51,7 @@ class ConfirmationWorkflow:
         request_id: str,
         response: dict,
         attestation: dict,
+        current_profile: dict | None = None,
         *,
         confirmed_at: str,
     ) -> dict:
@@ -61,10 +63,17 @@ class ConfirmationWorkflow:
                 "detail": "no such pending confirmation request",
                 "events": [],
             }
-        request, transition = entry
+        request, transition, candidate = entry
+        if current_profile is not None and current_profile != self._profile:
+            return {
+                "outcome": "pending",
+                "code": "unsupported_configuration",
+                "detail": "approval profile changed after session start",
+                "events": [],
+            }
         gate = transition["gate"]
         roles = transitions.GATE_AUTHORITY.get(gate, frozenset())
-        bound = bind_native_response(
+        bound = bind_confirmation_response(
             request,
             response,
             attestation,
@@ -77,10 +86,45 @@ class ConfirmationWorkflow:
         if bound["outcome"] != "confirmed":
             return bound
 
-        result = transitions.attempt(self._session, transition, bound["confirmation"])
-        if result["outcome"] == "accepted":
-            self._pending.pop(request_id, None)
-        return result
+        approval = bound["confirmation"].approval
+        out_of_sequence = transitions.sequence_refusal(self._session, transition)
+        if out_of_sequence is not None:
+            return _refused(self._session, out_of_sequence)
+        if transitions.find_target(self._session, transition["target_id"]) is None:
+            return {
+                "outcome": "refused",
+                "code": "invariant_violation",
+                "detail": f"no such target {transition['target_id']}",
+                "phase": self._session.get("phase"),
+                "events": [],
+            }
+        if candidate is None:
+            refusal = transitions.binding_refusal(self._session, transition, approval)
+            if refusal is not None:
+                return _refused(self._session, refusal)
+        elif request["session_revision"] != self._session.get("revision"):
+            return {
+                "outcome": "refused",
+                "code": "approval_stale",
+                "detail": "edited proposal was confirmed against an older session revision",
+                "phase": self._session.get("phase"),
+                "events": [],
+            }
+
+        self._confirmed[request_id] = bound["confirmation"]
+        self._pending.pop(request_id, None)
+        return {
+            "outcome": "confirmed",
+            "code": None,
+            "detail": "",
+            "phase": self._session.get("phase"),
+            "approval": approval,
+            "events": [],
+        }
+
+    def confirmation(self, request_id: str):
+        """Return in-process authority to orchestration, never to an MCP argument."""
+        return self._confirmed.get(request_id)
 
     def _revise(self, request: dict, transition: dict, edited_proposal: str, attestation: dict) -> dict:
         try:
@@ -101,6 +145,8 @@ class ConfirmationWorkflow:
             }
 
         revised = copy.deepcopy(self._session)
+        if "status" in replacement:
+            replacement["status"] = "proposed"
         if "digest" in replacement:
             replacement["digest"] = transitions.content_digest(replacement)
         if not _replace_target(revised, transition["target_id"], replacement):
@@ -110,7 +156,6 @@ class ConfirmationWorkflow:
                 "detail": "target no longer exists",
                 "events": [],
             }
-        revised["revision"] += 1
         schema = "session.v2.schema.json" if revised.get("schema_version") == "2.0.0" else "session.v1.schema.json"
         violations = validate_against(revised, schema)
         if violations:
@@ -121,13 +166,23 @@ class ConfirmationWorkflow:
                 "events": [],
             }
 
-        self._session = revised
         self._pending.pop(request["id"], None)
-        fresh = self.prepare(
-            transition,
-            attestation,
-            request_id=f"{request['id']}.r{revised['revision']}",
+        fresh = build_request(
+            request_id=f"{request['id']}.edit",
+            session_id=request["session_id"],
+            session_revision=request["session_revision"],
+            gate=request["gate"],
+            target_id=request["target_id"],
+            target_digest=transitions.content_digest(replacement),
+            proposal=json.dumps(
+                replacement,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ),
+            actor=attestation["operator"],
         )
+        self._pending[fresh["id"]] = (fresh, dict(transition), replacement)
         return {
             "outcome": "revised",
             "code": "approval_required",
@@ -148,3 +203,13 @@ def _replace_target(session: dict, target_id: str, replacement: dict) -> bool:
             session["graph"]["nodes"][index] = replacement
             return True
     return False
+
+
+def _refused(session: dict, refusal) -> dict:
+    return {
+        "outcome": "refused",
+        "code": refusal.code,
+        "detail": refusal.detail,
+        "phase": session.get("phase"),
+        "events": [],
+    }

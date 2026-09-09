@@ -1,4 +1,4 @@
-"""Bind a native client confirmation to one exact pending proposal (#205)."""
+"""Bind trusted client confirmation to one exact pending proposal (#205)."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ _ISSUER = object()
 
 @dataclass(frozen=True)
 class TrustedConfirmation:
-    """An in-process authority value that cannot arrive through JSON tool input."""
+    """Provider-neutral authority that cannot arrive through JSON tool input."""
 
     _approval_json: bytes
     _issuer: object
@@ -75,7 +75,7 @@ def build_request(
     return request
 
 
-def bind_native_response(
+def bind_confirmation_response(
     request: dict,
     response: dict,
     attestation: dict,
@@ -84,11 +84,11 @@ def bind_native_response(
     authorized_roles: frozenset[str],
     confirmed_at: str,
 ) -> dict:
-    """Return a trusted authority value only for an exact supported response."""
+    """Return authority only for an exact, provider-neutral trusted response."""
     invalid = []
     for value, schema in (
         (request, "confirmation-request.schema.json"),
-        (response, "native-confirmation-response.schema.json"),
+        (response, "confirmation-response.schema.json"),
         (attestation, "operator-attestation.schema.json"),
         (profile, "approval-profile.schema.json"),
     ):
@@ -113,16 +113,15 @@ def bind_native_response(
     if request_digest(request) != request["request_digest"]:
         return _pending(APPROVAL_STALE, "pending confirmation request changed after it was prepared")
 
-    action = response["action"]
-    if action in {"decline", "cancel"}:
-        return _pending(APPROVAL_REQUIRED, f"native dialog action was {action}")
+    status = response["status"]
+    if status in {"declined", "cancelled"}:
+        return _pending(APPROVAL_REQUIRED, f"confirmation was {status}")
 
-    content = response.get("content") or {}
-    disposition = content.get("disposition")
+    disposition = response["disposition"]
     if disposition not in request["permitted_dispositions"]:
         return _pending(APPROVAL_REQUIRED, f"disposition is {disposition!r}")
     if disposition == "edited":
-        edited = content.get("edited_proposal")
+        edited = response["edited_proposal"]
         if not edited:
             return _pending(SCHEMA_INVALID, "edited disposition requires edited_proposal")
         return {
@@ -132,7 +131,7 @@ def bind_native_response(
             "edited_proposal": edited,
             "events": [],
         }
-    if "edited_proposal" in content:
+    if response["edited_proposal"] is not None:
         return _pending(SCHEMA_INVALID, "edited_proposal is permitted only with disposition edited")
     actor = attestation["operator"]
     if actor["kind"] != "human":
