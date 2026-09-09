@@ -82,6 +82,28 @@ def needs_approval(request: dict) -> bool:
     return request.get("approval") == "each_call"
 
 
+def prompt_change_refusals(
+    checkpoint: dict,
+    confirmed_change_ids: set[str] | frozenset[str],
+) -> list[str]:
+    """Bind every recorded prompt-version change to trusted human confirmation."""
+    refusals: list[str] = []
+    for change in checkpoint.get("prompt_version_changes", []):
+        if not isinstance(change, dict):
+            continue
+        change_id = change.get("id")
+        prompt_id = change.get("to", {}).get("id")
+        if change.get("actor", {}).get("kind") != "human":
+            refusals.append(
+                f"prompt {prompt_id!r} version-change record is not attributed to a human actor"
+            )
+        if change_id not in confirmed_change_ids:
+            refusals.append(
+                f"prompt {prompt_id!r} version-change record lacks trusted confirmation"
+            )
+    return refusals
+
+
 def authorize(request: dict, manifest: dict, approval: dict | None = None) -> list[str]:
     """Refusals for one tool request. An empty list means it may be executed."""
     invalid = validate_against(request, REQUEST_SCHEMA)

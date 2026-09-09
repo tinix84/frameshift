@@ -256,6 +256,11 @@ class DeclaredInvariantTests(unittest.TestCase):
         path = ROOT / "evals" / "fixtures" / "reference.execution-request.json"
         return json.loads(path.read_text(encoding="utf-8"))
 
+    def installed(self) -> dict[str, dict]:
+        from frameshift.bootstrap import installed_prompt_manifests
+
+        return installed_prompt_manifests(ROOT / "prompts")
+
     def test_both_prompts_declare_invariants(self) -> None:
         for path in sorted(prompts.PROMPTS.glob("*.md")):
             with self.subTest(prompt=path.name):
@@ -270,28 +275,28 @@ class DeclaredInvariantTests(unittest.TestCase):
                     self.assertGreater(len(invariant.split()), 3)
 
     def test_the_reference_request_carries_what_its_prompt_declares(self) -> None:
-        self.assertEqual(prompts.request_invariant_violations(self.request()), [])
+        self.assertEqual(prompts.request_invariant_violations(self.request(), self.installed()), [])
 
     def test_a_request_dropping_an_invariant_is_caught(self) -> None:
         request = self.request()
         request["invariants"] = request["invariants"][:-1]
-        violations = prompts.request_invariant_violations(request)
+        violations = prompts.request_invariant_violations(request, self.installed())
         self.assertTrue(any("drops" in item for item in violations), violations)
 
     def test_a_request_inventing_an_invariant_is_caught(self) -> None:
         request = self.request()
         request["invariants"] = request["invariants"] + ["anything goes"]
-        violations = prompts.request_invariant_violations(request)
+        violations = prompts.request_invariant_violations(request, self.installed())
         self.assertTrue(any("adds" in item for item in violations), violations)
 
     def test_order_does_not_matter(self) -> None:
         request = self.request()
         request["invariants"] = list(reversed(request["invariants"]))
-        self.assertEqual(prompts.request_invariant_violations(request), [])
+        self.assertEqual(prompts.request_invariant_violations(request, self.installed()), [])
 
     def test_a_request_pinning_an_absent_prompt_is_caught(self) -> None:
         request = dict(self.request(), prompt_contract_id="frameshift.absent.v1")
-        violations = prompts.request_invariant_violations(request)
+        violations = prompts.request_invariant_violations(request, self.installed())
         self.assertTrue(any("not installed" in item for item in violations), violations)
 
     def test_declaring_invariants_did_not_change_a_body_digest(self) -> None:

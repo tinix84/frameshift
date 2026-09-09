@@ -330,12 +330,17 @@ def proposal_admission(case: dict, load) -> list[str]:
 def request_invariants(case: dict, load) -> list[str]:
     """An execution request carries exactly the invariants its prompt declares (#20)."""
     from frameshift.validation import request_invariant_violations
+    from frameshift.bootstrap import installed_prompt_manifests
 
     request = load(case["artifact"])
     expect = case["expect"]
     errors: list[str] = []
 
-    violations = request_invariant_violations(request)
+    root = Path(__file__).resolve().parents[2]
+    violations = request_invariant_violations(
+        request,
+        installed_prompt_manifests(root / "prompts"),
+    )
     outcome = "mismatched" if violations else "aligned"
     if outcome != expect["outcome"]:
         errors.append(f"invariants are {outcome}, case expects {expect['outcome']}: {violations}")

@@ -284,18 +284,15 @@ def prompt_manifest_violations(published: list[dict]) -> list[str]:
     return violations
 
 
-def request_invariant_violations(request: dict, installed: dict | None = None) -> list[str]:
+def request_invariant_violations(request: dict, installed: dict[str, dict]) -> list[str]:
     """An execution request carries exactly the invariants its prompt declares (#20).
 
     The prompt states its invariants and the request tells the engine what to
     satisfy. When those two lists can differ, a request can quietly drop the one
     that mattered — and the prompt would still look like it had promised it.
     """
-    from frameshift.persistence.compatibility import installed_prompts
-
-    available = installed_prompts() if installed is None else installed
     prompt_id = request.get("prompt_contract_id")
-    manifest = available.get(prompt_id)
+    manifest = installed.get(prompt_id)
     if manifest is None:
         return [f"the request pins prompt {prompt_id!r}, which is not installed here"]
 

@@ -18,40 +18,63 @@ would call it compatible.
 
 from __future__ import annotations
 
-from frameshift.validation.prompts import PROMPTS, body_digest, parse_front_matter
-
 # These are reports, not refusals, so they carry no error code. #126 set the
 # precedent when comparing capability profiles: a difference is described, and
 # only a refusal is coded. Inventing a code for something nobody refuses is how
 # #24's vocabulary drifted the first time.
 
 
-def installed_prompts() -> dict[str, dict]:
-    """Committed prompt manifests, keyed by the id a checkpoint would pin."""
-    found: dict[str, dict] = {}
-    for path in sorted(PROMPTS.glob("*.md")):
-        text = path.read_text(encoding="utf-8")
-        try:
-            manifest = parse_front_matter(text)
-        except ValueError:
+def _identity_key(identity: dict) -> tuple[object, object, object]:
+    return (identity.get("id"), identity.get("version"), identity.get("digest"))
+
+
+def _has_version_path(start: dict, target: dict, engine: str, changes: list[dict]) -> bool:
+    """Whether recorded transitions connect a historical identity to the active one."""
+    destination = _identity_key(target)
+    edges: dict[tuple[object, object, object], set[tuple[object, object, object]]] = {}
+    for change in changes:
+        if not isinstance(change, dict) or change.get("engine") != engine:
             continue
-        identifier = manifest.get("id")
-        if isinstance(identifier, str):
-            found[identifier] = {**manifest, "actual_body_digest": body_digest(text)}
-    return found
+        before, after = change.get("from"), change.get("to")
+        if isinstance(before, dict) and isinstance(after, dict):
+            edges.setdefault(_identity_key(before), set()).add(_identity_key(after))
+
+    pending = [_identity_key(start)]
+    visited: set[tuple[object, object, object]] = set()
+    while pending:
+        current = pending.pop()
+        if current == destination:
+            return True
+        if current in visited:
+            continue
+        visited.add(current)
+        pending.extend(edges.get(current, set()) - visited)
+    return False
 
 
 def contract_differences(
     checkpoint: dict,
-    installed: dict[str, dict] | None = None,
+    installed: dict[str, dict],
     published: list[dict] | None = None,
-    confirmed_prompt_change_ids: set[str] | frozenset[str] = frozenset(),
 ) -> list[str]:
     """What this checkpoint pins that this repository cannot honour."""
-    available = installed_prompts() if installed is None else installed
+    available = installed
     differences: list[str] = []
 
-    for engine, pin in sorted(checkpoint.get("contracts", {}).get("prompts", {}).items()):
+    contracts = checkpoint.get("contracts", {})
+    pins = contracts.get("prompts", {})
+    required_engines = set(contracts.get("engines", {}))
+    required_engines.update(
+        summary.get("engine")
+        for summary in checkpoint.get("execution_summaries", [])
+        if isinstance(summary, dict) and isinstance(summary.get("engine"), str)
+    )
+    for engine in sorted(required_engines - set(pins)):
+        differences.append(
+            f"engine {engine!r} has no prompt identity pinned, so new reasoning cannot reproduce its contract"
+        )
+
+    for engine, pin in sorted(pins.items()):
         prompt_id = pin.get("id") if isinstance(pin, dict) else pin
         manifest = available.get(prompt_id)
         if manifest is None:
@@ -107,29 +130,11 @@ def contract_differences(
                 and isinstance(summary.get("prompt_contract"), dict)
                 and summary.get("prompt_contract") != pin
             ]
-            if earlier:
-                changes = checkpoint.get("prompt_version_changes", [])
-                matching_changes = [
-                    change
-                    for change in changes
-                    if isinstance(change, dict)
-                    and change.get("engine") == engine
-                    and change.get("from") in earlier
-                    and change.get("to") == pin
-                    and change.get("actor", {}).get("kind") == "human"
-                ]
-                approved = any(
-                    change.get("id") in confirmed_prompt_change_ids
-                    for change in matching_changes
-                )
-                if not approved:
-                    if matching_changes:
-                        differences.append(
-                            f"prompt {prompt_id!r} version-change record lacks trusted confirmation"
-                        )
-                    else:
-                        differences.append(
-                            f"prompt {prompt_id!r} became active without a matching recorded version-change approval"
-                        )
+            changes = checkpoint.get("prompt_version_changes", [])
+            for identity in earlier:
+                if not _has_version_path(identity, pin, engine, changes):
+                    differences.append(
+                        f"prompt {prompt_id!r} became active without a matching recorded version-change approval"
+                    )
 
     return differences

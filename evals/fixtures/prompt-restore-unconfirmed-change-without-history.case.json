@@ -1,0 +1,11 @@
+{
+  "id": "prompt-restore-unconfirmed-change-without-history",
+  "check": "prompt_restore",
+  "artifact": "prompt-identity.checkpoint.v2.json",
+  "mutation": "remove_earlier_execution",
+  "expect": {
+    "outcome": "verified",
+    "reasoning_allowed": false,
+    "difference_contains": "trusted confirmation"
+  }
+}

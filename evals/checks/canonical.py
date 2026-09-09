@@ -21,16 +21,14 @@ import re
 # Arrays the schemas mark `uniqueItems: true` are sets, so their order carries
 # no meaning and must not carry into the digest. `evals/test_checks.py` asserts
 # this list still matches `schemas/`.
-SET_LIKE_FIELDS = frozenset(
+LEGACY_SET_LIKE_FIELDS = frozenset(
     {
-        "accepted_input_types",
         "data_classes",
         "fixtures",
         "invariants",
         "operations",
         "requested_capabilities",
         "required_checkpoints",
-        "rules",
         "secondary_roles",
         "source_ids",
         "tool_trace_digests",
@@ -38,11 +36,22 @@ SET_LIKE_FIELDS = frozenset(
     }
 )
 
+# Version-2 contracts added these set names. They are intentionally not global:
+# a version-1 extension may use the same words for ordered arrays, and changing
+# that interpretation would change an already published checkpoint digest.
+SCOPED_SET_PATHS = frozenset(
+    {
+        ("accepted_input_types",),
+        ("invariants", "rules"),
+    }
+)
+SET_LIKE_FIELDS = LEGACY_SET_LIKE_FIELDS | {path[-1] for path in SCOPED_SET_PATHS}
+
 # Execution metadata: real, worth keeping, and never part of semantic identity.
 #
-# Excluded by LOCATION, not by name. These names are dropped at the top level of
-# the checkpoint envelope only, and `execution_summaries` takes its whole subtree
-# with it — that is where latency, token counts, and provider request IDs live.
+# Excluded by LOCATION, not by name. For version 1 these names are dropped at
+# the top level of the checkpoint envelope. Version 2 retains the semantic
+# execution identity and drops only metrics inside each summary.
 #
 # The previous rule dropped these names at any depth, which reached into
 # canonical state and removed `state.approvals[*].created_at`: an approval's
@@ -131,12 +140,38 @@ def canonicalize(value: object, *, drop: frozenset[str] = frozenset()) -> object
     raise CanonicalizationError(f"not canonical JSON: {type(value).__name__}")
 
 
-def _order_sets(value: object, *, field: str | None = None) -> object:
+def _scoped_set_paths(value: object) -> frozenset[tuple[str, ...]]:
+    if not isinstance(value, dict):
+        return frozenset()
+    paths: set[tuple[str, ...]] = set()
+    if value.get("manifest_schema_version") == "2.0.0":
+        paths.add(("accepted_input_types",))
+    task_frame = {
+        "role", "trusted_instructions", "untrusted_data", "approved_state",
+        "task", "output", "invariants", "failure_behavior",
+    }
+    if task_frame <= set(value):
+        paths.add(("invariants", "rules"))
+    return frozenset(paths)
+
+
+def _order_sets(
+    value: object,
+    *,
+    field: str | None = None,
+    path: tuple[str, ...] = (),
+    scoped: frozenset[tuple[str, ...]] | None = None,
+) -> object:
+    if scoped is None:
+        scoped = _scoped_set_paths(value)
     if isinstance(value, dict):
-        return {key: _order_sets(item, field=key) for key, item in value.items()}
+        return {
+            key: _order_sets(item, field=key, path=path + (key,), scoped=scoped)
+            for key, item in value.items()
+        }
     if isinstance(value, list):
-        items = [_order_sets(item) for item in value]
-        if field in SET_LIKE_FIELDS:
+        items = [_order_sets(item, path=path, scoped=scoped) for item in value]
+        if field in LEGACY_SET_LIKE_FIELDS or path in scoped:
             return sorted(items, key=lambda item: encode(item))
         return items
     return value
@@ -164,7 +199,21 @@ def state_digest(checkpoint: dict) -> str:
 
 def checkpoint_digest(checkpoint: dict) -> str:
     """Digest of the whole checkpoint envelope, excluding its own digest fields."""
-    return digest(checkpoint, drop=ENVELOPE_EXECUTION_METADATA | SELF_DIGEST_FIELDS)
+    if checkpoint.get("schema_version") != "2.0.0":
+        return digest(checkpoint, drop=ENVELOPE_EXECUTION_METADATA | SELF_DIGEST_FIELDS)
+    semantic = dict(checkpoint)
+    semantic["execution_summaries"] = [
+        {
+            key: item
+            for key, item in summary.items()
+            if key not in {"latency_ms", "token_counts", "provider_request_id"}
+        }
+        for summary in checkpoint.get("execution_summaries", [])
+    ]
+    return digest(
+        semantic,
+        drop=(ENVELOPE_EXECUTION_METADATA - {"execution_summaries"}) | SELF_DIGEST_FIELDS,
+    )
 
 
 def artifact_digest(payload: bytes) -> str:

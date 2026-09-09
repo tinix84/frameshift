@@ -105,6 +105,30 @@ def unsupported(requested: list[str], manifest: dict) -> list[str]:
     )
 
 
+def _reasoning_context(request: dict, inputs: ExecutionInputs, sections: dict[str, str]) -> dict:
+    """Construct the eight-part client boundary after all inputs have passed admission."""
+    return {
+        "role": sections["role"],
+        "trusted_instructions": sections["trusted_instructions"],
+        "untrusted_data": {
+            "instructions": sections["untrusted_data"],
+            "sources": [
+                {**reference, "content": inputs.resolved_inputs[reference["id"]].decode("utf-8")}
+                for reference in request.get("context", [])
+            ],
+        },
+        "approved_state": {
+            "session_revision": request["session_revision"],
+            "state_digest": request["input_state_digest"],
+            "instructions": sections["approved_state"],
+        },
+        "task": sections["task"],
+        "output": {"instructions": sections["output"], "schema": request["output_schema"]},
+        "invariants": {"instructions": sections["invariants"], "rules": request.get("invariants", [])},
+        "failure_behavior": sections["failure_behavior"],
+    }
+
+
 def run(adapter: Adapter, request: dict, inputs: ExecutionInputs) -> ExecutionOutcome:
     """Validate and bound inputs, execute once, then validate the completed record."""
     invalid_request = validate_against(request, REQUEST_SCHEMA)
@@ -168,26 +192,7 @@ def run(adapter: Adapter, request: dict, inputs: ExecutionInputs) -> ExecutionOu
             envelope={},
             violations=[f"{INVARIANT_VIOLATION}: prompt task frame is invalid: {exc}"],
         )
-    reasoning_context = {
-        "role": sections["role"],
-        "trusted_instructions": sections["trusted_instructions"],
-        "untrusted_data": {
-            "instructions": sections["untrusted_data"],
-            "sources": [
-                {**reference, "content": inputs.resolved_inputs[reference["id"]].decode("utf-8")}
-                for reference in request.get("context", [])
-            ],
-        },
-        "approved_state": {
-            "session_revision": request["session_revision"],
-            "state_digest": request["input_state_digest"],
-            "instructions": sections["approved_state"],
-        },
-        "task": sections["task"],
-        "output": {"instructions": sections["output"], "schema": request["output_schema"]},
-        "invariants": {"instructions": sections["invariants"], "rules": request.get("invariants", [])},
-        "failure_behavior": sections["failure_behavior"],
-    }
+    reasoning_context = _reasoning_context(request, inputs, sections)
     invalid_context = validate_against(reasoning_context, REASONING_CONTEXT_SCHEMA)
     if invalid_context:
         return ExecutionOutcome(

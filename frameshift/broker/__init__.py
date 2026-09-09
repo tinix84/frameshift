@@ -12,6 +12,7 @@ from .port import (
     authorize,
     execute,
     needs_approval,
+    prompt_change_refusals,
     request_digest,
     RETRY_CONFIRMATION_REQUIRED,
 )
@@ -29,6 +30,7 @@ __all__ = [
     "record_violations",
     "authorize",
     "needs_approval",
+    "prompt_change_refusals",
     "request_digest",
     "RETRY_CONFIRMATION_REQUIRED",
 ]
