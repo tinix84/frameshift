@@ -43,3 +43,4 @@ Every ADR is paired with the issue that makes it verifiable; ADR-0008 is a wayfi
 | [0017](docs/adr/0017-published-prompt-identities.md) | 2026-09-09 | Published prompt identities and aggregate reasoning-input bounds | [#168](https://github.com/tinix84/frameshift/issues/168) |
 | [0018](docs/adr/0018-frame-migration-decision-scope.md) | 2026-09-09 | Correct migration-disposition attribution; history choice remains pending | [#86](https://github.com/tinix84/frameshift/issues/86) |
 | [0019](docs/adr/0019-linked-session-frame-migration.md) | 2026-09-09 | Convert frame axes into a new linked session while preserving the source checkpoint | [#86](https://github.com/tinix84/frameshift/issues/86) |
+| [0020](docs/adr/0020-reset-frame-authority-on-migration.md) | 2026-09-09 | Reset converted frames to proposals and carry no approval authority into the linked session | [#86](https://github.com/tinix84/frameshift/issues/86) |

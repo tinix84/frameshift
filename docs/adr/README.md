@@ -19,3 +19,4 @@ ADRs capture durable, cross-cutting decisions. Status values are `proposed`, `ac
 - [ADR-0017: Validate prompts against published identities](0017-published-prompt-identities.md)
 - [ADR-0018: Correct the recorded scope of the frame migration decision](0018-frame-migration-decision-scope.md)
 - [ADR-0019: Migrate frame axes into a linked session](0019-linked-session-frame-migration.md)
+- [ADR-0020: Reset frame authority when migrating axes](0020-reset-frame-authority-on-migration.md)

@@ -26,6 +26,7 @@ from .application import decision_record, proposal_admission, request_invariants
 from .checkpoint import checkpoint_digest, checkpoint_integrity
 from .confirmation import trusted_confirmation
 from .engine_result import engine_result_invariants
+from .frame_migration import frame_migration
 from .graph import graph_invariants
 from .repair import engine_result_repair
 from .replay import replay_equivalence
@@ -53,6 +54,7 @@ REGISTRY = {
     "checkpoint_integrity": checkpoint_integrity,
     "trusted_confirmation": trusted_confirmation,
     "engine_result_invariants": engine_result_invariants,
+    "frame_migration": frame_migration,
     "graph_invariants": graph_invariants,
     "engine_result_repair": engine_result_repair,
     "proposal_admission": proposal_admission,

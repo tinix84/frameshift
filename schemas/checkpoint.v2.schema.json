@@ -14,6 +14,16 @@
     "pending_proposals": {"type": "array", "items": {"$ref": "engine-result.schema.json"}},
     "event_cursor": {"type": "integer", "minimum": 0},
     "prior_checkpoint_digest": {"anyOf": [{"$ref": "common.schema.json#/$defs/digest"}, {"type": "null"}]},
+    "source_checkpoint": {
+      "type": "object",
+      "required": ["id", "digest", "schema_version"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/id"},
+        "digest": {"$ref": "common.schema.json#/$defs/digest"},
+        "schema_version": {"const": "1.0.0"}
+      },
+      "additionalProperties": false
+    },
     "contracts": {
       "type": "object",
       "required": ["engines", "prompts"],
