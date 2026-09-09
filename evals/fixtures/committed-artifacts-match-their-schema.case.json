@@ -6,10 +6,14 @@
     "evals/fixtures/battery-single-source.result.json": "engine-result.schema.json",
     "evals/fixtures/framing-solution-disguised.result.json": "engine-result.schema.json",
     "evals/fixtures/kafka-in-disguise.result.json": "engine-result.schema.json",
-    "evals/fixtures/approval/*.session.json": "session.schema.json",
+    "evals/fixtures/approval/*.session.json": "session.v1.schema.json",
     "evals/fixtures/reference.checkpoint.json": "checkpoint.schema.json",
-    "evals/fixtures/reference.execution-envelope.json": "execution-envelope.schema.json",
-    "evals/fixtures/reference.execution-request.json": "execution-request.schema.json",
+    "evals/fixtures/prompt-identity.checkpoint.v2.json": "checkpoint.v2.schema.json",
+    "evals/fixtures/reference.execution-envelope.json": "execution-envelope.v1.schema.json",
+    "evals/fixtures/reference.execution-envelope.v2.json": "execution-envelope.schema.json",
+    "evals/fixtures/reference.execution-request.json": "execution-request.v1.schema.json",
+    "evals/fixtures/reference.execution-request.v2.json": "execution-request.schema.json",
+    "evals/fixtures/reference.reasoning-context.json": "reasoning-context.schema.json",
     "evals/fixtures/reference.tool-audit-record.json": "tool-audit-record.schema.json",
     "evals/fixtures/reference.tool-request.json": "tool-request.schema.json",
     "evals/fixtures/reference.tool-result.json": "tool-result.schema.json",
@@ -20,6 +24,6 @@
   },
   "expect": {
     "outcome": "valid",
-    "min_artifacts": 14
+    "min_artifacts": 18
   }
 }

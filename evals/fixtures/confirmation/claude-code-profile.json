@@ -1,0 +1,8 @@
+{
+  "schema_version": "1.0.0",
+  "id": "approval-profile-claude-code-2.1.265",
+  "client_id": "claude-code",
+  "client_version": "2.1.265",
+  "config_digest": "sha256:eb556569dafad26f56ca8a074b8000cedbb9a828cb583b6eca2adb65f7e02470",
+  "validated": false
+}

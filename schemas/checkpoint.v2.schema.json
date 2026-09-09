@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frameshift.dev/schemas/checkpoint.v2.schema.json",
+  "title": "FrameShift portable checkpoint version 2",
+  "type": "object",
+  "required": ["schema_version", "id", "session_id", "session_revision", "phase", "state", "event_cursor", "contracts", "capability_profile", "artifacts", "state_digest", "checkpoint_digest"],
+  "properties": {
+    "schema_version": {"const": "2.0.0"},
+    "id": {"$ref": "common.schema.json#/$defs/id"},
+    "session_id": {"$ref": "common.schema.json#/$defs/id"},
+    "session_revision": {"type": "integer", "minimum": 0},
+    "phase": {"type": "string", "enum": ["intake", "framing", "causal", "solutions", "decision", "monitoring"]},
+    "state": {"$ref": "session.v2.schema.json"},
+    "pending_proposals": {"type": "array", "items": {"$ref": "engine-result.schema.json"}},
+    "event_cursor": {"type": "integer", "minimum": 0},
+    "prior_checkpoint_digest": {"anyOf": [{"$ref": "common.schema.json#/$defs/digest"}, {"type": "null"}]},
+    "source_checkpoint": {
+      "type": "object",
+      "required": ["id", "digest", "schema_version"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/id"},
+        "digest": {"$ref": "common.schema.json#/$defs/digest"},
+        "schema_version": {"const": "1.0.0"}
+      },
+      "additionalProperties": false
+    },
+    "contracts": {
+      "type": "object",
+      "required": ["engines", "prompts"],
+      "properties": {
+        "engines": {"type": "object", "additionalProperties": {"type": "string"}},
+        "prompts": {"type": "object", "additionalProperties": {"$ref": "#/$defs/prompt_identity"}}
+      },
+      "additionalProperties": false
+    },
+    "capability_profile": {"$ref": "capability-manifest.schema.json"},
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "media_type", "digest"],
+        "properties": {
+          "id": {"$ref": "common.schema.json#/$defs/id"},
+          "media_type": {"type": "string"},
+          "digest": {"$ref": "common.schema.json#/$defs/digest"},
+          "uri": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "execution_summaries": {"type": "array", "items": {"$ref": "#/$defs/execution_summary"}},
+    "prompt_version_changes": {"type": "array", "items": {"$ref": "#/$defs/prompt_version_change"}},
+    "created_at": {"$ref": "common.schema.json#/$defs/timestamp"},
+    "state_digest": {"$ref": "common.schema.json#/$defs/digest"},
+    "checkpoint_digest": {"$ref": "common.schema.json#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "prompt_identity": {
+      "type": "object",
+      "required": ["id", "version", "digest"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/id"},
+        "version": {"type": "string", "minLength": 1},
+        "digest": {"$ref": "common.schema.json#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "execution_summary": {
+      "type": "object",
+      "required": ["execution_id", "engine", "prompt_contract"],
+      "properties": {
+        "execution_id": {"$ref": "common.schema.json#/$defs/id"},
+        "engine": {"type": "string", "enum": ["problem_framing", "causal_reasoning", "solution_generation", "decision_validation"]},
+        "prompt_contract": {"$ref": "#/$defs/prompt_identity"},
+        "latency_ms": {"type": "integer", "minimum": 0},
+        "token_counts": {
+          "type": "object",
+          "properties": {
+            "input": {"type": "integer", "minimum": 0},
+            "output": {"type": "integer", "minimum": 0}
+          },
+          "additionalProperties": false
+        },
+        "provider_request_id": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "prompt_version_change": {
+      "type": "object",
+      "required": ["id", "engine", "from", "to", "actor", "session_revision", "created_at"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/id"},
+        "engine": {"type": "string", "enum": ["problem_framing", "causal_reasoning", "solution_generation", "decision_validation"]},
+        "from": {"$ref": "#/$defs/prompt_identity"},
+        "to": {"$ref": "#/$defs/prompt_identity"},
+        "actor": {"$ref": "common.schema.json#/$defs/actor"},
+        "session_revision": {"type": "integer", "minimum": 0},
+        "rationale": {"type": "string", "maxLength": 3000},
+        "created_at": {"$ref": "common.schema.json#/$defs/timestamp"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

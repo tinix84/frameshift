@@ -2,13 +2,12 @@
 
 from .canonical import canonical_bytes, checkpoint_digest, digest, state_digest
 from .checkpoint import RestoreJournal, encode, restore, verify
-from .compatibility import contract_differences, installed_prompts
+from .compatibility import contract_differences
 
 __all__ = [
     "RestoreJournal",
     "canonical_bytes",
     "contract_differences",
-    "installed_prompts",
     "checkpoint_digest",
     "digest",
     "encode",

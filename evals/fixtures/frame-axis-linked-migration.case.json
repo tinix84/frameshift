@@ -1,0 +1,30 @@
+{
+  "id": "frame-axis-linked-migration",
+  "check": "frame_migration",
+  "source": "reference.checkpoint.json",
+  "target": {
+    "checkpoint_id": "ckpt_reference_v2_001",
+    "session_id": "sess_reference_v2_001",
+    "created_at": "2026-09-09T15:00:00Z",
+    "prompt_identities": {
+      "problem_framing": {
+        "id": "frameshift.problem-framing.v2",
+        "version": "2.0.0",
+        "digest": "sha256:bb57c98a14c2fd82ae287787c19cc079266a28160650326df33daf2cd685bea2"
+      }
+    }
+  },
+  "ambiguous_value": "supply_chain",
+  "expect": {
+    "source_checkpoint": {
+      "id": "ckpt_reference_001",
+      "digest": "sha256:555789647f89bb17082d7623ffd31626647d27d199e4e82bd498cdf090ea107d",
+      "schema_version": "1.0.0"
+    },
+    "frame": {
+      "abstraction_level": "product",
+      "system_boundary": "product",
+      "status": "proposed"
+    }
+  }
+}

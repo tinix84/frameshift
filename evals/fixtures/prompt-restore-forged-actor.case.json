@@ -1,0 +1,10 @@
+{
+  "id": "prompt-restore-forged-actor",
+  "check": "prompt_restore",
+  "artifact": "prompt-identity.checkpoint.v2.json",
+  "expect": {
+    "outcome": "verified",
+    "reasoning_allowed": false,
+    "difference_contains": "trusted confirmation"
+  }
+}

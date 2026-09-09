@@ -10,6 +10,7 @@ cannot read rather than skipping it.
 from __future__ import annotations
 
 import json
+import hashlib
 import sys
 import unittest
 from pathlib import Path
@@ -18,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from frameshift.validation import prompts  # noqa: E402
+from frameshift.bootstrap import published_identities  # noqa: E402
 
 
 class PlantedPrompt:
@@ -86,48 +88,105 @@ class ParserTests(unittest.TestCase):
 
 
 class ManifestTests(unittest.TestCase):
+    def test_current_prompts_declare_portable_ownership_and_bounded_inputs(self) -> None:
+        for name in ("problem-framing.v2.md", "repair-structured-output.v2.md"):
+            with self.subTest(prompt=name):
+                text = (prompts.PROMPTS / name).read_text(encoding="utf-8")
+                manifest = prompts.parse_front_matter(text)
+                self.assertEqual(manifest["maintainer_id"], "frameshift.core")
+                self.assertTrue(manifest["accepted_input_types"])
+                self.assertEqual(manifest["max_input_bytes"], 1_048_576)
+                self.assertEqual(manifest["max_json_depth"], 64)
+                self.assertEqual(set(prompts.task_frame_sections(text)), set(prompts.TASK_FRAME_HEADINGS.values()))
+
+    def test_input_depth_and_malformed_json_are_refused_before_release(self) -> None:
+        manifest = {"accepted_input_types": ["application/json"], "max_input_bytes": 1024, "max_json_depth": 2}
+        for payload, valid in ((b'[[0]]', True), (b'[[[0]]]', False), (b'{broken', False), (b'[NaN]', False)):
+            reference = {"id": "art_a", "media_type": "application/json", "digest": "sha256:" + hashlib.sha256(payload).hexdigest()}
+            with self.subTest(payload=payload):
+                self.assertEqual(not prompts.input_violations([reference], {"art_a": payload}, manifest), valid)
+
+    def test_referenced_inputs_share_one_aggregate_limit(self) -> None:
+        payloads = {"art_a": b"1234", "art_b": b"5678"}
+        references = [{"id": key, "media_type": "text/plain", "digest": "sha256:" + hashlib.sha256(value).hexdigest()}
+                      for key, value in payloads.items()]
+        manifest = {"accepted_input_types": ["text/plain"], "max_input_bytes": 8, "max_json_depth": 64}
+        self.assertEqual(prompts.input_violations(references, payloads, manifest), [])
+        self.assertTrue(prompts.input_violations(references, payloads, manifest, {"max_input_bytes": 7}))
+
+    def test_execution_must_pin_all_three_prompt_identity_fields(self) -> None:
+        manifest = prompts.parse_front_matter(VALID)
+        published = [manifest]
+        pinned = {
+            "prompt_contract_id": manifest["id"],
+            "prompt_contract_version": manifest["version"],
+            "prompt_contract_digest": manifest["body_digest"],
+        }
+        self.assertEqual(prompts.execution_identity_violations(pinned, manifest, manifest["body_digest"], published), [])
+        for field in pinned:
+            with self.subTest(field=field):
+                changed = dict(pinned, **{field: "wrong"})
+                self.assertTrue(prompts.execution_identity_violations(changed, manifest, manifest["body_digest"], published))
+
+    def test_recomputed_self_digest_cannot_replace_a_published_identity(self) -> None:
+        published = [{"id": "frameshift.probe.v1", "version": "1.0.0",
+                      "body_digest": prompts.body_digest(VALID)}]
+        edited = probe(body="\nA materially different task.\n")
+        violations = prompts.published_identity_violations(
+            prompts.parse_front_matter(edited), prompts.body_digest(edited), published
+        )
+        self.assertTrue(any("published" in item for item in violations), violations)
+
     def test_the_committed_prompts_are_clean(self) -> None:
-        self.assertEqual(prompts.prompt_manifest_violations(), [])
+        self.assertEqual(prompts.prompt_manifest_violations(published_identities(prompts.PROMPTS / "releases")), [])
 
     def test_a_missing_required_field_fails(self) -> None:
         with PlantedPrompt("_probe.md", "---\nid: frameshift.probe.v1\nversion: 1.0.0\n---\n\nbody\n"):
-            violations = prompts.prompt_manifest_violations()
+            violations = prompts.prompt_manifest_violations(published_identities(prompts.PROMPTS / "releases"))
         self.assertTrue(any("engine" in item for item in violations), violations)
 
     def test_an_unknown_engine_fails(self) -> None:
         text = VALID.replace("engine: shared", "engine: telepathy")
         with PlantedPrompt("_probe.md", text):
-            violations = prompts.prompt_manifest_violations()
+            violations = prompts.prompt_manifest_violations(published_identities(prompts.PROMPTS / "releases"))
         self.assertTrue(any("telepathy" in item for item in violations), violations)
 
     def test_a_malformed_version_fails(self) -> None:
         text = VALID.replace("version: 1.0.0", "version: one")
         with PlantedPrompt("_probe.md", text):
-            violations = prompts.prompt_manifest_violations()
+            violations = prompts.prompt_manifest_violations(published_identities(prompts.PROMPTS / "releases"))
         self.assertTrue(violations)
+
+    def test_a_version_two_prompt_cannot_fall_back_to_the_legacy_manifest(self) -> None:
+        text = VALID.replace("version: 1.0.0", "version: 2.0.0")
+        with PlantedPrompt("_probe.md", text):
+            violations = prompts.prompt_manifest_violations(
+                published_identities(prompts.PROMPTS / "releases")
+            )
+        self.assertTrue(any("manifest_schema_version" in item for item in violations), violations)
 
     def test_an_output_schema_that_does_not_exist_fails(self) -> None:
         text = VALID.replace("engine: shared", "engine: shared\noutput_schema: schemas/nope.json")
         with PlantedPrompt("_probe.md", text):
-            violations = prompts.prompt_manifest_violations()
+            violations = prompts.prompt_manifest_violations(published_identities(prompts.PROMPTS / "releases"))
         self.assertTrue(any("does not exist" in item for item in violations), violations)
 
     def test_a_fixture_that_does_not_exist_fails(self) -> None:
         text = VALID.replace("engine: shared", "engine: shared\nfixtures: [not-a-case]")
         with PlantedPrompt("_probe.md", text):
-            violations = prompts.prompt_manifest_violations()
+            violations = prompts.prompt_manifest_violations(published_identities(prompts.PROMPTS / "releases"))
         self.assertTrue(any("not-a-case" in item for item in violations), violations)
 
     def test_a_repair_prompt_naming_nothing_fails(self) -> None:
         text = VALID.replace("engine: shared", "engine: shared\nrepair_prompt: frameshift.absent.v1")
         with PlantedPrompt("_probe.md", text):
-            violations = prompts.prompt_manifest_violations()
+            violations = prompts.prompt_manifest_violations(published_identities(prompts.PROMPTS / "releases"))
         self.assertTrue(any("names no committed prompt" in item for item in violations), violations)
 
     def test_a_duplicate_id_fails(self) -> None:
         text = VALID.replace("frameshift.probe.v1", "frameshift.problem-framing.v1")
         with PlantedPrompt("_probe.md", text):
-            violations = prompts.prompt_manifest_violations()
+            violations = prompts.prompt_manifest_violations(published_identities(prompts.PROMPTS / "releases"))
         self.assertTrue(any("already declared" in item for item in violations), violations)
 
     def test_the_framing_prompt_names_its_repair_prompt(self) -> None:
@@ -140,7 +199,7 @@ class ManifestTests(unittest.TestCase):
         """#20's versioning rule: a prompt cannot change under a fixed version."""
         edited = probe().replace("Do the thing.", "Do something materially different.")
         with PlantedPrompt("_probe.md", edited):
-            violations = prompts.prompt_manifest_violations()
+            violations = prompts.prompt_manifest_violations(published_identities(prompts.PROMPTS / "releases"))
         self.assertTrue(
             any("the body changed without the version changing" in item for item in violations),
             violations,
@@ -197,6 +256,11 @@ class DeclaredInvariantTests(unittest.TestCase):
         path = ROOT / "evals" / "fixtures" / "reference.execution-request.json"
         return json.loads(path.read_text(encoding="utf-8"))
 
+    def installed(self) -> dict[str, dict]:
+        from frameshift.bootstrap import installed_prompt_manifests
+
+        return installed_prompt_manifests(ROOT / "prompts")
+
     def test_both_prompts_declare_invariants(self) -> None:
         for path in sorted(prompts.PROMPTS.glob("*.md")):
             with self.subTest(prompt=path.name):
@@ -211,28 +275,28 @@ class DeclaredInvariantTests(unittest.TestCase):
                     self.assertGreater(len(invariant.split()), 3)
 
     def test_the_reference_request_carries_what_its_prompt_declares(self) -> None:
-        self.assertEqual(prompts.request_invariant_violations(self.request()), [])
+        self.assertEqual(prompts.request_invariant_violations(self.request(), self.installed()), [])
 
     def test_a_request_dropping_an_invariant_is_caught(self) -> None:
         request = self.request()
         request["invariants"] = request["invariants"][:-1]
-        violations = prompts.request_invariant_violations(request)
+        violations = prompts.request_invariant_violations(request, self.installed())
         self.assertTrue(any("drops" in item for item in violations), violations)
 
     def test_a_request_inventing_an_invariant_is_caught(self) -> None:
         request = self.request()
         request["invariants"] = request["invariants"] + ["anything goes"]
-        violations = prompts.request_invariant_violations(request)
+        violations = prompts.request_invariant_violations(request, self.installed())
         self.assertTrue(any("adds" in item for item in violations), violations)
 
     def test_order_does_not_matter(self) -> None:
         request = self.request()
         request["invariants"] = list(reversed(request["invariants"]))
-        self.assertEqual(prompts.request_invariant_violations(request), [])
+        self.assertEqual(prompts.request_invariant_violations(request, self.installed()), [])
 
     def test_a_request_pinning_an_absent_prompt_is_caught(self) -> None:
         request = dict(self.request(), prompt_contract_id="frameshift.absent.v1")
-        violations = prompts.request_invariant_violations(request)
+        violations = prompts.request_invariant_violations(request, self.installed())
         self.assertTrue(any("not installed" in item for item in violations), violations)
 
     def test_declaring_invariants_did_not_change_a_body_digest(self) -> None:

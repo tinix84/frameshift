@@ -1,0 +1,7 @@
+{
+  "id": "prompt-restore-exact",
+  "check": "prompt_restore",
+  "artifact": "prompt-identity.checkpoint.v2.json",
+  "confirmed_prompt_changes": ["prompt_change_001"],
+  "expect": {"outcome": "verified", "reasoning_allowed": true}
+}

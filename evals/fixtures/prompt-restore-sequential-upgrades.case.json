@@ -1,0 +1,11 @@
+{
+  "id": "prompt-restore-sequential-upgrades",
+  "check": "prompt_restore",
+  "artifact": "prompt-identity.checkpoint.v2.json",
+  "mutation": "sequential_upgrade",
+  "confirmed_prompt_changes": ["prompt_change_001", "prompt_change_002"],
+  "expect": {
+    "outcome": "verified",
+    "reasoning_allowed": true
+  }
+}

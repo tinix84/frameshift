@@ -151,6 +151,27 @@ class RestoreTests(unittest.TestCase):
         violations = checkpoint.verify(reference, {})
         self.assertTrue(any("is missing" in item for item in violations), violations)
 
+    def test_version_two_execution_identity_is_inside_the_checkpoint_digest(self) -> None:
+        source = json.loads(
+            (ROOT / "evals" / "fixtures" / "prompt-identity.checkpoint.v2.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        source["execution_summaries"] = source["execution_summaries"][-1:]
+        violations = checkpoint.verify(source, {})
+        self.assertTrue(any("checkpoint_digest" in item for item in violations), violations)
+
+    def test_version_two_execution_metrics_stay_outside_the_checkpoint_digest(self) -> None:
+        source = json.loads(
+            (ROOT / "evals" / "fixtures" / "prompt-identity.checkpoint.v2.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        source["execution_summaries"][0]["latency_ms"] = 250
+        source["execution_summaries"][0]["token_counts"] = {"input": 100, "output": 20}
+        source["execution_summaries"][0]["provider_request_id"] = "req_runtime_only"
+        self.assertEqual(checkpoint.verify(source, {}), [])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -29,8 +29,8 @@ class ReferenceIntegrityTests(unittest.TestCase):
     def test_the_reference_session_validates_against_its_schema(self) -> None:
         errors = schema.validate(
             reference_session(),
-            schema.load_schema("session.schema.json"),
-            current="session.schema.json",
+            schema.load_schema("session.v1.schema.json"),
+            current="session.v1.schema.json",
         )
         self.assertEqual(errors, [])
 

@@ -10,6 +10,7 @@ replay instead of being skipped.
 from __future__ import annotations
 
 import copy
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -54,9 +55,39 @@ class LogShapeTests(unittest.TestCase):
 
 
 class FoldTests(unittest.TestCase):
+    def test_a_missing_prior_revision_is_refused_even_if_a_later_event_repairs_the_digest(self) -> None:
+        log = events()
+        log[2]["revision"] = 99
+        with self.assertRaisesRegex(replay.UnknownEvent, "revision"):
+            replay.fold(log)
+
+    def test_an_event_cannot_repeat_the_previous_committed_revision(self) -> None:
+        log = events()
+        log[3]["revision"] = 1
+        with self.assertRaisesRegex(replay.UnknownEvent, "revision"):
+            replay.fold(log)
+
+    def test_snapshot_and_suffix_reproduce_the_reference_without_changing_the_snapshot(self) -> None:
+        snapshot = run.load("evals/fixtures/replay-start.snapshot.json")
+        original = copy.deepcopy(snapshot)
+        for _ in range(2):
+            restored = replay.resume(snapshot, events()[1:])
+            self.assertEqual(canonical.digest(restored), run.load(REFERENCE)["state_digest"])
+        self.assertEqual(snapshot, original)
+
     def test_the_fold_reproduces_the_recorded_state_digest(self) -> None:
         folded = replay.fold(events())
         self.assertEqual(canonical.digest(folded), run.load(REFERENCE)["state_digest"])
+
+    def test_replay_digest_survives_line_endings_key_order_and_repeated_runs(self) -> None:
+        for newline in ("\n", "\r\n"):
+            for reverse in (False, True):
+                log = newline.join(
+                    json.dumps(dict(sorted(event.items(), reverse=reverse))) for event in events()
+                )
+                for _ in range(2):
+                    folded = replay.fold([json.loads(line) for line in log.splitlines()])
+                    self.assertEqual(canonical.digest(folded), run.load(REFERENCE)["state_digest"])
 
     def test_the_fold_reproduces_the_state_itself_and_not_only_its_digest(self) -> None:
         folded = replay.fold(events())
@@ -88,6 +119,28 @@ class FoldTests(unittest.TestCase):
 
 
 class SequenceTests(unittest.TestCase):
+    def test_a_zero_cursor_snapshot_can_resume_without_events(self) -> None:
+        state = {}
+        snapshot = {
+            "event_cursor": 0,
+            "state": state,
+            "state_digest": canonical.digest(state),
+        }
+        self.assertEqual(replay.resume(snapshot, []), state)
+
+    def test_resume_refuses_invalid_snapshot_or_suffix(self) -> None:
+        snapshot = run.load(REFERENCE)
+        for description, altered, suffix in (
+            ("gap", snapshot, [dict(events()[-1], sequence=14)]),
+            ("overlap", snapshot, [events()[-1]]),
+            ("wrong session", snapshot, [dict(events()[-1], sequence=13, session_id="other")]),
+            ("reset", snapshot, [dict(events()[0], sequence=13)]),
+            ("corrupt snapshot", dict(snapshot, state_digest="sha256:" + "0" * 64), []),
+            ("invalid cursor", dict(snapshot, event_cursor=True), []),
+        ):
+            with self.subTest(description=description), self.assertRaises(replay.UnknownEvent):
+                replay.resume(altered, suffix)
+
     def test_a_reordered_log_is_refused(self) -> None:
         log = events()
         log[8], log[9] = log[9], log[8]
@@ -106,11 +159,27 @@ class SequenceTests(unittest.TestCase):
 
 
 class CaseWiringTests(unittest.TestCase):
+    def test_snapshot_case_uses_the_supplied_state_not_a_full_log_fold(self) -> None:
+        case = run.load("evals/fixtures/replay-from-snapshot.case.json")
+
+        def load(relative: str) -> object:
+            artifact = run.load(relative, run.FIXTURES)
+            if relative == case["snapshot"]:
+                artifact["state"]["title"] = "A different session title"
+                artifact["state_digest"] = canonical.digest(artifact["state"])
+            return artifact
+
+        self.assertTrue(run.evaluate(case, load))
+
     def test_every_declared_case_passes(self) -> None:
         for name in (
             "replay-reproduces-the-snapshot",
             "replay-with-a-dropped-event-diverges",
             "replay-out-of-order-is-refused",
+            "replay-from-snapshot",
+            "replay-from-snapshot-gap",
+            "replay-missing-prior-revision",
+            "replay-repeated-revision",
         ):
             with self.subTest(case=name):
                 self.assertEqual(run.evaluate(run.load(f"evals/fixtures/{name}.case.json")), [])

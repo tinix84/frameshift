@@ -38,7 +38,7 @@ def corpus_exemplar(case: dict, load) -> list[str]:
     if not isinstance(intake, dict):
         errors.append("intake must be an object")
     else:
-        errors.extend(f"intake violates session statement schema at {item}" for item in validate(intake, load_schema("session.schema.json")["$defs"]["statement"], current="session.schema.json"))
+        errors.extend(f"intake violates session statement schema at {item}" for item in validate(intake, load_schema("session.v2.schema.json")["$defs"]["statement"], current="session.v2.schema.json"))
     if not isinstance(intake, dict) or not intake.get("id"):
         errors.append("intake missing statement id")
     if not isinstance(result, dict):

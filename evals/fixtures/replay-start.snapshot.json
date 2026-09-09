@@ -1,0 +1,19 @@
+{
+  "event_cursor": 1,
+  "state": {
+    "id": "sess_reference_001",
+    "workspace_id": "ws_reference",
+    "schema_version": "1.0.0",
+    "revision": 0,
+    "phase": "intake",
+    "status": "active",
+    "title": "Pack cost per kWh at the 2027 volume step",
+    "statements": [],
+    "frames": [],
+    "options": [],
+    "criteria": [],
+    "approvals": [],
+    "graph": {"schema_version": "1.0.0", "nodes": [], "edges": []}
+  },
+  "state_digest": "sha256:1e63eb754c0a0285a77cbe83760309491feebcea4e4336b3063563a8717e9625"
+}

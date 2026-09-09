@@ -1,0 +1,8 @@
+{
+  "id": "replay-from-snapshot",
+  "check": "replay_equivalence",
+  "artifact": "reference.checkpoint.json",
+  "snapshot": "replay-start.snapshot.json",
+  "log": "evals/fixtures/reference.events.jsonl",
+  "expect": {"outcome": "equivalent"}
+}

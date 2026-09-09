@@ -1,0 +1,11 @@
+{
+  "id": "prompt-restore-unapproved-change",
+  "check": "prompt_restore",
+  "artifact": "prompt-identity.checkpoint.v2.json",
+  "mutation": "unapproved_version_change",
+  "expect": {
+    "outcome": "verified",
+    "reasoning_allowed": false,
+    "difference_contains": "version-change approval"
+  }
+}

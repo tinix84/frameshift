@@ -1,0 +1,12 @@
+{
+  "id": "prompt-identity-substitution",
+  "check": "prompt_identity",
+  "prompt": {"path": "prompts/problem-framing.v2.md", "id": "frameshift.problem-framing.v2", "version": "2.0.0"},
+  "request": {
+    "prompt_contract_id": "frameshift.problem-framing.v2",
+    "prompt_contract_version": "2.0.0",
+    "prompt_contract_digest": "sha256:bb57c98a14c2fd82ae287787c19cc079266a28160650326df33daf2cd685bea2"
+  },
+  "mutation": "identity_substitution",
+  "expect": {"outcome": "refused"}
+}

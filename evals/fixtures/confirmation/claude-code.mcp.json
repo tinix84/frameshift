@@ -1,0 +1,27 @@
+{
+  "mcpServers": {
+    "frameshift-confirmation": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "frameshift.bootstrap",
+        "confirmation",
+        "--session",
+        "evals/fixtures/approval/gates.session.json",
+        "--transition",
+        "evals/fixtures/confirmation/frame-transition.json",
+        "--profile",
+        "evals/fixtures/confirmation/claude-code-profile.json",
+        "--attestation",
+        "evals/fixtures/confirmation/operator-attestation.json",
+        "--configuration",
+        "evals/fixtures/confirmation/claude-code-configuration.json",
+        "--mcp-config-file",
+        "evals/fixtures/confirmation/claude-code.mcp.json",
+        "--request-id",
+        "confirm_actual_client_001"
+      ]
+    }
+  }
+}

@@ -64,6 +64,16 @@ class CanonicalizationTests(unittest.TestCase):
         after = canonical.digest({"approvals": [{"created_at": "2031-01-01T00:00:00Z"}]})
         self.assertNotEqual(before, after)
 
+    def test_new_set_names_do_not_change_legacy_extension_semantics(self) -> None:
+        before = {
+            "schema_version": "1.0.0",
+            "extensions": {"rules": ["z", "a"], "accepted_input_types": ["z", "a"]},
+        }
+        after = copy.deepcopy(before)
+        after["extensions"]["rules"].reverse()
+        after["extensions"]["accepted_input_types"].reverse()
+        self.assertNotEqual(canonical.digest(before), canonical.digest(after))
+
     def test_an_approval_timestamp_is_inside_the_state_digest(self) -> None:
         checkpoint_data = load_reference()
         mutated = copy.deepcopy(checkpoint_data)

@@ -166,6 +166,7 @@ def application_orchestrator(case: dict, load) -> list[str]:
     this asserts the application reaches the same outcome, code for code, on
     every attempt the corpus declares.
     """
+    from frameshift.broker.confirmation import bind_confirmation_response, build_request
     from frameshift.orchestration import attempt as application_attempt
 
     from . import approval as reference_guard
@@ -194,11 +195,58 @@ def application_orchestrator(case: dict, load) -> list[str]:
                 "to_phase": item.get("to_phase"),
             }
             theirs = reference_guard.attempt_transition(session, transition, approval)
-            mine = application_attempt(session, transition, approval)
+            trusted = None
+            actor = approval.get("actor", {}) if approval else {}
+            if approval is not None and actor.get("kind") == "human":
+                request = build_request(
+                    request_id=f"confirm_{item['id']}",
+                    session_id=session["id"],
+                    session_revision=approval.get("session_revision", session["revision"]),
+                    gate=item["gate"],
+                    target_id=approval.get("target_id", item["target_id"]),
+                    target_digest=approval.get("target_digest", "sha256:" + "0" * 64),
+                    proposal="{}",
+                    actor=actor,
+                )
+                profile = {
+                    "schema_version": "1.0.0",
+                    "id": "profile_eval_001",
+                    "client_id": "claude-code",
+                    "client_version": "2.1.265",
+                    "config_digest": "sha256:" + "a" * 64,
+                    "validated": True,
+                }
+                attestation = {
+                    "schema_version": "1.0.0",
+                    "profile_id": profile["id"],
+                    "client_id": profile["client_id"],
+                    "client_version": profile["client_version"],
+                    "config_digest": profile["config_digest"],
+                    "operator": actor,
+                    "attested_at": "2026-07-16T09:59:00Z",
+                }
+                response = {
+                    "request_id": request["id"],
+                    "request_digest": request["request_digest"],
+                    "status": "submitted",
+                    "disposition": approval.get("disposition"),
+                    "edited_proposal": None,
+                }
+                bound = bind_confirmation_response(
+                    request,
+                    response,
+                    attestation,
+                    profile,
+                    authorized_roles=frozenset({actor.get("role")}),
+                    confirmed_at=approval.get("created_at", "2026-07-16T10:00:00Z"),
+                )
+                trusted = bound.get("confirmation")
+            mine = application_attempt(session, transition, trusted)
             attempts += 1
 
             label = f"{corpus_case['id']}/{item['id']}"
-            for field in ("outcome", "code", "detail"):
+            fields = ("outcome",) if approval is None or actor.get("kind") != "human" else ("outcome", "code", "detail")
+            for field in fields:
                 if mine[field] != theirs[field]:
                     errors.append(
                         f"{label}: application {field} {mine[field]!r}, reference {theirs[field]!r}"
@@ -219,6 +267,7 @@ def application_orchestrator(case: dict, load) -> list[str]:
 def prompt_manifests(case: dict, load) -> list[str]:
     """Every prompt declares a manifest, and its references resolve (#20)."""
     from frameshift.validation import prompt_manifest_violations, parse_front_matter
+    from frameshift.bootstrap import published_identities
 
     expect = case["expect"]
     errors: list[str] = []
@@ -229,7 +278,7 @@ def prompt_manifests(case: dict, load) -> list[str]:
     if len(prompts) < minimum:
         errors.append(f"{len(prompts)} prompts found, case expects at least {minimum}")
 
-    violations = prompt_manifest_violations()
+    violations = prompt_manifest_violations(published_identities(root / "prompts" / "releases"))
     outcome = "invalid" if violations else "valid"
     if outcome != expect["outcome"]:
         errors.append(f"prompt manifests are {outcome}, case expects {expect['outcome']}: {violations}")
@@ -329,12 +378,17 @@ def proposal_admission(case: dict, load) -> list[str]:
 def request_invariants(case: dict, load) -> list[str]:
     """An execution request carries exactly the invariants its prompt declares (#20)."""
     from frameshift.validation import request_invariant_violations
+    from frameshift.bootstrap import installed_prompt_manifests
 
     request = load(case["artifact"])
     expect = case["expect"]
     errors: list[str] = []
 
-    violations = request_invariant_violations(request)
+    root = Path(__file__).resolve().parents[2]
+    violations = request_invariant_violations(
+        request,
+        installed_prompt_manifests(root / "prompts"),
+    )
     outcome = "mismatched" if violations else "aligned"
     if outcome != expect["outcome"]:
         errors.append(f"invariants are {outcome}, case expects {expect['outcome']}: {violations}")

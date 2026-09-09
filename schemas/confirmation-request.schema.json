@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frameshift.dev/schemas/confirmation-request.schema.json",
+  "title": "FrameShift confirmation request",
+  "type": "object",
+  "required": ["schema_version", "id", "session_id", "session_revision", "gate", "target_id", "target_digest", "proposal", "actor", "permitted_dispositions", "request_digest"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "id": {"$ref": "common.schema.json#/$defs/id"},
+    "session_id": {"$ref": "common.schema.json#/$defs/id"},
+    "session_revision": {"type": "integer", "minimum": 0},
+    "gate": {"type": "string", "enum": ["intake_correction", "frame_selection", "evidence_sufficiency", "option_set_acceptance", "criteria_confirmation", "decision_approval", "external_action", "knowledge_promotion", "capability_execution"]},
+    "target_id": {"$ref": "common.schema.json#/$defs/id"},
+    "target_digest": {"$ref": "common.schema.json#/$defs/digest"},
+    "proposal": {"type": "string", "minLength": 2, "maxLength": 20000},
+    "actor": {"$ref": "common.schema.json#/$defs/actor"},
+    "permitted_dispositions": {"type": "array", "items": {"type": "string", "enum": ["approved", "edited", "rejected", "deferred", "evidence_requested"]}, "minItems": 5, "uniqueItems": true},
+    "request_digest": {"$ref": "common.schema.json#/$defs/digest"}
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,12 @@
+{
+  "id": "prompt-missing-identity",
+  "check": "prompt_identity",
+  "prompt": {"path": "prompts/problem-framing.v1.md", "id": "frameshift.problem-framing.v1", "version": "1.0.0"},
+  "request": {
+    "prompt_contract_id": "frameshift.problem-framing.v1",
+    "prompt_contract_version": "1.0.0",
+    "prompt_contract_digest": "sha256:9e689e62ff90cc33cf2b520dba9730cd45578ba8898e1a9270b31e94cf7f4951"
+  },
+  "mutation": "missing_prompt",
+  "expect": {"outcome": "refused"}
+}

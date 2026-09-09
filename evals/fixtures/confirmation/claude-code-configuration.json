@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0.0",
+  "client_id": "claude-code",
+  "client_version": "2.1.265",
+  "launch_flags": [
+    "--restricted",
+    "--strict-mcp-config",
+    "--mcp-config=evals/fixtures/confirmation/claude-code.mcp.json",
+    "--tools="
+  ],
+  "settings_behavior": "restricted mode ignores user, project, and local settings",
+  "approval_relevant_managed_configuration": [],
+  "mcp_server": "frameshift-confirmation",
+  "mcp_config_digest": "sha256:8b6c1a930d5491068540d5ea46b9a4dd303a15c3e67375f8d3ac9a36bdaa9481"
+}

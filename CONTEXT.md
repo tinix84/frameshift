@@ -140,6 +140,19 @@ revisit triggers.
 `edited`, `rejected`, `deferred`, or `evidence_requested`, bound to a target
 content digest and session revision.
 
+**Confirmation request** — the provider-neutral content shown through a trusted
+client interface for one pending approval: the exact proposal, target digest,
+session revision, actor authority, and permitted dispositions.
+
+**Operator attestation** — the operator's declaration that binds a human actor
+to a pinned client version and configuration identity. It establishes the
+claimed trust boundary; actual-client evidence establishes whether that client
+and configuration satisfy it.
+
+**Approval profile** — a validated client and configuration identity under
+which native confirmation may grant approval authority. A changed or
+unsupported profile suspends approval until it is validated again.
+
 **Checkpoint gate** — a phase boundary that cannot advance without an approval:
 intake correction, frame selection, evidence sufficiency, option-set
 acceptance, criteria confirmation, decision approval, external action, and

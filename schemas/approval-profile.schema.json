@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frameshift.dev/schemas/approval-profile.schema.json",
+  "title": "Validated native-client approval profile",
+  "type": "object",
+  "required": ["schema_version", "id", "client_id", "client_version", "config_digest", "validated"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "id": {"$ref": "common.schema.json#/$defs/id"},
+    "client_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "client_version": {"type": "string", "minLength": 1, "maxLength": 64},
+    "config_digest": {"$ref": "common.schema.json#/$defs/digest"},
+    "validated": {"type": "boolean"}
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frameshift.dev/schemas/reasoning-context.schema.json",
+  "title": "FrameShift bounded reasoning context",
+  "description": "The eight task-frame parts released to a client for one engine step. Source content exists only inside the explicitly untrusted data boundary.",
+  "type": "object",
+  "required": ["role", "trusted_instructions", "untrusted_data", "approved_state", "task", "output", "invariants", "failure_behavior"],
+  "properties": {
+    "role": {"type": "string", "minLength": 1},
+    "trusted_instructions": {"type": "string", "minLength": 1},
+    "untrusted_data": {
+      "type": "object",
+      "required": ["instructions", "sources"],
+      "properties": {
+        "instructions": {"type": "string", "minLength": 1},
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "digest", "media_type", "content"],
+            "properties": {
+              "id": {"$ref": "common.schema.json#/$defs/id"},
+              "digest": {"$ref": "common.schema.json#/$defs/digest"},
+              "media_type": {"type": "string", "minLength": 1},
+              "content": {"type": "string"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "approved_state": {
+      "type": "object",
+      "required": ["instructions", "session_revision", "state_digest"],
+      "properties": {
+        "instructions": {"type": "string", "minLength": 1},
+        "session_revision": {"type": "integer", "minimum": 0},
+        "state_digest": {"$ref": "common.schema.json#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "task": {"type": "string", "minLength": 1},
+    "output": {
+      "type": "object",
+      "required": ["instructions", "schema"],
+      "properties": {
+        "instructions": {"type": "string", "minLength": 1},
+        "schema": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "invariants": {
+      "type": "object",
+      "required": ["instructions", "rules"],
+      "properties": {
+        "instructions": {"type": "string", "minLength": 1},
+        "rules": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "failure_behavior": {"type": "string", "minLength": 1}
+  },
+  "additionalProperties": false
+}

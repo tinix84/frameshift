@@ -30,9 +30,9 @@ from pathlib import Path
 
 SCHEMAS = Path(__file__).resolve().parents[2] / "schemas"
 
-# Rule 6, by location and never by name at depth. These are dropped at the top
-# level of the checkpoint envelope only; `execution_summaries` takes its whole
-# subtree with it. A name filter that recursed once removed
+# Rule 6, by location and never by name at depth. Version 1 drops these at the
+# top level of the checkpoint envelope. Version 2 retains semantic execution
+# identity and strips only metrics inside each summary. A name filter that once removed
 # `state.approvals[*].created_at` from the digest, which is why this is a
 # location and not a vocabulary.
 ENVELOPE_EXECUTION_METADATA = frozenset(
@@ -83,6 +83,38 @@ def set_like_fields() -> frozenset[str]:
     return frozenset(found)
 
 
+LEGACY_SET_LIKE_FIELDS = frozenset(
+    {
+        "data_classes",
+        "fixtures",
+        "invariants",
+        "operations",
+        "requested_capabilities",
+        "required_checkpoints",
+        "secondary_roles",
+        "source_ids",
+        "tool_trace_digests",
+        "unsupported_capabilities",
+    }
+)
+
+
+def _scoped_set_paths(value: object) -> frozenset[tuple[str, ...]]:
+    """Schema-v2 set rules scoped to the contract location that declares them."""
+    if not isinstance(value, dict):
+        return frozenset()
+    paths: set[tuple[str, ...]] = set()
+    if value.get("manifest_schema_version") == "2.0.0":
+        paths.add(("accepted_input_types",))
+    task_frame = {
+        "role", "trusted_instructions", "untrusted_data", "approved_state",
+        "task", "output", "invariants", "failure_behavior",
+    }
+    if task_frame <= set(value):
+        paths.add(("invariants", "rules"))
+    return frozenset(paths)
+
+
 def normalize_timestamp(value: str) -> str:
     """One spelling per instant: UTC, `Z`-suffixed, trailing zero fractions dropped."""
     if not TIMESTAMP.match(value):
@@ -109,18 +141,18 @@ def canonicalize(value: object, *, drop: frozenset[str] = frozenset()) -> object
     `drop` removes keys at the top level of `value` and nowhere deeper, so an
     exclusion states a location rather than a word.
     """
-    sets = set_like_fields()
+    scoped = _scoped_set_paths(value)
 
-    def convert(node: object, field: str | None, top: bool) -> object:
+    def convert(node: object, field: str | None, path: tuple[str, ...], top: bool) -> object:
         if isinstance(node, dict):
             return {
-                key: convert(item, key, False)
+                key: convert(item, key, path + (key,), False)
                 for key, item in sorted(node.items())
                 if not (top and key in drop)
             }
         if isinstance(node, list):
-            items = [convert(item, None, False) for item in node]
-            if field in sets:
+            items = [convert(item, None, path, False) for item in node]
+            if field in LEGACY_SET_LIKE_FIELDS or path in scoped:
                 return sorted(items, key=encode)
             return items
         if isinstance(node, str):
@@ -133,7 +165,7 @@ def canonicalize(value: object, *, drop: frozenset[str] = frozenset()) -> object
             return node
         raise CanonicalizationError(f"not canonical JSON: {type(node).__name__}")
 
-    return convert(value, None, True)
+    return convert(value, None, (), True)
 
 
 def encode(value: object) -> str:
@@ -158,7 +190,21 @@ def state_digest(checkpoint: dict) -> str:
 
 def checkpoint_digest(checkpoint: dict) -> str:
     """Digest of the envelope, excluding execution metadata and its own digests."""
-    return digest(checkpoint, drop=ENVELOPE_EXECUTION_METADATA | SELF_DIGEST_FIELDS)
+    if checkpoint.get("schema_version") != "2.0.0":
+        return digest(checkpoint, drop=ENVELOPE_EXECUTION_METADATA | SELF_DIGEST_FIELDS)
+    semantic = dict(checkpoint)
+    semantic["execution_summaries"] = [
+        {
+            key: item
+            for key, item in summary.items()
+            if key not in {"latency_ms", "token_counts", "provider_request_id"}
+        }
+        for summary in checkpoint.get("execution_summaries", [])
+    ]
+    return digest(
+        semantic,
+        drop=(ENVELOPE_EXECUTION_METADATA - {"execution_summaries"}) | SELF_DIGEST_FIELDS,
+    )
 
 
 def artifact_digest(payload: bytes) -> str:

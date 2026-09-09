@@ -40,6 +40,7 @@ ENFORCED = frozenset(
         "const",
         "enum",
         "items",
+        "maximum",
         "maxLength",
         "minItems",
         "minLength",
@@ -133,6 +134,13 @@ def _check_minimum(value, schema, path, current):
     return []
 
 
+def _check_maximum(value, schema, path, current):
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        if value > schema["maximum"]:
+            return [f"{path}: above maximum {schema['maximum']}"]
+    return []
+
+
 def _check_min_items(value, schema, path, current):
     if isinstance(value, list) and len(value) < schema["minItems"]:
         return [f"{path}: fewer than {schema['minItems']} items"]
@@ -172,6 +180,7 @@ _KEYWORDS = {
     "const": _check_const,
     "enum": _check_enum,
     "items": _check_items,
+    "maximum": _check_maximum,
     "maxLength": _check_max_length,
     "minItems": _check_min_items,
     "minLength": _check_min_length,

@@ -2,7 +2,7 @@
 
 FrameShift is an open-source, interactive reasoning system for finding the right problem before optimizing a solution.
 
-Engineering requests often arrive as solutions in disguise: “select a 5 kW DC/DC,” “change the motor,” or “add a battery.” FrameShift moves deliberately between component, subsystem, product, operational, and business levels; makes assumptions and evidence explicit; builds inspectable causal models; explores alternatives; and records why a decision was made.
+Engineering requests often arrive as solutions in disguise: “select a 5 kW DC/DC,” “change the motor,” or “add a battery.” FrameShift reframes these requests; makes assumptions and evidence explicit; builds inspectable causal models; explores alternatives; and records why a decision was made.
 
 > **Status:** specification-first, pre-alpha. The product specification, contracts, and implementation backlog live in the [issue tracker](https://github.com/tinix84/frameshift/issues). This repository holds the durable decisions, the domain language, and the machine-checkable contracts. It does not yet contain a production application.
 
@@ -19,6 +19,9 @@ FrameShift helps a person or team:
 7. resume the same reasoning trace across different LLMs and agent runtimes.
 
 ## Core loop
+
+The ranked abstraction levels are component, subsystem, system, product, and
+business. See [ADR-0016](docs/adr/0016-independent-frame-axes.md) for the frame-axis decision.
 
 ```mermaid
 flowchart LR

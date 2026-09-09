@@ -53,9 +53,18 @@ entry. The runner does not change.
 | `checkpoint_digest` | A committed reference checkpoint hashes to a recorded `sha256:` value, and the value survives key order, line endings, set-like array order, and execution metadata. |
 | `checkpoint_integrity` | A copy mutated at one of three levels — canonical state, checkpoint envelope, referenced artifact — is refused with `checkpoint_integrity_failed`, and a verified restore commits and executes nothing. |
 | `engine_result_repair` | Repair is attempted once and only for shape: outcome and attempt count are asserted, and the repaired output's identifiers, evidence references, and proposal kinds must be a subset of the invalid output's. |
+| `prompt_identity` | Installed prompt content and all three request pins match one independently published identity. |
+| `reasoning_context` | Resolved inputs stay source-labelled, fit one aggregate bound, and reach the client only inside the eight-part task frame. |
+| `prompt_restore` | An intact checkpoint remains inspectable when prompt identity is unavailable, while new reasoning requires exact published pins and a recorded version change. |
 
 Runtime adapters should capture actual `EngineResult` JSON and feed it to the
 same named checks rather than adding a second entry point.
+
+Version-1 execution and prompt schemas remain available for inspecting earlier
+records. New execution examples use the version-2 request and envelope, whose
+ID, version, and digest pins must agree with each other and the published
+release record. `reference.reasoning-context.json` shows the eight parts handed
+to a client; source content occurs only below `untrusted_data.sources`.
 
 Engine-result expectations are optional. In addition to the positive
 expectations shown above, `expected_ladder_levels` requires at least one
@@ -66,15 +75,25 @@ against missing, reversed, or substituted rungs.
 A case may also declare `forbidden_proposal_kinds`,
 `forbid_checkpoints`, `max_abstraction_level`, and
 `min_missing_information`. The abstraction ladder ordering is explicit:
-`component < subsystem < system < product < business`. Lateral session enum
-values (`lifecycle`, `operations`, `supply_chain`, and `portfolio`) are not
-rankable and cause a validation error when used in a ceiling comparison.
+`component < subsystem < system < product < business`. The current session
+schema has exactly this ladder set. Lateral values belong in `system_boundary`
+and cause a validation error if used as an abstraction level in a ceiling
+comparison. Legacy version-1 checkpoints retain their original schema.
 
 `min_missing_information` is a floor for hand-authored reference artifacts,
 not a quality measure. Counting entries rewards padding once real engine output
 is evaluated.
 
 ## The reference checkpoint
+
+The `replay_equivalence` check folds the reference JSONL history to this same
+golden checkpoint. A case with `snapshot` starts from that artifact's state and
+event cursor, and replays only the remaining log suffix. The snapshot's state
+digest must verify; the suffix must be contiguous, stay in the same session,
+and cannot skip or roll back a revision. The starting snapshot remains unchanged.
+Cases can mutate a copy of the suffix with `drop`, `swap`, or `revision` to
+demonstrate refusal. This is state-replay evidence, not proof of atomic storage
+commits or of the full checkpoint admission path.
 
 `fixtures/reference.checkpoint.json` is the golden artifact: every later
 adapter, encoder, and migration is measured against its digests. Its

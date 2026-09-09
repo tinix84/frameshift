@@ -24,12 +24,17 @@ from .capability import capability_compatibility
 from .corpus import corpus_exemplar
 from .application import decision_record, proposal_admission, request_invariants
 from .checkpoint import checkpoint_digest, checkpoint_integrity
+from .confirmation import trusted_confirmation
 from .engine_result import engine_result_invariants
+from .frame_migration import frame_migration
 from .graph import graph_invariants
 from .repair import engine_result_repair
 from .replay import replay_equivalence
 from .schema_files import schema_wellformedness
 from .session import session_invariants
+from .prompt_identity import prompt_identity
+from .prompt_restore import prompt_restore
+from .reasoning_context import reasoning_context
 
 
 REGISTRY = {
@@ -47,12 +52,17 @@ REGISTRY = {
     "checkpoint_digest": checkpoint_digest,
     "decision_record": decision_record,
     "checkpoint_integrity": checkpoint_integrity,
+    "trusted_confirmation": trusted_confirmation,
     "engine_result_invariants": engine_result_invariants,
+    "frame_migration": frame_migration,
     "graph_invariants": graph_invariants,
     "engine_result_repair": engine_result_repair,
     "proposal_admission": proposal_admission,
     "request_invariants": request_invariants,
     "prompt_manifests": prompt_manifests,
+    "prompt_identity": prompt_identity,
+    "prompt_restore": prompt_restore,
+    "reasoning_context": reasoning_context,
     "replay_equivalence": replay_equivalence,
     "schema_wellformedness": schema_wellformedness,
     "session_invariants": session_invariants,
