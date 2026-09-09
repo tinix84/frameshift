@@ -124,6 +124,16 @@ class HappyPathTests(unittest.TestCase):
 
         self.assertEqual(validate_against(request(), "execution-request.schema.json"), [])
 
+    def test_execution_envelope_allows_at_most_one_repair_attempt(self) -> None:
+        from frameshift.validation import validate_against
+
+        envelope = json.loads(
+            (FIXTURES / "reference.execution-envelope.v2.json").read_text(encoding="utf-8")
+        )
+        envelope["validation"]["repair_attempts"] = 2
+        violations = validate_against(envelope, "execution-envelope.schema.json")
+        self.assertTrue(any("repair_attempts" in item for item in violations), violations)
+
 
 class RefusalTests(unittest.TestCase):
     def test_an_unresolved_input_is_refused_before_client_release(self) -> None:

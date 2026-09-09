@@ -17,7 +17,7 @@ class ConfirmationWorkflow:
     def __init__(self, session: dict, approval_profile: dict) -> None:
         self._session = copy.deepcopy(session)
         self._profile = copy.deepcopy(approval_profile)
-        self._pending: dict[str, tuple[dict, dict, dict | None]] = {}
+        self._pending: dict[str, tuple[dict, dict, dict | None, int]] = {}
         self._confirmed = {}
         self._confirmed_candidates: dict[str, dict] = {}
 
@@ -40,7 +40,12 @@ class ConfirmationWorkflow:
             proposal=json.dumps(target, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
             actor=actor,
         )
-        self._pending[request_id] = (request, dict(transition), None)
+        self._pending[request_id] = (
+            request,
+            dict(transition),
+            None,
+            self._session["revision"],
+        )
         return copy.deepcopy(request)
 
     def pending(self, request_id: str) -> dict | None:
@@ -64,7 +69,7 @@ class ConfirmationWorkflow:
                 "detail": "no such pending confirmation request",
                 "events": [],
             }
-        request, transition, candidate = entry
+        request, transition, candidate, base_revision = entry
         if current_profile is not None and current_profile != self._profile:
             return {
                 "outcome": "pending",
@@ -83,7 +88,13 @@ class ConfirmationWorkflow:
             confirmed_at=confirmed_at,
         )
         if bound["outcome"] == "revised":
-            return self._revise(request, transition, bound["edited_proposal"], attestation)
+            return self._revise(
+                request,
+                transition,
+                bound["edited_proposal"],
+                attestation,
+                base_revision,
+            )
         if bound["outcome"] != "confirmed":
             return bound
 
@@ -99,7 +110,7 @@ class ConfirmationWorkflow:
                 "phase": self._session.get("phase"),
                 "events": [],
             }
-        if request["session_revision"] != self._session.get("revision"):
+        if base_revision != self._session.get("revision"):
             return {
                 "outcome": "refused",
                 "code": "approval_stale",
@@ -147,7 +158,14 @@ class ConfirmationWorkflow:
         candidate = self._confirmed_candidates.get(request_id)
         return copy.deepcopy(candidate) if candidate is not None else None
 
-    def _revise(self, request: dict, transition: dict, edited_proposal: str, attestation: dict) -> dict:
+    def _revise(
+        self,
+        request: dict,
+        transition: dict,
+        edited_proposal: str,
+        attestation: dict,
+        base_revision: int,
+    ) -> dict:
         try:
             replacement = json.loads(edited_proposal)
         except json.JSONDecodeError as exc:
@@ -166,6 +184,7 @@ class ConfirmationWorkflow:
             }
 
         revised = copy.deepcopy(self._session)
+        revised["revision"] = request["session_revision"] + 1
         if "status" in replacement:
             replacement["status"] = "proposed"
         if "digest" in replacement:
@@ -191,7 +210,7 @@ class ConfirmationWorkflow:
         fresh = build_request(
             request_id=f"{request['id']}.edit",
             session_id=request["session_id"],
-            session_revision=request["session_revision"],
+            session_revision=revised["revision"],
             gate=request["gate"],
             target_id=request["target_id"],
             target_digest=transitions.content_digest(replacement),
@@ -203,7 +222,12 @@ class ConfirmationWorkflow:
             ),
             actor=attestation["operator"],
         )
-        self._pending[fresh["id"]] = (fresh, dict(transition), replacement)
+        self._pending[fresh["id"]] = (
+            fresh,
+            dict(transition),
+            replacement,
+            base_revision,
+        )
         return {
             "outcome": "revised",
             "code": "approval_required",

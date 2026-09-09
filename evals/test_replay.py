@@ -119,6 +119,15 @@ class FoldTests(unittest.TestCase):
 
 
 class SequenceTests(unittest.TestCase):
+    def test_a_zero_cursor_snapshot_can_resume_without_events(self) -> None:
+        state = {}
+        snapshot = {
+            "event_cursor": 0,
+            "state": state,
+            "state_digest": canonical.digest(state),
+        }
+        self.assertEqual(replay.resume(snapshot, []), state)
+
     def test_resume_refuses_invalid_snapshot_or_suffix(self) -> None:
         snapshot = run.load(REFERENCE)
         for description, altered, suffix in (

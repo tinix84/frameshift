@@ -42,7 +42,7 @@ def restore_checkpoint(
     *,
     installed_prompts: dict[str, dict] | None = None,
     published_prompts: list[dict] | None = None,
-    confirmed_prompt_change_ids: set[str] | frozenset[str] = frozenset(),
+    prompt_change_confirmations=(),
 ) -> dict:
     """Wire persistence evidence, prompt resources, broker authority and orchestration."""
     from frameshift.orchestration.restore import plan_restore
@@ -65,15 +65,18 @@ def restore_checkpoint(
         base_plan,
         differences,
         published_registry_supplied=published_prompts is not None,
-        confirmed_prompt_change_ids=confirmed_prompt_change_ids,
+        prompt_change_confirmations=prompt_change_confirmations,
     )
 
 
 def confirmation_server_main(argv: list[str] | None = None) -> int:
     """Assemble the narrow confirmation server from operator-owned resources."""
+    from frameshift.broker.confirmation import (
+        approval_configuration_refusal,
+        validated_approval_profile,
+    )
     from frameshift.mcp.confirmation_server import ConfirmationMcpServer, run_stdio
     from frameshift.orchestration.api import ConfirmationWorkflow
-    from frameshift.persistence.canonical import digest
 
     parser = argparse.ArgumentParser(description="Serve one pending FrameShift confirmation over MCP")
     parser.add_argument("--session", type=Path, required=True)
@@ -95,24 +98,18 @@ def confirmation_server_main(argv: list[str] | None = None) -> int:
     protection_refusal = approval_configuration_refusal(
         baseline_profile,
         paths,
-        Path.cwd().resolve(),
+        ROOT.resolve(),
     )
     if protection_refusal:
         parser.error(protection_refusal)
 
     def load_profile() -> dict:
-        profile = _load_json(args.profile)
-        configuration = _load_json(args.configuration)
-        required_flags = {"--restricted", "--strict-mcp-config", "--tools="}
-        valid = (
-            profile == baseline_profile
-            and profile.get("config_digest") == digest(configuration)
-            and configuration.get("client_id") == profile.get("client_id")
-            and configuration.get("client_version") == profile.get("client_version")
-            and required_flags <= set(configuration.get("launch_flags", []))
-            and configuration.get("mcp_config_digest") == digest(_load_json(args.mcp_config_file))
+        return validated_approval_profile(
+            baseline_profile,
+            _load_json(args.profile),
+            _load_json(args.configuration),
+            _load_json(args.mcp_config_file),
         )
-        return dict(profile, validated=bool(profile.get("validated") and valid))
 
     profile = load_profile()
     workflow = ConfirmationWorkflow(_load_json(args.session), profile)
@@ -133,21 +130,6 @@ def confirmation_server_main(argv: list[str] | None = None) -> int:
 
 def _load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
-
-
-def _inside(path: Path, directory: Path) -> bool:
-    try:
-        path.relative_to(directory)
-        return True
-    except ValueError:
-        return False
-
-
-def approval_configuration_refusal(profile: dict, paths: list[Path], working_directory: Path) -> str | None:
-    """A validated profile cannot be sourced from the agent-writable workspace."""
-    if profile.get("validated") and any(_inside(path.resolve(), working_directory.resolve()) for path in paths):
-        return "validated approval configuration must be outside the agent-writable working directory"
-    return None
 
 
 def _utc_now() -> str:

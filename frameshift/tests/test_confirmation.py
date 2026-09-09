@@ -194,7 +194,7 @@ class TrustedConfirmationTests(unittest.TestCase):
         fresh = result["confirmation_request"]
         self.assertNotEqual(fresh["id"], request["id"])
         self.assertNotEqual(fresh["request_digest"], request["request_digest"])
-        self.assertEqual(fresh["session_revision"], request["session_revision"])
+        self.assertEqual(fresh["session_revision"], request["session_revision"] + 1)
         self.assertEqual(json.loads(fresh["proposal"])["label"], "Decision revised by the owner.")
 
     def test_edit_cannot_promote_status_before_the_fresh_confirmation(self) -> None:
@@ -239,6 +239,7 @@ class TrustedConfirmationTests(unittest.TestCase):
         self.assertEqual(confirmed["candidate"]["label"], "Decision revised by the owner.")
         self.assertEqual(workflow.confirmed_candidate(fresh["id"]), confirmed["candidate"])
         updated = session()
+        updated["revision"] = confirmed["approval"]["session_revision"]
         for index, item in enumerate(updated["graph"]["nodes"]):
             if item["id"] == transition()["target_id"]:
                 updated["graph"]["nodes"][index] = confirmed["candidate"]

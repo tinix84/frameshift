@@ -124,8 +124,8 @@ def resume(snapshot: dict, events: list[dict]) -> dict:
     an atomic storage commit; those remain separate conformance boundaries.
     """
     cursor = snapshot["event_cursor"]
-    if type(cursor) is not int or cursor < 1:
-        raise UnknownEvent("snapshot event cursor must be a positive integer")
+    if type(cursor) is not int or cursor < 0:
+        raise UnknownEvent("snapshot event cursor must be a non-negative integer")
     if canonical.digest(snapshot["state"]) != snapshot["state_digest"]:
         raise UnknownEvent("snapshot state digest mismatch")
     violations = sequence_violations(events, cursor)

@@ -84,10 +84,15 @@ def needs_approval(request: dict) -> bool:
 
 def prompt_change_refusals(
     checkpoint: dict,
-    confirmed_change_ids: set[str] | frozenset[str],
+    confirmations,
 ) -> list[str]:
     """Bind every recorded prompt-version change to trusted human confirmation."""
     refusals: list[str] = []
+    approvals = [
+        approval
+        for confirmation in confirmations
+        if (approval := _trusted_approval(confirmation)) is not None
+    ]
     for change in checkpoint.get("prompt_version_changes", []):
         if not isinstance(change, dict):
             continue
@@ -97,9 +102,22 @@ def prompt_change_refusals(
             refusals.append(
                 f"prompt {prompt_id!r} version-change record is not attributed to a human actor"
             )
-        if change_id not in confirmed_change_ids:
+        matching = [approval for approval in approvals if approval.get("target_id") == change_id]
+        if not matching:
             refusals.append(
                 f"prompt {prompt_id!r} version-change record lacks trusted confirmation"
+            )
+            continue
+        expected_digest = request_digest(change)
+        if not any(
+            approval.get("disposition") == "approved"
+            and approval.get("target_digest") == expected_digest
+            and approval.get("session_revision") == change.get("session_revision")
+            and approval.get("actor") == change.get("actor")
+            for approval in matching
+        ):
+            refusals.append(
+                f"prompt {prompt_id!r} version-change confirmation is stale or does not bind the exact change"
             )
     return refusals
 

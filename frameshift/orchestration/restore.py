@@ -11,7 +11,7 @@ def plan_restore(
     contract_differences: list[str],
     *,
     published_registry_supplied: bool,
-    confirmed_prompt_change_ids: set[str] | frozenset[str] = frozenset(),
+    prompt_change_confirmations=(),
 ) -> dict:
     """Own reasoning eligibility; persistence supplies evidence, broker supplies authority."""
     plan = dict(persistence_plan)
@@ -28,7 +28,7 @@ def plan_restore(
         )
     plan["authorization_refusals"] = prompt_change_refusals(
         checkpoint,
-        confirmed_prompt_change_ids,
+        prompt_change_confirmations,
     )
     plan["reasoning_allowed"] = not (
         plan["contract_differences"] or plan["authorization_refusals"]

@@ -4,7 +4,7 @@ The harness must read `schemas/` rather than restate it, or the corpus would
 drift from the contract it claims to check. This supports exactly the Draft
 2020-12 keywords the FrameShift schemas use — `$ref`, `$defs`, `type`,
 `properties`, `required`, `additionalProperties`, `items`, `enum`, `const`,
-`anyOf`, `minimum`, `minItems`, `minLength`, `maxLength`, `pattern`,
+`anyOf`, `minimum`, `maximum`, `minItems`, `minLength`, `maxLength`, `pattern`,
 `uniqueItems` — and refuses a schema that uses anything else, so silence never
 passes for a check that did not run.
 
@@ -36,6 +36,7 @@ SUPPORTED = frozenset(
         "enum",
         "format",
         "items",
+        "maximum",
         "maxLength",
         "minItems",
         "minLength",
@@ -64,6 +65,7 @@ ENFORCED = frozenset(
         "const",
         "enum",
         "items",
+        "maximum",
         "maxLength",
         "minItems",
         "minLength",
@@ -165,6 +167,8 @@ def validate(value: object, schema: dict, *, current: str, path: str = "$") -> l
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         if "minimum" in schema and value < schema["minimum"]:
             errors.append(f"{path}: below minimum {schema['minimum']}")
+        if "maximum" in schema and value > schema["maximum"]:
+            errors.append(f"{path}: above maximum {schema['maximum']}")
 
     if isinstance(value, list):
         if "minItems" in schema and len(value) < schema["minItems"]:

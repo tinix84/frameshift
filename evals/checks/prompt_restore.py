@@ -1,11 +1,66 @@
 """Prompt identity determines reasoning eligibility, never inspection integrity."""
 
+import json
 from pathlib import Path
 
 from frameshift.bootstrap import installed_prompt_manifests, published_identities, restore_checkpoint
+from frameshift.broker.confirmation import bind_confirmation_response, build_request
+from frameshift.broker.port import request_digest
 from frameshift.persistence import encode
 
 ROOT = Path(__file__).resolve().parents[2]
+
+APPROVAL_PROFILE = {
+    "schema_version": "1.0.0",
+    "id": "approval-profile-prompt-restore",
+    "client_id": "eval-client",
+    "client_version": "1.0.0",
+    "config_digest": "sha256:" + "a" * 64,
+    "validated": True,
+}
+
+
+def _confirm_changes(checkpoint: dict, selected_ids: list[str]) -> list:
+    confirmations = []
+    for change in checkpoint.get("prompt_version_changes", []):
+        if change["id"] not in selected_ids:
+            continue
+        attestation = {
+            "schema_version": "1.0.0",
+            "profile_id": APPROVAL_PROFILE["id"],
+            "client_id": APPROVAL_PROFILE["client_id"],
+            "client_version": APPROVAL_PROFILE["client_version"],
+            "config_digest": APPROVAL_PROFILE["config_digest"],
+            "operator": change["actor"],
+            "attested_at": change["created_at"],
+        }
+        request = build_request(
+            request_id=f"confirm_{change['id']}",
+            session_id=checkpoint["session_id"],
+            session_revision=change["session_revision"],
+            gate="decision_approval",
+            target_id=change["id"],
+            target_digest=request_digest(change),
+            proposal=json.dumps(change, sort_keys=True, separators=(",", ":")),
+            actor=change["actor"],
+        )
+        response = {
+            "request_id": request["id"],
+            "request_digest": request["request_digest"],
+            "status": "submitted",
+            "disposition": "approved",
+            "edited_proposal": None,
+        }
+        outcome = bind_confirmation_response(
+            request,
+            response,
+            attestation,
+            APPROVAL_PROFILE,
+            authorized_roles=frozenset({change["actor"]["role"]}),
+            confirmed_at=change["created_at"],
+        )
+        confirmations.append(outcome["confirmation"])
+    return confirmations
 
 
 def prompt_restore(case: dict, load) -> list[str]:
@@ -71,7 +126,10 @@ def prompt_restore(case: dict, load) -> list[str]:
         {},
         installed_prompts=manifests,
         published_prompts=published,
-        confirmed_prompt_change_ids=set(case.get("confirmed_prompt_change_ids", [])),
+        prompt_change_confirmations=_confirm_changes(
+            checkpoint,
+            case.get("confirmed_prompt_changes", []),
+        ),
     )
     expected = case["expect"]
     errors: list[str] = []

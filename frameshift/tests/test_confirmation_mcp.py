@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT))
 
 from frameshift.mcp.confirmation_server import ConfirmationMcpServer, run_stdio  # noqa: E402
 from frameshift.orchestration.api import ConfirmationWorkflow  # noqa: E402
-from frameshift.bootstrap import approval_configuration_refusal  # noqa: E402
+from frameshift.broker.confirmation import approval_configuration_refusal  # noqa: E402
 
 
 def load_session() -> dict:
@@ -160,6 +160,13 @@ class ConfirmationMcpTests(unittest.TestCase):
             ROOT,
         )
         self.assertIn("outside", refusal)
+
+    def test_workspace_protection_does_not_depend_on_the_launch_directory(self) -> None:
+        protected = ROOT / "evals" / "fixtures" / "confirmation" / "operator-attestation.json"
+        launch_directory = ROOT / "frameshift"
+        refusal = approval_configuration_refusal(PROFILE, [protected], ROOT)
+        self.assertIn("outside", refusal)
+        self.assertNotEqual(protected.parent, launch_directory)
 
     def test_stdio_reports_a_confirmed_disposition_as_tool_success(self) -> None:
         server, request = self.server()

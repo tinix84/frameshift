@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+from pathlib import Path
 
 from frameshift.validation import validate_against
 
@@ -15,6 +16,46 @@ SCHEMA_INVALID = "schema_invalid"
 UNSUPPORTED_CONFIGURATION = "unsupported_configuration"
 
 _ISSUER = object()
+
+
+def _inside(path: Path, directory: Path) -> bool:
+    try:
+        path.relative_to(directory)
+        return True
+    except ValueError:
+        return False
+
+
+def approval_configuration_refusal(
+    profile: dict,
+    paths: list[Path],
+    working_directory: Path,
+) -> str | None:
+    """A validated profile cannot be sourced from the agent-writable workspace."""
+    if profile.get("validated") and any(
+        _inside(path.resolve(), working_directory.resolve()) for path in paths
+    ):
+        return "validated approval configuration must be outside the agent-writable working directory"
+    return None
+
+
+def validated_approval_profile(
+    baseline: dict,
+    current: dict,
+    configuration: dict,
+    mcp_configuration: dict,
+) -> dict:
+    """Apply the supported native-client configuration policy to a loaded profile."""
+    required_flags = {"--restricted", "--strict-mcp-config", "--tools="}
+    valid = (
+        current == baseline
+        and current.get("config_digest") == _canonical_digest(configuration)
+        and configuration.get("client_id") == current.get("client_id")
+        and configuration.get("client_version") == current.get("client_version")
+        and required_flags <= set(configuration.get("launch_flags", []))
+        and configuration.get("mcp_config_digest") == _canonical_digest(mcp_configuration)
+    )
+    return dict(current, validated=bool(current.get("validated") and valid))
 
 
 @dataclass(frozen=True)

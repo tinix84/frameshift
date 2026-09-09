@@ -19,10 +19,21 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from frameshift.bootstrap import installed_prompt_manifests, restore_checkpoint  # noqa: E402
+from frameshift.broker.confirmation import bind_confirmation_response, build_request  # noqa: E402
+from frameshift.broker.port import request_digest  # noqa: E402
 from frameshift.persistence import compatibility  # noqa: E402
 
 REFERENCE = ROOT / "evals" / "fixtures" / "reference.checkpoint.json"
 PROMPT_IDENTITY = ROOT / "evals" / "fixtures" / "prompt-identity.checkpoint.v2.json"
+
+APPROVAL_PROFILE = {
+    "schema_version": "1.0.0",
+    "id": "approval-profile-prompt-change",
+    "client_id": "test-client",
+    "client_version": "1.0.0",
+    "config_digest": "sha256:" + "a" * 64,
+    "validated": True,
+}
 
 
 def installed() -> dict[str, dict]:
@@ -42,6 +53,47 @@ def artifacts(cp: dict) -> dict[str, bytes]:
         item["id"]: (ROOT / item["uri"]).read_bytes().replace(b"\r\n", b"\n")
         for item in cp.get("artifacts", [])
     }
+
+
+def prompt_change_confirmations(cp: dict) -> list:
+    confirmed = []
+    for change in cp.get("prompt_version_changes", []):
+        attestation = {
+            "schema_version": "1.0.0",
+            "profile_id": APPROVAL_PROFILE["id"],
+            "client_id": APPROVAL_PROFILE["client_id"],
+            "client_version": APPROVAL_PROFILE["client_version"],
+            "config_digest": APPROVAL_PROFILE["config_digest"],
+            "operator": change["actor"],
+            "attested_at": change["created_at"],
+        }
+        request = build_request(
+            request_id=f"confirm_{change['id']}",
+            session_id=cp["session_id"],
+            session_revision=change["session_revision"],
+            gate="decision_approval",
+            target_id=change["id"],
+            target_digest=request_digest(change),
+            proposal=json.dumps(change, sort_keys=True, separators=(",", ":")),
+            actor=change["actor"],
+        )
+        response = {
+            "request_id": request["id"],
+            "request_digest": request["request_digest"],
+            "status": "submitted",
+            "disposition": "approved",
+            "edited_proposal": None,
+        }
+        outcome = bind_confirmation_response(
+            request,
+            response,
+            attestation,
+            APPROVAL_PROFILE,
+            authorized_roles=frozenset({change["actor"]["role"]}),
+            confirmed_at=change["created_at"],
+        )
+        confirmed.append(outcome["confirmation"])
+    return confirmed
 
 
 class InstalledPromptTests(unittest.TestCase):
@@ -67,12 +119,13 @@ class CompatibilityTests(unittest.TestCase):
     def test_an_exact_published_checkpoint_identity_allows_new_reasoning(self) -> None:
         from frameshift.bootstrap import published_identities
 
+        value = prompt_identity_checkpoint()
         plan = restore_checkpoint(
-            prompt_identity_checkpoint(),
+            value,
             {},
             installed_prompts=installed(),
             published_prompts=published_identities(ROOT / "prompts" / "releases"),
-            confirmed_prompt_change_ids={"prompt_change_001"},
+            prompt_change_confirmations=prompt_change_confirmations(value),
         )
         self.assertEqual(plan["outcome"], "verified")
         self.assertTrue(plan["reasoning_allowed"], plan["contract_differences"])
@@ -121,6 +174,37 @@ class CompatibilityTests(unittest.TestCase):
         )
         self.assertFalse(plan["reasoning_allowed"])
         self.assertTrue(any("trusted confirmation" in item for item in plan["authorization_refusals"]))
+
+    def test_bare_change_ids_cannot_grant_prompt_change_authority(self) -> None:
+        from frameshift.bootstrap import published_identities
+
+        plan = restore_checkpoint(
+            prompt_identity_checkpoint(),
+            {},
+            installed_prompts=installed(),
+            published_prompts=published_identities(ROOT / "prompts" / "releases"),
+            prompt_change_confirmations=["prompt_change_001"],
+        )
+        self.assertFalse(plan["reasoning_allowed"])
+        self.assertTrue(any("trusted confirmation" in item for item in plan["authorization_refusals"]))
+
+    def test_prompt_change_confirmation_must_bind_the_exact_change(self) -> None:
+        from frameshift.bootstrap import published_identities
+        from frameshift.persistence import checkpoint as checkpoint_port
+
+        value = prompt_identity_checkpoint()
+        stale = prompt_change_confirmations(value)
+        value["prompt_version_changes"][0]["rationale"] = "Different approved content."
+        value = checkpoint_port.encode(value)
+        plan = restore_checkpoint(
+            value,
+            {},
+            installed_prompts=installed(),
+            published_prompts=published_identities(ROOT / "prompts" / "releases"),
+            prompt_change_confirmations=stale,
+        )
+        self.assertFalse(plan["reasoning_allowed"])
+        self.assertTrue(any("exact change" in item for item in plan["authorization_refusals"]))
 
     def test_a_required_engine_without_a_prompt_pin_blocks_new_reasoning(self) -> None:
         from frameshift.bootstrap import published_identities
@@ -195,7 +279,7 @@ class CompatibilityTests(unittest.TestCase):
             {},
             installed_prompts=manifests,
             published_prompts=published,
-            confirmed_prompt_change_ids={"prompt_change_001", "prompt_change_002"},
+            prompt_change_confirmations=prompt_change_confirmations(value),
         )
         self.assertTrue(plan["reasoning_allowed"], plan)
 
