@@ -1,0 +1,5 @@
+{
+  "gate": "frame_selection",
+  "target_id": "frame_001",
+  "to_phase": "causal"
+}

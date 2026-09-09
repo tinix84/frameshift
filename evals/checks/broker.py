@@ -5,6 +5,54 @@ import copy
 
 from frameshift.broker import execute
 from frameshift.broker.audit import record_violations
+from frameshift.broker.confirmation import bind_native_response, build_request
+
+
+def _trusted_native(approval: dict | None, request: dict):
+    if approval is None:
+        return None
+    actor = approval["actor"]
+    pending = build_request(
+        request_id=f"confirm_{approval['id']}",
+        session_id="sess_broker_eval",
+        session_revision=approval["session_revision"],
+        gate="capability_execution",
+        target_id=approval["target_id"],
+        target_digest=approval["target_digest"],
+        proposal="{}",
+        actor=actor,
+    )
+    profile = {
+        "schema_version": "1.0.0",
+        "id": "profile_broker_eval",
+        "client_id": "claude-code",
+        "client_version": "2.1.265",
+        "config_digest": "sha256:" + "a" * 64,
+        "validated": True,
+    }
+    attestation = {
+        "schema_version": "1.0.0",
+        "profile_id": profile["id"],
+        "client_id": profile["client_id"],
+        "client_version": profile["client_version"],
+        "config_digest": profile["config_digest"],
+        "operator": actor,
+        "attested_at": "2026-07-15T09:13:00Z",
+    }
+    native = {
+        "request_id": pending["id"],
+        "request_digest": pending["request_digest"],
+        "action": "accept",
+        "content": {"disposition": approval["disposition"]},
+    }
+    return bind_native_response(
+        pending,
+        native,
+        attestation,
+        profile,
+        authorized_roles=frozenset({actor.get("role")}),
+        confirmed_at=approval["created_at"],
+    ).get("confirmation")
 
 
 def broker_refusal(case: dict, load) -> list[str]:
@@ -21,10 +69,17 @@ def broker_refusal(case: dict, load) -> list[str]:
             raise RuntimeError("synthetic executor failure")
         return result
 
+    approval = case.get("approval")
+    if case.get("approval_is_trusted_native"):
+        approval = _trusted_native(approval, request)
+    retry_approval = case.get("retry_approval")
+    if case.get("retry_approval_is_trusted_native"):
+        retry_approval = _trusted_native(retry_approval, request)
+
     outcome = execute(
         request, manifest, executor,
-        approval=case.get("approval"),
-        retry_approval=case.get("retry_approval"),
+        approval=approval,
+        retry_approval=retry_approval,
         prior_requests=copy.deepcopy(case.get("prior_requests")),
         recorded_at="2026-07-15T09:14:00Z",
     )

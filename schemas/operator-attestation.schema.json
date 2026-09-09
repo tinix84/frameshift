@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frameshift.dev/schemas/operator-attestation.schema.json",
+  "title": "Operator approval-configuration attestation",
+  "type": "object",
+  "required": ["schema_version", "profile_id", "client_id", "client_version", "config_digest", "operator", "attested_at"],
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "profile_id": {"$ref": "common.schema.json#/$defs/id"},
+    "client_id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "client_version": {"type": "string", "minLength": 1, "maxLength": 64},
+    "config_digest": {"$ref": "common.schema.json#/$defs/digest"},
+    "operator": {"$ref": "common.schema.json#/$defs/actor"},
+    "attested_at": {"$ref": "common.schema.json#/$defs/timestamp"}
+  },
+  "additionalProperties": false
+}

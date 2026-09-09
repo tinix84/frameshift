@@ -30,6 +30,7 @@ from frameshift.broker import (  # noqa: E402
     execute,
     RETRY_CONFIRMATION_REQUIRED,
 )
+from frameshift.broker.confirmation import bind_native_response, build_request  # noqa: E402
 
 FIXTURES = ROOT / "evals" / "fixtures"
 OWNER = {"id": "user_lead_eng", "kind": "human", "role": "decision_owner"}
@@ -54,10 +55,58 @@ def approval_for(req: dict, **overrides) -> dict:
         "target_digest": request_digest(req),
         "disposition": "approved",
         "actor": OWNER,
+        "session_revision": req["session_revision"],
         "created_at": "2026-07-15T09:13:57Z",
     }
     base.update(overrides)
     return base
+
+
+def confirmed_for(req: dict, **overrides):
+    approval = approval_for(req, **overrides)
+    actor = approval["actor"]
+    pending = build_request(
+        request_id="confirm_tool_001",
+        session_id="sess_tool_001",
+        session_revision=approval["session_revision"],
+        gate="capability_execution",
+        target_id=approval["target_id"],
+        target_digest=approval["target_digest"],
+        proposal=json.dumps(req, sort_keys=True, separators=(",", ":")),
+        actor=actor,
+    )
+    profile = {
+        "schema_version": "1.0.0",
+        "id": "profile_tool_test",
+        "client_id": "claude-code",
+        "client_version": "2.1.265",
+        "config_digest": "sha256:" + "a" * 64,
+        "validated": True,
+    }
+    attestation = {
+        "schema_version": "1.0.0",
+        "profile_id": profile["id"],
+        "client_id": profile["client_id"],
+        "client_version": profile["client_version"],
+        "config_digest": profile["config_digest"],
+        "operator": actor,
+        "attested_at": "2026-07-15T09:13:00Z",
+    }
+    native = {
+        "request_id": pending["id"],
+        "request_digest": pending["request_digest"],
+        "action": "accept",
+        "content": {"disposition": approval["disposition"]},
+    }
+    result = bind_native_response(
+        pending,
+        native,
+        attestation,
+        profile,
+        authorized_roles=frozenset({actor.get("role")}),
+        confirmed_at=approval["created_at"],
+    )
+    return result.get("confirmation")
 
 
 class CleanPathTests(unittest.TestCase):
@@ -118,7 +167,7 @@ class PolicyCeilingTests(unittest.TestCase):
     def test_a_stricter_request_is_allowed(self) -> None:
         """Asking for more scrutiny than required is never the problem."""
         asking = dict(request(), approval="each_call", side_effect="reversible")
-        refusals = authorize(asking, manifest(), approval_for(asking))
+        refusals = authorize(asking, manifest(), confirmed_for(asking))
         self.assertEqual(refusals, [])
 
     def test_a_data_class_the_capability_does_not_accept_is_refused(self) -> None:
@@ -140,18 +189,23 @@ class ApprovalBindingTests(unittest.TestCase):
 
     def test_a_correctly_bound_approval_authorizes(self) -> None:
         asking = self.each_call()
-        self.assertEqual(authorize(asking, manifest(), approval_for(asking)), [])
+        self.assertEqual(authorize(asking, manifest(), confirmed_for(asking)), [])
+
+    def test_a_model_supplied_human_actor_dict_cannot_authorize_a_tool(self) -> None:
+        asking = self.each_call()
+        refusals = authorize(asking, manifest(), approval_for(asking))
+        self.assertTrue(any("trusted confirmation" in item for item in refusals), refusals)
 
     def test_an_approval_for_a_different_call_cannot_be_spent_here(self) -> None:
         """A signature given for 'read this' must not authorize 'send that'."""
         signed = self.each_call()
         other = dict(signed, arguments={"artifact_id": "art_something_else"})
-        refusals = authorize(other, manifest(), approval_for(signed))
+        refusals = authorize(other, manifest(), confirmed_for(signed))
         self.assertTrue(any(item.startswith(APPROVAL_STALE) for item in refusals), refusals)
 
     def test_changing_any_declared_field_breaks_the_binding(self) -> None:
         signed = self.each_call()
-        approval = approval_for(signed)
+        approval = confirmed_for(signed)
         for field, value in (
             ("purpose", "Something else entirely."),
             ("data_classes", ["user-provided", "workspace"]),
@@ -165,14 +219,14 @@ class ApprovalBindingTests(unittest.TestCase):
 
     def test_a_rejected_disposition_does_not_authorize(self) -> None:
         asking = self.each_call()
-        refusals = authorize(asking, manifest(), approval_for(asking, disposition="rejected"))
+        refusals = authorize(asking, manifest(), confirmed_for(asking, disposition="rejected"))
         self.assertTrue(any(item.startswith(APPROVAL_REQUIRED) for item in refusals), refusals)
 
     def test_a_runtime_cannot_approve_a_tool_call(self) -> None:
         asking = self.each_call()
         robot = {"id": "bot", "kind": "runtime", "role": "decision_owner"}
         refusals = authorize(asking, manifest(), approval_for(asking, actor=robot))
-        self.assertTrue(any("cannot approve" in item for item in refusals), refusals)
+        self.assertTrue(any("trusted confirmation" in item for item in refusals), refusals)
 
     def test_the_digest_is_canonical(self) -> None:
         """Reordering the request's keys must not change what was signed."""
@@ -269,11 +323,11 @@ class ExecutionTests(unittest.TestCase):
                               prior_requests={req["idempotency_key"]: request_digest(req)},
                               recorded_at="2026-07-15T09:14:00Z")
             self.assertTrue(outcome["denied_reason"].startswith(RETRY_CONFIRMATION_REQUIRED))
-        approval = approval_for(req)
+        approval = confirmed_for(req)
         outcome = execute(req, manifest(), lambda _: result(), retry_approval=approval,
                           prior_requests={req["idempotency_key"]: request_digest(req)},
                           recorded_at="2026-07-15T09:14:00Z")
-        self.assertEqual(outcome["audit"]["authorization"]["approved_by"], approval["actor"])
+        self.assertEqual(outcome["audit"]["authorization"]["approved_by"], approval.approval["actor"])
 
     def test_executed_audit_records_destination_and_result_digest(self) -> None:
         req = request()

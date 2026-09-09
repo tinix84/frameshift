@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from frameshift.orchestration import phases, transitions  # noqa: E402
+from frameshift.broker.confirmation import bind_native_response, build_request  # noqa: E402
 
 SESSION = ROOT / "evals" / "fixtures" / "approval" / "gates.session.json"
 OWNER = {"id": "user_lead_eng", "kind": "human", "role": "decision_owner"}
@@ -46,6 +47,52 @@ def bound(state: dict, target_id: str, actor: dict = OWNER) -> dict:
         "session_revision": state["revision"],
         "created_at": "2026-07-16T10:00:00Z",
     }
+
+
+def confirmed(state: dict, target_id: str, actor: dict = OWNER, **overrides):
+    approval = dict(bound(state, target_id, actor), **overrides)
+    request = build_request(
+        request_id="confirm_test_001",
+        session_id=state["id"],
+        session_revision=approval["session_revision"],
+        gate="decision_approval",
+        target_id=approval["target_id"],
+        target_digest=approval["target_digest"],
+        proposal="{}",
+        actor=actor,
+    )
+    profile = {
+        "schema_version": "1.0.0",
+        "id": "profile_test_001",
+        "client_id": "claude-code",
+        "client_version": "2.1.265",
+        "config_digest": "sha256:" + "a" * 64,
+        "validated": True,
+    }
+    attestation = {
+        "schema_version": "1.0.0",
+        "profile_id": profile["id"],
+        "client_id": profile["client_id"],
+        "client_version": profile["client_version"],
+        "config_digest": profile["config_digest"],
+        "operator": actor,
+        "attested_at": "2026-07-16T09:59:00Z",
+    }
+    response = {
+        "request_id": request["id"],
+        "request_digest": request["request_digest"],
+        "action": "accept",
+        "content": {"disposition": "approved"},
+    }
+    result = bind_native_response(
+        request,
+        response,
+        attestation,
+        profile,
+        authorized_roles=frozenset({actor.get("role")}),
+        confirmed_at=approval["created_at"],
+    )
+    return result["confirmation"]
 
 
 class AuthorityTests(unittest.TestCase):
@@ -99,7 +146,7 @@ class AttemptTests(unittest.TestCase):
         result = transitions.attempt(
             state,
             {"gate": "decision_approval", "target_id": "node_decision_001", "to_phase": "monitoring"},
-            bound(state, "node_decision_001"),
+            confirmed(state, "node_decision_001"),
         )
         self.assertEqual(result["outcome"], "accepted", result["detail"])
         self.assertEqual(result["phase"], "monitoring")
@@ -110,14 +157,14 @@ class AttemptTests(unittest.TestCase):
         result = transitions.attempt(
             state,
             {"gate": "decision_approval", "target_id": "node_decision_001", "to_phase": "monitoring"},
-            bound(state, "node_decision_001"),
+            confirmed(state, "node_decision_001"),
         )
         self.assertEqual(result["outcome"], "refused")
         self.assertIn("decision_approval", result["detail"])
 
     def test_a_stale_revision_is_refused(self) -> None:
         state = session("decision")
-        approval = dict(bound(state, "node_decision_001"), session_revision=1)
+        approval = confirmed(state, "node_decision_001", session_revision=1)
         result = transitions.attempt(
             state,
             {"gate": "decision_approval", "target_id": "node_decision_001", "to_phase": "monitoring"},
@@ -127,7 +174,11 @@ class AttemptTests(unittest.TestCase):
 
     def test_an_unauthorized_role_is_refused(self) -> None:
         state = session("decision")
-        approval = bound(state, "node_decision_001", {"id": "u", "kind": "human", "role": "observer"})
+        approval = confirmed(
+            state,
+            "node_decision_001",
+            {"id": "user_observer", "kind": "human", "role": "observer"},
+        )
         result = transitions.attempt(
             state,
             {"gate": "decision_approval", "target_id": "node_decision_001", "to_phase": "monitoring"},
@@ -144,7 +195,7 @@ class AttemptTests(unittest.TestCase):
             {"gate": "decision_approval", "target_id": "node_decision_001", "to_phase": "monitoring"},
             approval,
         )
-        self.assertIn("cannot approve", result["detail"])
+        self.assertIn("trusted confirmation", result["detail"])
 
     def test_an_unknown_gate_is_refused(self) -> None:
         result = transitions.attempt(session("decision"), {"gate": "teleport", "target_id": "x"}, None)
@@ -167,7 +218,7 @@ class AttemptTests(unittest.TestCase):
             ({"gate": "decision_approval", "target_id": "node_decision_001"}, None),
             (
                 {"gate": "decision_approval", "target_id": "node_decision_001"},
-                dict(bound(state, "node_decision_001"), session_revision=1),
+                confirmed(state, "node_decision_001", session_revision=1),
             ),
         ]
         for transition, approval in cases:
@@ -184,7 +235,10 @@ class CommittedEventTests(unittest.TestCase):
         state = session(phase)
         actor = {"id": "user_lead_eng", "kind": "human", "role": role}
         transition = {"gate": gate, "target_id": target_id, "to_phase": to_phase}
-        result = transitions.attempt(state, transition, bound(state, target_id, actor))
+        approval = confirmed(state, target_id, actor)
+        # The helper's request uses decision_approval; the trusted object carries
+        # only canonical approval data, so the transition still owns gate policy.
+        result = transitions.attempt(state, transition, approval)
         self.assertEqual(result["outcome"], "accepted", result["detail"])
         return state, result
 
@@ -202,7 +256,7 @@ class CommittedEventTests(unittest.TestCase):
         result = transitions.attempt(
             state,
             {"gate": "decision_approval", "target_id": "node_decision_001", "to_phase": "monitoring"},
-            bound(state, "node_decision_001"),
+            confirmed(state, "node_decision_001"),
         )
         self.assertEqual(result["outcome"], "refused")
         self.assertEqual(result["events"], [])
@@ -236,7 +290,7 @@ class CommittedEventTests(unittest.TestCase):
                     "target_id": "node_decision_001",
                     "to_phase": gate.to_phase,
                 }
-                result = transitions.attempt(state, transition, bound(state, "node_decision_001", actor))
+                result = transitions.attempt(state, transition, confirmed(state, "node_decision_001", actor))
                 self.assertEqual(result["outcome"], "accepted", result["detail"])
                 for body in result["events"]:
                     folded = copy.deepcopy(state)

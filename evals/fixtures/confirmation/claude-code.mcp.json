@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "frameshift-confirmation": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "frameshift.mcp.confirmation_server",
+        "--session",
+        "evals/fixtures/approval/gates.session.json",
+        "--transition",
+        "evals/fixtures/confirmation/frame-transition.json",
+        "--profile",
+        "evals/fixtures/confirmation/claude-code-profile.json",
+        "--attestation",
+        "evals/fixtures/confirmation/operator-attestation.json",
+        "--request-id",
+        "confirm_actual_client_001"
+      ]
+    }
+  }
+}

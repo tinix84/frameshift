@@ -102,7 +102,7 @@ def binding_refusal(session: dict, transition: dict, approval: dict | None) -> R
     return None
 
 
-def attempt(session: dict, transition: dict, approval: dict | None) -> dict:
+def attempt(session: dict, transition: dict, approval) -> dict:
     """Attempt one guarded transition. Returns the outcome; raises nothing."""
     gate = transition["gate"]
     if gate not in GATE_AUTHORITY:
@@ -115,7 +115,16 @@ def attempt(session: dict, transition: dict, approval: dict | None) -> dict:
     if find_target(session, transition["target_id"]) is None:
         return _refused(session, Refused(INVARIANT_VIOLATION, f"no such target {transition['target_id']}"))
 
-    unbound = binding_refusal(session, transition, approval)
+    from frameshift.broker.confirmation import TrustedConfirmation
+
+    if not isinstance(approval, TrustedConfirmation):
+        return _refused(
+            session,
+            Refused(APPROVAL_REQUIRED, "gate requires a trusted confirmation from the native client"),
+        )
+    canonical_approval = approval.approval
+
+    unbound = binding_refusal(session, transition, canonical_approval)
     if unbound is not None:
         return _refused(session, unbound)
 
@@ -124,7 +133,7 @@ def attempt(session: dict, transition: dict, approval: dict | None) -> dict:
         "code": None,
         "detail": "",
         "phase": transition.get("to_phase", session.get("phase")),
-        "events": committed_events(session, transition, approval),
+        "events": committed_events(session, transition, canonical_approval),
     }
 
 

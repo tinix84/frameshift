@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frameshift.dev/schemas/approval.schema.json",
+  "title": "FrameShift approval",
+  "$ref": "session.v2.schema.json#/$defs/approval"
+}

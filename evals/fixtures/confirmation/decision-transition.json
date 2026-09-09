@@ -1,0 +1,5 @@
+{
+  "gate": "decision_approval",
+  "target_id": "node_decision_001",
+  "to_phase": "monitoring"
+}

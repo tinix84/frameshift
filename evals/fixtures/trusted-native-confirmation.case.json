@@ -1,0 +1,32 @@
+{
+  "id": "trusted-native-confirmation",
+  "check": "trusted_confirmation",
+  "session": "approval/gates.session.json",
+  "from_phase": "decision",
+  "transition": {
+    "gate": "decision_approval",
+    "target_id": "node_decision_001",
+    "to_phase": "monitoring"
+  },
+  "profile": {
+    "schema_version": "1.0.0",
+    "id": "approval-profile-claude-code-2.1.265",
+    "client_id": "claude-code",
+    "client_version": "2.1.265",
+    "config_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "validated": true
+  },
+  "attestation": {
+    "schema_version": "1.0.0",
+    "profile_id": "approval-profile-claude-code-2.1.265",
+    "client_id": "claude-code",
+    "client_version": "2.1.265",
+    "config_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "operator": {
+      "id": "user_lead_eng",
+      "kind": "human",
+      "role": "decision_owner"
+    },
+    "attested_at": "2026-09-09T10:00:00Z"
+  }
+}

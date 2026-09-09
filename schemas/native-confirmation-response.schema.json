@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frameshift.dev/schemas/native-confirmation-response.schema.json",
+  "title": "Native client confirmation response",
+  "type": "object",
+  "required": ["request_id", "request_digest", "action", "content"],
+  "properties": {
+    "request_id": {"$ref": "common.schema.json#/$defs/id"},
+    "request_digest": {"$ref": "common.schema.json#/$defs/digest"},
+    "action": {"type": "string", "enum": ["accept", "decline", "cancel"]},
+    "content": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["disposition"],
+          "properties": {
+            "disposition": {"type": "string", "enum": ["approved", "edited", "rejected", "deferred", "evidence_requested"]},
+            "edited_proposal": {"type": "string", "minLength": 2, "maxLength": 20000}
+          },
+          "additionalProperties": false
+        },
+        {"type": "null"}
+      ]
+    }
+  },
+  "additionalProperties": false
+}

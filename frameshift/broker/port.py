@@ -104,7 +104,13 @@ def prompt_change_refusals(
     return refusals
 
 
-def authorize(request: dict, manifest: dict, approval: dict | None = None) -> list[str]:
+def _trusted_approval(value) -> dict | None:
+    from .confirmation import TrustedConfirmation
+
+    return value.approval if isinstance(value, TrustedConfirmation) else None
+
+
+def authorize(request: dict, manifest: dict, approval=None) -> list[str]:
     """Refusals for one tool request. An empty list means it may be executed."""
     invalid = validate_against(request, REQUEST_SCHEMA)
     if invalid:
@@ -152,18 +158,33 @@ def authorize(request: dict, manifest: dict, approval: dict | None = None) -> li
         )
 
     if needs_approval(request):
-        if approval is None:
-            refusals.append(f"{APPROVAL_REQUIRED}: {request['capability_id']} requires approval per call")
-        elif approval.get("disposition") != "approved":
-            refusals.append(f"{APPROVAL_REQUIRED}: disposition is {approval.get('disposition')!r}")
-        elif approval.get("actor", {}).get("kind") != "human":
+        canonical_approval = _trusted_approval(approval)
+        if canonical_approval is None:
             refusals.append(
-                f"{APPROVAL_REQUIRED}: actor kind {approval.get('actor', {}).get('kind')!r} cannot approve"
+                f"{APPROVAL_REQUIRED}: {request['capability_id']} requires a trusted confirmation per call"
             )
-        elif approval.get("target_digest") != request_digest(request):
+        elif canonical_approval.get("disposition") != "approved":
+            refusals.append(
+                f"{APPROVAL_REQUIRED}: disposition is {canonical_approval.get('disposition')!r}"
+            )
+        elif canonical_approval.get("actor", {}).get("kind") != "human":
+            refusals.append(
+                f"{APPROVAL_REQUIRED}: actor kind {canonical_approval.get('actor', {}).get('kind')!r} cannot approve"
+            )
+        elif canonical_approval.get("target_id") != request["request_id"]:
+            refusals.append(
+                f"{APPROVAL_STALE}: approval targets {canonical_approval.get('target_id')!r}, "
+                f"not {request['request_id']!r}"
+            )
+        elif canonical_approval.get("session_revision") != request["session_revision"]:
+            refusals.append(
+                f"{APPROVAL_STALE}: approval revision {canonical_approval.get('session_revision')!r} "
+                f"does not match request revision {request['session_revision']}"
+            )
+        elif canonical_approval.get("target_digest") != request_digest(request):
             # The whole point of step 4: a signature spent on a different call.
             refusals.append(
-                f"{APPROVAL_STALE}: approval is bound to {approval.get('target_digest')!r}, "
+                f"{APPROVAL_STALE}: approval is bound to {canonical_approval.get('target_digest')!r}, "
                 f"and this request digests to {request_digest(request)}"
             )
     return refusals
@@ -173,10 +194,10 @@ def execute(
     request: dict,
     manifest: dict,
     executor,
-    approval: dict | None = None,
+    approval=None,
     *,
     prior_requests: dict[str, str] | None = None,
-    retry_approval: dict | None = None,
+    retry_approval=None,
     recorded_at: str,
 ) -> dict:
     """Authorize a request, then invoke the injected executor exactly once.
@@ -201,11 +222,14 @@ def execute(
         }
     key = request.get("idempotency_key")
     previous = prior_requests.get(key)
+    canonical_retry_approval = _trusted_approval(retry_approval)
     retry_confirmed = (
-        retry_approval is not None
-        and retry_approval.get("disposition") == "approved"
-        and retry_approval.get("actor", {}).get("kind") == "human"
-        and retry_approval.get("target_digest") == request_digest(request)
+        canonical_retry_approval is not None
+        and canonical_retry_approval.get("disposition") == "approved"
+        and canonical_retry_approval.get("actor", {}).get("kind") == "human"
+        and canonical_retry_approval.get("target_id") == request["request_id"]
+        and canonical_retry_approval.get("session_revision") == request["session_revision"]
+        and canonical_retry_approval.get("target_digest") == request_digest(request)
     )
     if not refusals and previous is not None and not capability.get("idempotent", False) and not retry_confirmed:
         refusals = [f"{RETRY_CONFIRMATION_REQUIRED}: capability does not declare idempotency support"]
@@ -215,7 +239,10 @@ def execute(
             "denied_reason": refusals[0],
             "audit": record(request, refusals, recorded_at),
         }
-    execution_approval = approval or (retry_approval if previous is not None and retry_confirmed else None)
+    canonical_approval = _trusted_approval(approval)
+    execution_approval = canonical_approval or (
+        canonical_retry_approval if previous is not None and retry_confirmed else None
+    )
 
     def failed(reason: str) -> dict:
         entry = record(request, [], recorded_at, approval=execution_approval)
