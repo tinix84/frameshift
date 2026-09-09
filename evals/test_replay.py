@@ -61,19 +61,14 @@ class FoldTests(unittest.TestCase):
         with self.assertRaisesRegex(replay.UnknownEvent, "revision"):
             replay.fold(log)
 
+    def test_an_event_cannot_repeat_the_previous_committed_revision(self) -> None:
+        log = events()
+        log[3]["revision"] = 1
+        with self.assertRaisesRegex(replay.UnknownEvent, "revision"):
+            replay.fold(log)
+
     def test_snapshot_and_suffix_reproduce_the_reference_without_changing_the_snapshot(self) -> None:
-        snapshot = {
-            "event_cursor": 1,
-            "state": {
-                "id": "sess_reference_001", "workspace_id": "ws_reference",
-                "schema_version": "1.0.0", "revision": 0, "phase": "intake",
-                "status": "active", "title": "Pack cost per kWh at the 2027 volume step",
-                "statements": [], "frames": [], "options": [], "criteria": [],
-                "approvals": [],
-                "graph": {"schema_version": "1.0.0", "nodes": [], "edges": []},
-            },
-        }
-        snapshot["state_digest"] = canonical.digest(snapshot["state"])
+        snapshot = run.load("evals/fixtures/replay-start.snapshot.json")
         original = copy.deepcopy(snapshot)
         for _ in range(2):
             restored = replay.resume(snapshot, events()[1:])
@@ -175,6 +170,7 @@ class CaseWiringTests(unittest.TestCase):
             "replay-from-snapshot",
             "replay-from-snapshot-gap",
             "replay-missing-prior-revision",
+            "replay-repeated-revision",
         ):
             with self.subTest(case=name):
                 self.assertEqual(run.evaluate(run.load(f"evals/fixtures/{name}.case.json")), [])

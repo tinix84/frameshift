@@ -28,7 +28,7 @@ REPLAY_VIOLATION = errors.INVARIANT_VIOLATION
 
 
 class UnknownEvent(ValueError):
-    """The log carries an event type the reducer does not implement."""
+    """Replay cannot interpret or trust an event or its starting snapshot."""
 
 
 def read_log(relative: str) -> list[dict]:
@@ -55,7 +55,8 @@ def _apply(state: dict, event: dict) -> dict:
     if "revision" in event:
         revision = event["revision"]
         current = state.get("revision", 0)
-        if type(revision) is not int or revision not in (current, current + 1):
+        expected = current + 1 if state else 0
+        if type(revision) is not int or revision != expected:
             raise UnknownEvent(f"event revision {revision!r} has no current prior revision {current}")
 
     if kind == "session.created":
