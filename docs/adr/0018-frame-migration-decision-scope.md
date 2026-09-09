@@ -1,6 +1,6 @@
 # ADR-0018: Correct the recorded scope of the frame migration decision
 
-- Status: accepted
+- Status: accepted; partially superseded by ADR-0019 (migration-history choice only)
 - Date: 2026-09-09
 - Deciders: repository approval invariant; correction of agent attribution
 - Supersedes: ADR-0016 in part, its attribution of a specific migration disposition as accepted

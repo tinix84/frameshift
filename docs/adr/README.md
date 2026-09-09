@@ -18,3 +18,4 @@ ADRs capture durable, cross-cutting decisions. Status values are `proposed`, `ac
 - [ADR-0016: Separate frame abstraction from system boundary](0016-independent-frame-axes.md)
 - [ADR-0017: Validate prompts against published identities](0017-published-prompt-identities.md)
 - [ADR-0018: Correct the recorded scope of the frame migration decision](0018-frame-migration-decision-scope.md)
+- [ADR-0019: Migrate frame axes into a linked session](0019-linked-session-frame-migration.md)
