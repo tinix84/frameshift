@@ -215,6 +215,61 @@ class TrustedConfirmationTests(unittest.TestCase):
         self.assertEqual(json.loads(result["confirmation_request"]["proposal"])["status"], "proposed")
         self.assertEqual(result["events"], [])
 
+    def test_confirmed_edit_preserves_the_candidate_for_an_atomic_commit(self) -> None:
+        workflow = self.workflow()
+        request = workflow.prepare(transition(), attestation(), request_id="confirm_candidate_001")
+        edited = json.loads(request["proposal"])
+        edited["label"] = "Decision revised by the owner."
+        revised = workflow.complete(
+            request["id"],
+            response(
+                request,
+                disposition="edited",
+                edited_proposal=json.dumps(edited, sort_keys=True, separators=(",", ":")),
+            ),
+            attestation(),
+            confirmed_at="2026-09-09T10:01:00Z",
+        )
+        fresh = revised["confirmation_request"]
+
+        confirmed = workflow.complete(
+            fresh["id"], response(fresh), attestation(), confirmed_at="2026-09-09T10:02:00Z"
+        )
+
+        self.assertEqual(confirmed["candidate"]["label"], "Decision revised by the owner.")
+        self.assertEqual(workflow.confirmed_candidate(fresh["id"]), confirmed["candidate"])
+        updated = session()
+        for index, item in enumerate(updated["graph"]["nodes"]):
+            if item["id"] == transition()["target_id"]:
+                updated["graph"]["nodes"][index] = confirmed["candidate"]
+                break
+        attempted = transitions.attempt(
+            updated,
+            transition(),
+            workflow.confirmation(fresh["id"]),
+        )
+        self.assertEqual(attempted["outcome"], "accepted", attempted)
+
+    def test_non_approval_dispositions_are_preserved_as_trusted_confirmations(self) -> None:
+        for disposition in ("rejected", "deferred", "evidence_requested"):
+            with self.subTest(disposition=disposition):
+                workflow = self.workflow()
+                request = workflow.prepare(
+                    transition(), attestation(), request_id=f"confirm_{disposition}_001"
+                )
+                result = workflow.complete(
+                    request["id"],
+                    response(request, disposition=disposition),
+                    attestation(),
+                    confirmed_at="2026-09-09T10:01:00Z",
+                )
+
+                self.assertEqual(result["outcome"], "confirmed", result)
+                self.assertEqual(result["approval"]["disposition"], disposition)
+                self.assertEqual(
+                    workflow.confirmation(request["id"]).approval["disposition"], disposition
+                )
+
     def test_decline_and_cancel_leave_the_proposal_pending(self) -> None:
         for action in ("decline", "cancel"):
             with self.subTest(action=action):

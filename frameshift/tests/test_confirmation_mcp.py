@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import io
 import json
 import sys
 import unittest
@@ -11,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from frameshift.mcp.confirmation_server import ConfirmationMcpServer  # noqa: E402
+from frameshift.mcp.confirmation_server import ConfirmationMcpServer, run_stdio  # noqa: E402
 from frameshift.orchestration.api import ConfirmationWorkflow  # noqa: E402
 from frameshift.bootstrap import approval_configuration_refusal  # noqa: E402
 
@@ -159,6 +160,43 @@ class ConfirmationMcpTests(unittest.TestCase):
             ROOT,
         )
         self.assertIn("outside", refusal)
+
+    def test_stdio_reports_a_confirmed_disposition_as_tool_success(self) -> None:
+        server, request = self.server()
+        messages = [
+            {
+                "jsonrpc": "2.0",
+                "id": 10,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-11-25",
+                    "capabilities": {"elicitation": {"form": {}}},
+                    "clientInfo": {"name": "claude-code", "version": "2.1.265"},
+                },
+            },
+            {
+                "jsonrpc": "2.0",
+                "id": 11,
+                "method": "tools/call",
+                "params": {
+                    "name": "frameshift_confirm",
+                    "arguments": {"request_id": request["id"]},
+                },
+            },
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "result": {"action": "accept", "content": {"disposition": "approved"}},
+            },
+        ]
+        input_stream = io.StringIO("".join(json.dumps(message) + "\n" for message in messages))
+        output_stream = io.StringIO()
+
+        run_stdio(server, input_stream, output_stream)
+
+        output = [json.loads(line) for line in output_stream.getvalue().splitlines()]
+        tool_response = next(message for message in output if message.get("id") == 11)
+        self.assertFalse(tool_response["result"]["isError"])
 
 
 if __name__ == "__main__":

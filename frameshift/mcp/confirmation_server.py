@@ -203,7 +203,7 @@ def run_stdio(server: ConfirmationMcpServer, input_stream: TextIO, output_stream
             outcome = server.call_tool(params.get("name"), params.get("arguments", {}), elicit)
             result = {
                 "content": [{"type": "text", "text": json.dumps(outcome, sort_keys=True)}],
-                "isError": outcome.get("outcome") not in {"accepted", "revised"},
+                "isError": outcome.get("outcome") not in {"accepted", "confirmed", "revised"},
             }
         elif rpc_id is None:
             continue

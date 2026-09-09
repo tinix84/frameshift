@@ -19,6 +19,7 @@ class ConfirmationWorkflow:
         self._profile = copy.deepcopy(approval_profile)
         self._pending: dict[str, tuple[dict, dict, dict | None]] = {}
         self._confirmed = {}
+        self._confirmed_candidates: dict[str, dict] = {}
 
     def replace_session(self, session: dict) -> None:
         """Supply current state as persistence will do when #172 connects this API."""
@@ -98,20 +99,34 @@ class ConfirmationWorkflow:
                 "phase": self._session.get("phase"),
                 "events": [],
             }
-        if candidate is None:
-            refusal = transitions.binding_refusal(self._session, transition, approval)
-            if refusal is not None:
-                return _refused(self._session, refusal)
-        elif request["session_revision"] != self._session.get("revision"):
+        if request["session_revision"] != self._session.get("revision"):
             return {
                 "outcome": "refused",
                 "code": "approval_stale",
-                "detail": "edited proposal was confirmed against an older session revision",
+                "detail": "confirmation was bound to an older session revision",
                 "phase": self._session.get("phase"),
                 "events": [],
             }
 
+        current_target = transitions.find_target(self._session, transition["target_id"])
+        confirmed_candidate = candidate if candidate is not None else current_target
+        if request["target_digest"] != transitions.content_digest(confirmed_candidate):
+            return {
+                "outcome": "refused",
+                "code": "approval_stale",
+                "detail": "confirmed proposal does not match the displayed target digest",
+                "phase": self._session.get("phase"),
+                "events": [],
+            }
+
+        if candidate is None and approval["disposition"] == "approved":
+            refusal = transitions.binding_refusal(self._session, transition, approval)
+            if refusal is not None:
+                return _refused(self._session, refusal)
+
         self._confirmed[request_id] = bound["confirmation"]
+        if candidate is not None:
+            self._confirmed_candidates[request_id] = copy.deepcopy(candidate)
         self._pending.pop(request_id, None)
         return {
             "outcome": "confirmed",
@@ -119,12 +134,18 @@ class ConfirmationWorkflow:
             "detail": "",
             "phase": self._session.get("phase"),
             "approval": approval,
+            "candidate": copy.deepcopy(candidate),
             "events": [],
         }
 
     def confirmation(self, request_id: str):
         """Return in-process authority to orchestration, never to an MCP argument."""
         return self._confirmed.get(request_id)
+
+    def confirmed_candidate(self, request_id: str) -> dict | None:
+        """Return the confirmed edit for persistence to install with its disposition."""
+        candidate = self._confirmed_candidates.get(request_id)
+        return copy.deepcopy(candidate) if candidate is not None else None
 
     def _revise(self, request: dict, transition: dict, edited_proposal: str, attestation: dict) -> dict:
         try:

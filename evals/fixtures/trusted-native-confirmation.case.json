@@ -8,6 +8,8 @@
     "target_id": "node_decision_001",
     "to_phase": "monitoring"
   },
+  "edited_label": "Decision revised by the owner.",
+  "non_approval_disposition": "evidence_requested",
   "profile": {
     "schema_version": "1.0.0",
     "id": "approval-profile-claude-code-2.1.265",
