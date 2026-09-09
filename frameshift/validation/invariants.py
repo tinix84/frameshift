@@ -139,5 +139,5 @@ def session_violations(session: dict) -> list[str]:
     """Schema violations and invariant violations, in that order."""
     from .schema import validate_against
 
-    name = "session.v1.schema.json" if session.get("schema_version") == "1.0.0" else "session.schema.json"
+    name = "session.v1.schema.json" if session.get("schema_version") == "1.0.0" else "session.v2.schema.json"
     return validate_against(session, name) + reference_violations(session)

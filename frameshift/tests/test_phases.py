@@ -35,7 +35,7 @@ def fixture_pairs() -> set[tuple[str, str]]:
 
 class MirrorTests(unittest.TestCase):
     def test_phases_mirror_the_session_schema(self) -> None:
-        schema = json.loads((ROOT / "schemas" / "session.schema.json").read_text(encoding="utf-8"))
+        schema = json.loads((ROOT / "schemas" / "session.v2.schema.json").read_text(encoding="utf-8"))
         self.assertEqual(list(phases.PHASES), schema["properties"]["phase"]["enum"])
 
     def test_every_gate_target_matches_the_approval_corpus(self) -> None:

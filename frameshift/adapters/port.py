@@ -2,8 +2,8 @@
 
 An adapter turns a canonical execution request into whatever its runtime speaks,
 and turns the answer back into an `EngineResult` plus an execution envelope. #19
-lists nine responsibilities for one; this port enforces the three that can be
-enforced from outside, without knowing anything about the runtime:
+lists nine responsibilities for one; this port enforces the parts observable
+at the release boundary without knowing anything about the runtime:
 
 - the request it is handed is valid, so an adapter never has to guess what a
   malformed one meant;
@@ -13,9 +13,10 @@ enforced from outside, without knowing anything about the runtime:
 - the execution it answers is the execution it was asked about, and it adds no
   domain facts of its own.
 
-The rest — capability discovery, delimiting untrusted content, one repair
-attempt, never committing a proposal — are properties of the adapter's own
-behavior, measured by the conformance corpus rather than by this wrapper.
+Prompt identity and bounded input are enforced before release. The wrapper
+constructs the eight-part reasoning context and passes it separately from the
+canonical request. Capability discovery, repair behavior, and never committing
+a proposal remain conformance properties of the client.
 
 `EchoAdapter` is the stub #26 said was acceptable for the first slice: the
 assertion is about the comparison, not about model output, so an adapter that
@@ -28,10 +29,20 @@ from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
 from frameshift.validation import validate_against
+from frameshift.validation.prompts import (
+    MalformedFrontMatter,
+    body_digest,
+    execution_identity_violations,
+    input_violations,
+    parse_front_matter,
+    request_invariant_violations,
+    task_frame_sections,
+)
 
 REQUEST_SCHEMA = "execution-request.schema.json"
 ENVELOPE_SCHEMA = "execution-envelope.schema.json"
 RESULT_SCHEMA = "engine-result.schema.json"
+REASONING_CONTEXT_SCHEMA = "reasoning-context.schema.json"
 
 CAPABILITY_UNAVAILABLE = "capability_unavailable"
 RUNTIME_OUTPUT_INVALID = "runtime_output_invalid"
@@ -52,6 +63,16 @@ class ExecutionOutcome:
         return not self.violations
 
 
+@dataclass(frozen=True)
+class ExecutionInputs:
+    """Trusted prompt resources and resolved untrusted artifacts for one run."""
+
+    prompt_text: str
+    published_prompts: list[dict]
+    resolved_inputs: dict[str, bytes]
+    input_policy: dict[str, int] | None = None
+
+
 @runtime_checkable
 class Adapter(Protocol):
     """What a runtime adapter must provide. Nothing here mentions a provider."""
@@ -62,7 +83,7 @@ class Adapter(Protocol):
     def capabilities(self) -> dict:
         """The capability manifest this adapter offers, as `capability-manifest.schema.json`."""
 
-    def execute(self, request: dict) -> ExecutionOutcome:
+    def execute(self, request: dict, reasoning_context: dict) -> ExecutionOutcome:
         """Run one engine step and return a normalized outcome."""
 
 
@@ -84,8 +105,8 @@ def unsupported(requested: list[str], manifest: dict) -> list[str]:
     )
 
 
-def run(adapter: Adapter, request: dict) -> ExecutionOutcome:
-    """Validate in, execute, validate out. Returns the outcome; raises nothing."""
+def run(adapter: Adapter, request: dict, inputs: ExecutionInputs) -> ExecutionOutcome:
+    """Validate and bound inputs, execute once, then validate the completed record."""
     invalid_request = validate_against(request, REQUEST_SCHEMA)
     if invalid_request:
         return ExecutionOutcome(
@@ -94,13 +115,102 @@ def run(adapter: Adapter, request: dict) -> ExecutionOutcome:
             violations=[f"{SCHEMA_INVALID}: request {item}" for item in invalid_request],
         )
 
-    outcome = adapter.execute(request)
+    try:
+        prompt_manifest = parse_front_matter(inputs.prompt_text)
+    except MalformedFrontMatter as exc:
+        return ExecutionOutcome(
+            result={},
+            envelope={},
+            violations=[f"{INVARIANT_VIOLATION}: prompt manifest is malformed: {exc}"],
+        )
+    prompt_violations = execution_identity_violations(
+        request,
+        prompt_manifest,
+        body_digest(inputs.prompt_text),
+        inputs.published_prompts,
+    )
+    prompt_engine = prompt_manifest.get("engine")
+    if prompt_engine not in (request["engine"], "shared"):
+        prompt_violations.append("prompt engine does not match the requested engine")
+    declared_output = prompt_manifest.get("output_schema")
+    if declared_output is not None and declared_output != request["output_schema"]:
+        prompt_violations.append("output_schema does not match the prompt contract")
+    prompt_violations.extend(
+        request_invariant_violations(
+            request,
+            {prompt_manifest.get("id"): prompt_manifest},
+        )
+    )
+    if prompt_violations:
+        return ExecutionOutcome(
+            result={},
+            envelope={},
+            violations=[f"{INVARIANT_VIOLATION}: {item}" for item in prompt_violations],
+        )
+    boundary_violations = input_violations(
+        request.get("context", []),
+        inputs.resolved_inputs,
+        prompt_manifest,
+        inputs.input_policy,
+    )
+    if boundary_violations:
+        return ExecutionOutcome(
+            result={},
+            envelope={},
+            violations=[f"{INVARIANT_VIOLATION}: {item}" for item in boundary_violations],
+        )
+
+    try:
+        sections = task_frame_sections(inputs.prompt_text)
+    except ValueError as exc:
+        return ExecutionOutcome(
+            result={},
+            envelope={},
+            violations=[f"{INVARIANT_VIOLATION}: prompt task frame is invalid: {exc}"],
+        )
+    reasoning_context = {
+        "role": sections["role"],
+        "trusted_instructions": sections["trusted_instructions"],
+        "untrusted_data": {
+            "instructions": sections["untrusted_data"],
+            "sources": [
+                {**reference, "content": inputs.resolved_inputs[reference["id"]].decode("utf-8")}
+                for reference in request.get("context", [])
+            ],
+        },
+        "approved_state": {
+            "session_revision": request["session_revision"],
+            "state_digest": request["input_state_digest"],
+            "instructions": sections["approved_state"],
+        },
+        "task": sections["task"],
+        "output": {"instructions": sections["output"], "schema": request["output_schema"]},
+        "invariants": {"instructions": sections["invariants"], "rules": request.get("invariants", [])},
+        "failure_behavior": sections["failure_behavior"],
+    }
+    invalid_context = validate_against(reasoning_context, REASONING_CONTEXT_SCHEMA)
+    if invalid_context:
+        return ExecutionOutcome(
+            result={},
+            envelope={},
+            violations=[f"{SCHEMA_INVALID}: reasoning context {item}" for item in invalid_context],
+        )
+    outcome = adapter.execute(request, reasoning_context)
     violations = list(outcome.violations)
 
     violations.extend(
         f"{SCHEMA_INVALID}: envelope {item}"
         for item in validate_against(outcome.envelope, ENVELOPE_SCHEMA)
     )
+    expected_prompt = {
+        "id": request["prompt_contract_id"],
+        "version": request["prompt_contract_version"],
+        "digest": request["prompt_contract_digest"],
+    }
+    if outcome.envelope.get("prompt_contract") != expected_prompt:
+        violations.append(
+            f"{INVARIANT_VIOLATION}: completed record does not preserve the request's prompt identity"
+        )
     invalid_result = validate_against(outcome.result, RESULT_SCHEMA)
     violations.extend(f"{RUNTIME_OUTPUT_INVALID}: {item}" for item in invalid_result)
 
@@ -171,14 +281,19 @@ class EchoAdapter:
     def capabilities(self) -> dict:
         return self._manifest
 
-    def execute(self, request: dict) -> ExecutionOutcome:
+    def execute(self, request: dict, reasoning_context: dict) -> ExecutionOutcome:
         result = dict(self._result)
         result["execution_id"] = request["execution_id"]
         result["engine"] = request["engine"]
         result["input_revision"] = request["session_revision"]
         envelope = {
-            "schema_version": "1.0.0",
+            "schema_version": "2.0.0",
             "execution_id": request["execution_id"],
+            "prompt_contract": {
+                "id": request["prompt_contract_id"],
+                "version": request["prompt_contract_version"],
+                "digest": request["prompt_contract_digest"],
+            },
             "adapter": {"id": self.id, "version": self.version},
             "runtime": {"id": "echo.static", "version": "1"},
             "stop_reason": "complete",

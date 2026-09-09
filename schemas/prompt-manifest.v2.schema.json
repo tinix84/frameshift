@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frameshift.dev/schemas/prompt-manifest.v2.schema.json",
+  "title": "FrameShift prompt manifest",
+  "description": "The version-2 prompt manifest. Prompt identity, portable ownership, accepted artifact types, and aggregate input limits are declared and checkable.",
+  "type": "object",
+  "required": [
+    "manifest_schema_version",
+    "id",
+    "version",
+    "engine",
+    "description",
+    "maintainer_id",
+    "accepted_input_types",
+    "max_input_bytes",
+    "max_json_depth",
+    "body_digest"
+  ],
+  "properties": {
+    "manifest_schema_version": {
+      "const": "2.0.0"
+    },
+    "id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+[.][0-9]+[.][0-9]+$"
+    },
+    "engine": {
+      "type": "string",
+      "description": "`shared` is a prompt no single engine owns, such as repair.",
+      "enum": [
+        "problem_framing",
+        "causal_reasoning",
+        "solution_generation",
+        "decision_validation",
+        "shared"
+      ]
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "maintainer_id": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "host_contact": {
+      "type": "string",
+      "minLength": 1
+    },
+    "accepted_input_types": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "max_input_bytes": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "max_json_depth": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "output_schema": {
+      "description": "A path under schemas/. Checked to exist.",
+      "type": "string",
+      "minLength": 1
+    },
+    "fixtures": {
+      "description": "Evaluation cases that exercise this prompt. Each is checked to exist.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "repair_prompt": {
+      "$ref": "common.schema.json#/$defs/id"
+    },
+    "invariants": {
+      "description": "#20's required invariants and forbidden behaviors, stated as the prompt itself states them. An execution request pinning this prompt carries exactly this list, so an engine is told what the prompt promised and a request cannot quietly drop one.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 300
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "body_digest": {
+      "description": "Digest of the prompt text below the front matter, with line endings normalized. It is what makes the version mean something: change the body without changing the version and this stops matching. The manifest does not digest itself, the same way a checkpoint does not carry its own digest.",
+      "$ref": "common.schema.json#/$defs/digest"
+    }
+  },
+  "additionalProperties": false
+}

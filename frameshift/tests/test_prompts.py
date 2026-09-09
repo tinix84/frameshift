@@ -88,6 +88,17 @@ class ParserTests(unittest.TestCase):
 
 
 class ManifestTests(unittest.TestCase):
+    def test_current_prompts_declare_portable_ownership_and_bounded_inputs(self) -> None:
+        for name in ("problem-framing.v2.md", "repair-structured-output.v2.md"):
+            with self.subTest(prompt=name):
+                text = (prompts.PROMPTS / name).read_text(encoding="utf-8")
+                manifest = prompts.parse_front_matter(text)
+                self.assertEqual(manifest["maintainer_id"], "frameshift.core")
+                self.assertTrue(manifest["accepted_input_types"])
+                self.assertEqual(manifest["max_input_bytes"], 1_048_576)
+                self.assertEqual(manifest["max_json_depth"], 64)
+                self.assertEqual(set(prompts.task_frame_sections(text)), set(prompts.TASK_FRAME_HEADINGS.values()))
+
     def test_input_depth_and_malformed_json_are_refused_before_release(self) -> None:
         manifest = {"accepted_input_types": ["application/json"], "max_input_bytes": 1024, "max_json_depth": 2}
         for payload, valid in ((b'[[0]]', True), (b'[[[0]]]', False), (b'{broken', False), (b'[NaN]', False)):
@@ -145,6 +156,14 @@ class ManifestTests(unittest.TestCase):
         with PlantedPrompt("_probe.md", text):
             violations = prompts.prompt_manifest_violations(published_identities(prompts.PROMPTS / "releases"))
         self.assertTrue(violations)
+
+    def test_a_version_two_prompt_cannot_fall_back_to_the_legacy_manifest(self) -> None:
+        text = VALID.replace("version: 1.0.0", "version: 2.0.0")
+        with PlantedPrompt("_probe.md", text):
+            violations = prompts.prompt_manifest_violations(
+                published_identities(prompts.PROMPTS / "releases")
+            )
+        self.assertTrue(any("manifest_schema_version" in item for item in violations), violations)
 
     def test_an_output_schema_that_does_not_exist_fails(self) -> None:
         text = VALID.replace("engine: shared", "engine: shared\noutput_schema: schemas/nope.json")

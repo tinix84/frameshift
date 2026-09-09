@@ -1,0 +1,11 @@
+{
+  "id": "reasoning-context-bounded",
+  "check": "reasoning_context",
+  "request": "reference.execution-request.v2.json",
+  "result": "framing-solution-disguised.result.json",
+  "prompt": {"path": "prompts/problem-framing.v2.md", "id": "frameshift.problem-framing.v2", "version": "2.0.0"},
+  "resolved_inputs": [
+    {"id": "art_evidence_001", "uri": "evals/fixtures/reference-evidence.txt"}
+  ],
+  "expect": {"outcome": "accepted"}
+}

@@ -21,10 +21,15 @@ sys.path.insert(0, str(ROOT))
 from frameshift.persistence import compatibility, restore  # noqa: E402
 
 REFERENCE = ROOT / "evals" / "fixtures" / "reference.checkpoint.json"
+PROMPT_IDENTITY = ROOT / "evals" / "fixtures" / "prompt-identity.checkpoint.v2.json"
 
 
 def checkpoint() -> dict:
     return json.loads(REFERENCE.read_text(encoding="utf-8"))
+
+
+def prompt_identity_checkpoint() -> dict:
+    return json.loads(PROMPT_IDENTITY.read_text(encoding="utf-8"))
 
 
 def artifacts(cp: dict) -> dict[str, bytes]:
@@ -35,11 +40,16 @@ def artifacts(cp: dict) -> dict[str, bytes]:
 
 
 class InstalledPromptTests(unittest.TestCase):
-    def test_both_committed_prompts_are_found(self) -> None:
+    def test_all_committed_prompt_versions_are_found(self) -> None:
         installed = compatibility.installed_prompts()
         self.assertEqual(
             set(installed),
-            {"frameshift.problem-framing.v1", "frameshift.repair-structured-output.v1"},
+            {
+                "frameshift.problem-framing.v1",
+                "frameshift.problem-framing.v2",
+                "frameshift.repair-structured-output.v1",
+                "frameshift.repair-structured-output.v2",
+            },
         )
 
     def test_each_carries_its_declared_and_actual_digest(self) -> None:
@@ -49,6 +59,64 @@ class InstalledPromptTests(unittest.TestCase):
 
 
 class CompatibilityTests(unittest.TestCase):
+    def test_an_exact_published_checkpoint_identity_allows_new_reasoning(self) -> None:
+        from frameshift.bootstrap import published_identities
+
+        plan = restore(
+            prompt_identity_checkpoint(),
+            {},
+            installed_prompts=compatibility.installed_prompts(),
+            published_prompts=published_identities(ROOT / "prompts" / "releases"),
+            confirmed_prompt_change_ids={"prompt_change_001"},
+        )
+        self.assertEqual(plan["outcome"], "verified")
+        self.assertTrue(plan["reasoning_allowed"], plan["contract_differences"])
+
+    def test_a_missing_prompt_stays_inspectable_but_blocks_new_reasoning(self) -> None:
+        from frameshift.bootstrap import published_identities
+        from frameshift.persistence import checkpoint as checkpoint_port
+
+        value = prompt_identity_checkpoint()
+        value["contracts"]["prompts"]["problem_framing"]["id"] = "frameshift.missing.v2"
+        value = checkpoint_port.encode(value)
+        plan = restore(
+            value,
+            {},
+            installed_prompts=compatibility.installed_prompts(),
+            published_prompts=published_identities(ROOT / "prompts" / "releases"),
+        )
+        self.assertEqual(plan["outcome"], "verified")
+        self.assertFalse(plan["reasoning_allowed"])
+        self.assertTrue(any("missing" in item for item in plan["contract_differences"]))
+
+    def test_an_unapproved_recorded_version_change_blocks_new_reasoning(self) -> None:
+        from frameshift.bootstrap import published_identities
+        from frameshift.persistence import checkpoint as checkpoint_port
+
+        value = prompt_identity_checkpoint()
+        value["prompt_version_changes"] = []
+        value = checkpoint_port.encode(value)
+        plan = restore(
+            value,
+            {},
+            installed_prompts=compatibility.installed_prompts(),
+            published_prompts=published_identities(ROOT / "prompts" / "releases"),
+        )
+        self.assertFalse(plan["reasoning_allowed"])
+        self.assertTrue(any("version-change approval" in item for item in plan["contract_differences"]))
+
+    def test_a_recorded_human_actor_field_alone_does_not_grant_authority(self) -> None:
+        from frameshift.bootstrap import published_identities
+
+        plan = restore(
+            prompt_identity_checkpoint(),
+            {},
+            installed_prompts=compatibility.installed_prompts(),
+            published_prompts=published_identities(ROOT / "prompts" / "releases"),
+        )
+        self.assertFalse(plan["reasoning_allowed"])
+        self.assertTrue(any("trusted confirmation" in item for item in plan["contract_differences"]))
+
     def test_the_committed_checkpoint_is_compatible(self) -> None:
         self.assertEqual(compatibility.contract_differences(checkpoint()), [])
 
@@ -96,11 +164,26 @@ class CompatibilityTests(unittest.TestCase):
 
 
 class RestorePlanTests(unittest.TestCase):
-    def test_the_plan_carries_contract_differences(self) -> None:
+    def test_the_plan_blocks_reasoning_without_a_published_registry(self) -> None:
         cp = checkpoint()
         plan = restore(cp, artifacts(cp))
         self.assertEqual(plan["outcome"], "verified")
-        self.assertEqual(plan["contract_differences"], [])
+        self.assertFalse(plan["reasoning_allowed"])
+        self.assertTrue(any("registry" in item for item in plan["contract_differences"]))
+
+    def test_a_legacy_prompt_pin_is_inspectable_but_not_rerunnable(self) -> None:
+        from frameshift.bootstrap import published_identities
+
+        cp = checkpoint()
+        plan = restore(
+            cp,
+            artifacts(cp),
+            installed_prompts=compatibility.installed_prompts(),
+            published_prompts=published_identities(ROOT / "prompts" / "releases"),
+        )
+        self.assertEqual(plan["outcome"], "verified")
+        self.assertFalse(plan["reasoning_allowed"])
+        self.assertTrue(any("exact version and digest" in item for item in plan["contract_differences"]))
 
     def test_an_incompatible_checkpoint_still_restores(self) -> None:
         """What is lost is the ability to re-run, not the ability to read."""

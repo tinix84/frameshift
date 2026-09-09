@@ -23,12 +23,14 @@ import re
 # this list still matches `schemas/`.
 SET_LIKE_FIELDS = frozenset(
     {
+        "accepted_input_types",
         "data_classes",
         "fixtures",
         "invariants",
         "operations",
         "requested_capabilities",
         "required_checkpoints",
+        "rules",
         "secondary_roles",
         "source_ids",
         "tool_trace_digests",

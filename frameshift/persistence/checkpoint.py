@@ -104,6 +104,10 @@ def restore(
     checkpoint: dict,
     artifact_bytes: dict[str, bytes],
     journal: RestoreJournal | None = None,
+    *,
+    installed_prompts: dict[str, dict] | None = None,
+    published_prompts: list[dict] | None = None,
+    confirmed_prompt_change_ids: set[str] | frozenset[str] = frozenset(),
 ) -> dict:
     """Verify, then plan. Never execute and never commit.
 
@@ -125,13 +129,24 @@ def restore(
         # this checkpoint pins that this repository cannot honour. Reported, not
         # refused — the state is readable, only re-running is affected.
         "contract_differences": [],
+        "reasoning_allowed": False,
     }
     if violations:
         return plan
 
     from .compatibility import contract_differences
 
-    plan["contract_differences"] = contract_differences(checkpoint)
+    plan["contract_differences"] = contract_differences(
+        checkpoint,
+        installed_prompts,
+        published_prompts,
+        confirmed_prompt_change_ids,
+    )
+    if published_prompts is None:
+        plan["contract_differences"].append(
+            "the published prompt registry was not supplied, so new reasoning is blocked"
+        )
+    plan["reasoning_allowed"] = not plan["contract_differences"]
 
     # Reading a pending proposal is not committing it: the ids are listed so a
     # human can see what awaits a gate, and nothing here advances a phase.

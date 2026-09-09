@@ -15,6 +15,8 @@ def prompt_identity(case: dict, load) -> list[str]:
         request["prompt_contract_digest"] = manifest["body_digest"]
     elif mutation == "missing_prompt":
         manifest = {}
+    elif mutation == "identity_substitution":
+        request["prompt_contract_id"] = "frameshift.repair-structured-output.v2"
     elif mutation is not None:
         return [f"unknown prompt mutation {mutation!r}"]
     violations = prompts.execution_identity_violations(

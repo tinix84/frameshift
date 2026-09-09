@@ -1,0 +1,8 @@
+{
+  "id": "prompt-restore-missing",
+  "check": "prompt_restore",
+  "artifact": "prompt-identity.checkpoint.v2.json",
+  "mutation": "missing_prompt",
+  "confirmed_prompt_change_ids": ["prompt_change_001"],
+  "expect": {"outcome": "verified", "reasoning_allowed": false}
+}

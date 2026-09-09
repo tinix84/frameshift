@@ -53,9 +53,18 @@ entry. The runner does not change.
 | `checkpoint_digest` | A committed reference checkpoint hashes to a recorded `sha256:` value, and the value survives key order, line endings, set-like array order, and execution metadata. |
 | `checkpoint_integrity` | A copy mutated at one of three levels — canonical state, checkpoint envelope, referenced artifact — is refused with `checkpoint_integrity_failed`, and a verified restore commits and executes nothing. |
 | `engine_result_repair` | Repair is attempted once and only for shape: outcome and attempt count are asserted, and the repaired output's identifiers, evidence references, and proposal kinds must be a subset of the invalid output's. |
+| `prompt_identity` | Installed prompt content and all three request pins match one independently published identity. |
+| `reasoning_context` | Resolved inputs stay source-labelled, fit one aggregate bound, and reach the client only inside the eight-part task frame. |
+| `prompt_restore` | An intact checkpoint remains inspectable when prompt identity is unavailable, while new reasoning requires exact published pins and a recorded version change. |
 
 Runtime adapters should capture actual `EngineResult` JSON and feed it to the
 same named checks rather than adding a second entry point.
+
+Version-1 execution and prompt schemas remain available for inspecting earlier
+records. New execution examples use the version-2 request and envelope, whose
+ID, version, and digest pins must agree with each other and the published
+release record. `reference.reasoning-context.json` shows the eight parts handed
+to a client; source content occurs only below `untrusted_data.sources`.
 
 Engine-result expectations are optional. In addition to the positive
 expectations shown above, `expected_ladder_levels` requires at least one

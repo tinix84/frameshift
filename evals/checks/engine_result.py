@@ -12,7 +12,7 @@ LADDER_RANK = {level: rank for rank, level in enumerate(LADDER_ORDER)}
 
 
 def _session_abstraction_levels() -> set[str]:
-    schema = load_schema("session.schema.json")
+    schema = load_schema("session.v2.schema.json")
     return set(schema["$defs"]["frame"]["properties"]["abstraction_level"]["enum"])
 
 
@@ -51,7 +51,7 @@ def engine_result_invariants(case: dict, load) -> list[str]:
     if "frame_contract_version" in expect:
         if expect["frame_contract_version"] != "2.0.0":
             errors.append("unsupported frame contract version")
-        frame_properties = load_schema("session.schema.json")["$defs"]["frame"]["properties"]
+        frame_properties = load_schema("session.v2.schema.json")["$defs"]["frame"]["properties"]
         for index, proposal in enumerate(artifact.get("proposals", [])):
             if proposal.get("kind") == "problem_frame":
                 value = proposal.get("value", {})

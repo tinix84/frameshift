@@ -22,11 +22,23 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 PROMPTS = ROOT / "prompts"
-SCHEMA = "prompt-manifest.schema.json"
+SCHEMA_V1 = "prompt-manifest.v1.schema.json"
+SCHEMA_V2 = "prompt-manifest.v2.schema.json"
 
 FRONT_MATTER = re.compile(r"\A---\r?\n(?P<body>.*?)\r?\n---\r?\n", re.DOTALL)
 FRONT_MATTER_BLOCK = re.compile(r"\A---\r?\n.*?\r?\n---\r?\n", re.DOTALL)
 LINE = re.compile(r"^(?P<key>[a-z_]+):\s*(?P<value>.*?)\s*$")
+TASK_FRAME_HEADINGS = {
+    "Role": "role",
+    "Trusted instructions": "trusted_instructions",
+    "Untrusted data": "untrusted_data",
+    "Approved state": "approved_state",
+    "Task": "task",
+    "Output": "output",
+    "Invariants": "invariants",
+    "Failure behavior": "failure_behavior",
+}
+TASK_FRAME_SECTION = re.compile(r"^## (?P<heading>[^\r\n]+)\r?\n", re.MULTILINE)
 
 
 class MalformedFrontMatter(ValueError):
@@ -48,6 +60,8 @@ def parse_front_matter(text: str) -> dict:
         key, value = found.group("key"), found.group("value")
         if value.startswith("[") and value.endswith("]"):
             manifest[key] = _flow_list(value[1:-1], number)
+        elif value.isdecimal():
+            manifest[key] = int(value)
         else:
             manifest[key] = value
     return manifest
@@ -94,6 +108,29 @@ def body_digest(text: str) -> str:
     """
     body = FRONT_MATTER_BLOCK.sub("", text).replace("\r\n", "\n")
     return "sha256:" + hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
+def task_frame_sections(text: str) -> dict[str, str]:
+    """Return the eight explicitly headed task-frame sections."""
+    body = FRONT_MATTER_BLOCK.sub("", text).replace("\r\n", "\n")
+    matches = list(TASK_FRAME_SECTION.finditer(body))
+    sections: dict[str, str] = {}
+    for index, match in enumerate(matches):
+        heading = match.group("heading")
+        if heading not in TASK_FRAME_HEADINGS:
+            continue
+        key = TASK_FRAME_HEADINGS[heading]
+        if key in sections:
+            raise ValueError(f"duplicate task-frame section {heading!r}")
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(body)
+        content = body[match.end():end].strip()
+        if not content:
+            raise ValueError(f"empty task-frame section {heading!r}")
+        sections[key] = content
+    missing = sorted(set(TASK_FRAME_HEADINGS.values()) - set(sections))
+    if missing:
+        raise ValueError(f"missing task-frame sections {missing}")
+    return sections
 
 
 def published_identity_violations(manifest: dict, actual_digest: str, published: list[dict]) -> list[str]:
@@ -201,7 +238,15 @@ def prompt_manifest_violations(published: list[dict]) -> list[str]:
             violations.append(f"{relative}: {exc}")
             continue
 
-        violations.extend(f"{relative}: {item}" for item in validate_against(manifest, SCHEMA))
+        version = manifest.get("version")
+        legacy = isinstance(version, str) and version.startswith("1.")
+        manifest_schema = SCHEMA_V1 if legacy else SCHEMA_V2
+        violations.extend(f"{relative}: {item}" for item in validate_against(manifest, manifest_schema))
+        if manifest_schema == SCHEMA_V2:
+            try:
+                task_frame_sections(path.read_text(encoding="utf-8"))
+            except ValueError as exc:
+                violations.append(f"{relative}: {exc}")
 
         identifier = manifest.get("id")
         if identifier in seen:

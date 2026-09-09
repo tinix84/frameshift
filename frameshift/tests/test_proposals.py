@@ -100,10 +100,19 @@ class BoundaryTests(unittest.TestCase):
 
     def test_the_adapter_port_checks_the_request_and_this_checks_the_session(self) -> None:
         """The two revision checks answer different questions and both are needed."""
-        from frameshift.adapters import EchoAdapter, run
+        from frameshift.adapters import EchoAdapter, ExecutionInputs, run
+        from frameshift.bootstrap import published_identities
 
-        request = json.loads((FIXTURES / "reference.execution-request.json").read_text(encoding="utf-8"))
-        outcome = run(EchoAdapter(result()), request)
+        request = json.loads((FIXTURES / "reference.execution-request.v2.json").read_text(encoding="utf-8"))
+        outcome = run(
+            EchoAdapter(result()),
+            request,
+            ExecutionInputs(
+                (ROOT / "prompts" / "problem-framing.v2.md").read_text(encoding="utf-8"),
+                published_identities(ROOT / "prompts" / "releases"),
+                {"art_evidence_001": (FIXTURES / "reference-evidence.txt").read_bytes()},
+            ),
+        )
         self.assertTrue(outcome.accepted, outcome.violations)
         # The adapter normalized the result onto the request's revision, and the
         # session has since moved on — so the port is satisfied and this is not.

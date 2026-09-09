@@ -143,7 +143,7 @@ def session_invariants(case: dict, load) -> list[str]:
     expect = case["expect"]
     errors: list[str] = []
 
-    name = "session.v1.schema.json" if session.get("schema_version") == "1.0.0" else "session.schema.json"
+    name = "session.v1.schema.json" if session.get("schema_version") == "1.0.0" else "session.v2.schema.json"
     schema_errors = schema.validate(session, schema.load_schema(name), current=name)
     violations = schema_errors + reference_violations(session)
 

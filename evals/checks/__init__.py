@@ -31,6 +31,8 @@ from .replay import replay_equivalence
 from .schema_files import schema_wellformedness
 from .session import session_invariants
 from .prompt_identity import prompt_identity
+from .prompt_restore import prompt_restore
+from .reasoning_context import reasoning_context
 
 
 REGISTRY = {
@@ -55,6 +57,8 @@ REGISTRY = {
     "request_invariants": request_invariants,
     "prompt_manifests": prompt_manifests,
     "prompt_identity": prompt_identity,
+    "prompt_restore": prompt_restore,
+    "reasoning_context": reasoning_context,
     "replay_equivalence": replay_equivalence,
     "schema_wellformedness": schema_wellformedness,
     "session_invariants": session_invariants,
