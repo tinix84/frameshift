@@ -5,7 +5,7 @@
   "at": [
     "state"
   ],
-  "schema": "session.schema.json",
+  "schema": "session.v1.schema.json",
   "invariants": true,
   "faults": [
     {

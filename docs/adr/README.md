@@ -15,3 +15,5 @@ ADRs capture durable, cross-cutting decisions. Status values are `proposed`, `ac
 - [ADR-0011: Problem framing is solution-neutral](0011-solution-neutral-problem-framing.md)
 - [ADR-0014: Trusted client confirmation for human approvals](0014-trusted-client-human-confirmation.md)
 - [ADR-0015: Enforce module boundaries around orchestration](0015-module-dependency-boundaries.md)
+- [ADR-0016: Separate frame abstraction from system boundary](0016-independent-frame-axes.md)
+- [ADR-0017: Validate prompts against published identities](0017-published-prompt-identities.md)

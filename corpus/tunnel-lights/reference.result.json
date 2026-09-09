@@ -7,7 +7,7 @@
   "proposals": [
     {"id": "prop_tunnel_classify_001", "kind": "statement_classification", "operation": "add", "value": {"statement_id": "stmt_tunnel_lights_001", "primary_role": "problem", "secondary_roles": ["proposal"]}, "provenance": {"kind": "inferred", "source_ids": ["stmt_tunnel_lights_001"]}},
     {"id": "prop_tunnel_ladder_001", "kind": "abstraction_ladder", "operation": "add", "value": {"levels": ["subsystem"], "top_outcome": "Keep maintenance reminders from obscuring active fault visibility in the tunnel lighting subsystem."}, "provenance": {"kind": "inferred", "source_ids": ["stmt_tunnel_lights_001"]}},
-    {"id": "prop_tunnel_frame_001", "kind": "problem_frame", "operation": "add", "value": {"question": "How might we preserve active fault visibility while presenting maintenance reminders within the tunnel lighting subsystem?", "abstraction_level": "subsystem", "status": "proposed"}, "provenance": {"kind": "inferred", "source_ids": ["stmt_tunnel_lights_001"]}}
+    {"id": "prop_tunnel_frame_001", "kind": "problem_frame", "operation": "add", "value": {"question": "How might we preserve active fault visibility while presenting maintenance reminders within the tunnel lighting subsystem?", "abstraction_level": "subsystem", "system_boundary": "subsystem", "status": "proposed"}, "provenance": {"kind": "inferred", "source_ids": ["stmt_tunnel_lights_001"]}}
   ],
   "rationale_summaries": [
     "The reminder mechanism creates a new subsystem failure by obscuring the active fault signal in the operator panel.",

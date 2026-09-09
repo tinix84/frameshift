@@ -66,9 +66,10 @@ against missing, reversed, or substituted rungs.
 A case may also declare `forbidden_proposal_kinds`,
 `forbid_checkpoints`, `max_abstraction_level`, and
 `min_missing_information`. The abstraction ladder ordering is explicit:
-`component < subsystem < system < product < business`. Lateral session enum
-values (`lifecycle`, `operations`, `supply_chain`, and `portfolio`) are not
-rankable and cause a validation error when used in a ceiling comparison.
+`component < subsystem < system < product < business`. The current session
+schema has exactly this ladder set. Lateral values belong in `system_boundary`
+and cause a validation error if used as an abstraction level in a ceiling
+comparison. Legacy version-1 checkpoints retain their original schema.
 
 `min_missing_information` is a floor for hand-authored reference artifacts,
 not a quality measure. Counting entries rewards padding once real engine output

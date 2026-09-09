@@ -10,7 +10,7 @@
     "session_id": {"$ref": "common.schema.json#/$defs/id"},
     "session_revision": {"type": "integer", "minimum": 0},
     "phase": {"type": "string", "enum": ["intake", "framing", "causal", "solutions", "decision", "monitoring"]},
-    "state": {"$ref": "session.schema.json"},
+    "state": {"$ref": "session.v1.schema.json"},
     "pending_proposals": {"type": "array", "items": {"$ref": "engine-result.schema.json"}},
     "event_cursor": {"type": "integer", "minimum": 0},
     "prior_checkpoint_digest": {"anyOf": [{"$ref": "common.schema.json#/$defs/digest"}, {"type": "null"}]},

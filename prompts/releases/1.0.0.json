@@ -1,0 +1,15 @@
+{
+  "release": "1.0.0",
+  "prompts": [
+    {
+      "id": "frameshift.problem-framing.v1",
+      "version": "1.0.0",
+      "body_digest": "sha256:9e689e62ff90cc33cf2b520dba9730cd45578ba8898e1a9270b31e94cf7f4951"
+    },
+    {
+      "id": "frameshift.repair-structured-output.v1",
+      "version": "1.0.0",
+      "body_digest": "sha256:36f2364206fca63ad074dc131347b5a5fa87a74c36b86dc2bb4b477adc91fba2"
+    }
+  ]
+}

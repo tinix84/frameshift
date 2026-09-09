@@ -5,9 +5,8 @@ from __future__ import annotations
 from .schema import load_schema
 
 
-# This is deliberately explicit data.  The session schema's enum is a set and
-# also contains lateral boundary values, so enum declaration order is not a
-# usable abstraction ranking.
+# Ranking is explicit; the current frame contract keeps lateral boundaries
+# separate. The evaluator checks equality with the ladder's closed value set.
 LADDER_ORDER = ("component", "subsystem", "system", "product", "business")
 LADDER_RANK = {level: rank for rank, level in enumerate(LADDER_ORDER)}
 
@@ -42,9 +41,24 @@ def engine_result_invariants(case: dict, load) -> list[str]:
     missing_schema_levels = set(LADDER_ORDER) - schema_levels
     if missing_schema_levels:
         errors.append(f"ladder ordering is not a subset of session schema enum: {sorted(missing_schema_levels)}")
+    extra_schema_levels = schema_levels - set(LADDER_ORDER)
+    if extra_schema_levels:
+        errors.append(f"session ladder enum contains unranked values: {sorted(extra_schema_levels)}")
 
     if artifact.get("schema_version") != "1.0.0":
         errors.append("schema_version must be 1.0.0")
+
+    if "frame_contract_version" in expect:
+        if expect["frame_contract_version"] != "2.0.0":
+            errors.append("unsupported frame contract version")
+        frame_properties = load_schema("session.schema.json")["$defs"]["frame"]["properties"]
+        for index, proposal in enumerate(artifact.get("proposals", [])):
+            if proposal.get("kind") == "problem_frame":
+                value = proposal.get("value", {})
+                for axis in ("abstraction_level", "system_boundary"):
+                    allowed = frame_properties[axis]["enum"]
+                    if not isinstance(value, dict) or value.get(axis) not in allowed:
+                        errors.append(f"proposal[{index}].value.{axis} must be one of {allowed}")
 
     proposal_kinds = {item.get("kind") for item in artifact.get("proposals", [])}
     missing_kinds = set(expect.get("required_proposal_kinds", [])) - proposal_kinds

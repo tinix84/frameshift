@@ -1,0 +1,5 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frameshift.dev/schemas/session.v2.schema.json",
+  "$ref": "session.schema.json"
+}

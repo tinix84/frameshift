@@ -52,7 +52,7 @@ class GateCoverageTests(unittest.TestCase):
 class SessionFixtureTests(unittest.TestCase):
     def test_the_starting_state_is_schema_valid(self) -> None:
         session = run.load(SESSION)
-        errors = schema.validate(session, schema.load_schema("session.schema.json"), current="session.schema.json")
+        errors = schema.validate(session, schema.load_schema("session.v1.schema.json"), current="session.v1.schema.json")
         self.assertEqual(errors, [])
 
     def test_the_frame_digest_matches_its_content(self) -> None:

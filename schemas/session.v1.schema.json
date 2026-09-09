@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://frameshift.dev/schemas/session.schema.json",
+  "$id": "https://frameshift.dev/schemas/session.v1.schema.json",
   "title": "FrameShift session",
   "type": "object",
   "required": ["schema_version", "id", "workspace_id", "title", "status", "phase", "revision", "statements", "frames", "graph", "options", "criteria", "approvals"],
   "properties": {
-    "schema_version": {"const": "2.0.0"},
+    "schema_version": {"const": "1.0.0"},
     "id": {"$ref": "common.schema.json#/$defs/id"},
     "workspace_id": {"$ref": "common.schema.json#/$defs/id"},
     "title": {"type": "string", "minLength": 1, "maxLength": 300},
@@ -38,13 +38,12 @@
     },
     "frame": {
       "type": "object",
-      "required": ["id", "question", "outcome", "abstraction_level", "system_boundary", "included", "excluded", "success_measures", "constraints", "assumptions", "status", "digest"],
+      "required": ["id", "question", "outcome", "abstraction_level", "included", "excluded", "success_measures", "constraints", "assumptions", "status", "digest"],
       "properties": {
         "id": {"$ref": "common.schema.json#/$defs/id"},
         "question": {"type": "string", "minLength": 1, "maxLength": 1000},
         "outcome": {"type": "string", "minLength": 1, "maxLength": 1000},
-        "abstraction_level": {"type": "string", "enum": ["component", "subsystem", "system", "product", "business"]},
-        "system_boundary": {"type": "string", "enum": ["component", "subsystem", "product", "lifecycle", "operations", "supply_chain", "portfolio", "business_model"]},
+        "abstraction_level": {"type": "string", "enum": ["component", "subsystem", "system", "product", "lifecycle", "operations", "supply_chain", "portfolio", "business"]},
         "included": {"type": "array", "items": {"type": "string"}},
         "excluded": {"type": "array", "items": {"type": "string"}},
         "success_measures": {"type": "array", "items": {"type": "string"}},

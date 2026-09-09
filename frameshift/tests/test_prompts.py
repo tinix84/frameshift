@@ -10,6 +10,7 @@ cannot read rather than skipping it.
 from __future__ import annotations
 
 import json
+import hashlib
 import sys
 import unittest
 from pathlib import Path
@@ -86,6 +87,44 @@ class ParserTests(unittest.TestCase):
 
 
 class ManifestTests(unittest.TestCase):
+    def test_input_depth_and_malformed_json_are_refused_before_release(self) -> None:
+        manifest = {"accepted_input_types": ["application/json"], "max_input_bytes": 1024, "max_json_depth": 2}
+        for payload, valid in ((b'[[0]]', True), (b'[[[0]]]', False), (b'{broken', False), (b'[NaN]', False)):
+            reference = {"id": "art_a", "media_type": "application/json", "digest": "sha256:" + hashlib.sha256(payload).hexdigest()}
+            with self.subTest(payload=payload):
+                self.assertEqual(not prompts.input_violations([reference], {"art_a": payload}, manifest), valid)
+
+    def test_referenced_inputs_share_one_aggregate_limit(self) -> None:
+        payloads = {"art_a": b"1234", "art_b": b"5678"}
+        references = [{"id": key, "media_type": "text/plain", "digest": "sha256:" + hashlib.sha256(value).hexdigest()}
+                      for key, value in payloads.items()]
+        manifest = {"accepted_input_types": ["text/plain"], "max_input_bytes": 8, "max_json_depth": 64}
+        self.assertEqual(prompts.input_violations(references, payloads, manifest), [])
+        self.assertTrue(prompts.input_violations(references, payloads, manifest, {"max_input_bytes": 7}))
+
+    def test_execution_must_pin_all_three_prompt_identity_fields(self) -> None:
+        manifest = prompts.parse_front_matter(VALID)
+        published = [manifest]
+        pinned = {
+            "prompt_contract_id": manifest["id"],
+            "prompt_contract_version": manifest["version"],
+            "prompt_contract_digest": manifest["body_digest"],
+        }
+        self.assertEqual(prompts.execution_identity_violations(pinned, manifest, manifest["body_digest"], published), [])
+        for field in pinned:
+            with self.subTest(field=field):
+                changed = dict(pinned, **{field: "wrong"})
+                self.assertTrue(prompts.execution_identity_violations(changed, manifest, manifest["body_digest"], published))
+
+    def test_recomputed_self_digest_cannot_replace_a_published_identity(self) -> None:
+        published = [{"id": "frameshift.probe.v1", "version": "1.0.0",
+                      "body_digest": prompts.body_digest(VALID)}]
+        edited = probe(body="\nA materially different task.\n")
+        violations = prompts.published_identity_violations(
+            prompts.parse_front_matter(edited), prompts.body_digest(edited), published
+        )
+        self.assertTrue(any("published" in item for item in violations), violations)
+
     def test_the_committed_prompts_are_clean(self) -> None:
         self.assertEqual(prompts.prompt_manifest_violations(), [])
 

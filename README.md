@@ -20,6 +20,10 @@ FrameShift helps a person or team:
 
 ## Core loop
 
+The ranked abstraction levels are component, subsystem, system, product, and
+business. A frame's system boundary is a separate, unranked scope; widening it
+to supply chain does not by itself move the frame up this ladder.
+
 ```mermaid
 flowchart LR
     A["Intake"] --> B["Frame"]

@@ -30,6 +30,7 @@ from .repair import engine_result_repair
 from .replay import replay_equivalence
 from .schema_files import schema_wellformedness
 from .session import session_invariants
+from .prompt_identity import prompt_identity
 
 
 REGISTRY = {
@@ -53,6 +54,7 @@ REGISTRY = {
     "proposal_admission": proposal_admission,
     "request_invariants": request_invariants,
     "prompt_manifests": prompt_manifests,
+    "prompt_identity": prompt_identity,
     "replay_equivalence": replay_equivalence,
     "schema_wellformedness": schema_wellformedness,
     "session_invariants": session_invariants,

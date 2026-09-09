@@ -121,6 +121,13 @@ class EngineResultExpectationTests(unittest.TestCase):
         with patch.object(engine_result, "load_schema", return_value=schema):
             self.assertTrue(any("not a subset of session schema enum" in error for error in run.evaluate(case)))
 
+    def test_a_lateral_value_added_to_the_ladder_enum_is_drift(self) -> None:
+        case = run.load("evals/fixtures/framing-solution-disguised.case.json")
+        schema = copy.deepcopy(engine_result.load_schema("session.schema.json"))
+        schema["$defs"]["frame"]["properties"]["abstraction_level"]["enum"].append("supply_chain")
+        with patch.object(engine_result, "load_schema", return_value=schema):
+            self.assertTrue(run.evaluate(case))
+
     def test_selftest_cli_reports_the_four_named_failures(self) -> None:
         result = subprocess.run(
             [sys.executable, "evals/run.py", "--root", "evals/selftest", "--json"],

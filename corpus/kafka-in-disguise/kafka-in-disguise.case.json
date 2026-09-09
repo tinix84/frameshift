@@ -2,7 +2,7 @@
   "id": "corpus-kafka-in-disguise",
   "check": "corpus_exemplar",
   "artifact": "reference.result.json",
-  "expect": {
+  "expect": {"frame_contract_version": "2.0.0",
     "required_proposal_kinds": ["statement_classification", "abstraction_ladder"],
     "required_checkpoints": ["intake_correction"],
     "min_rationale_summaries": 2,

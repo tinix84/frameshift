@@ -16,6 +16,7 @@ cannot smuggle a field past the check by writing it in a shape nobody parses.
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from pathlib import Path
 
@@ -95,11 +96,108 @@ def body_digest(text: str) -> str:
     return "sha256:" + hashlib.sha256(body.encode("utf-8")).hexdigest()
 
 
+def published_identity_violations(manifest: dict, actual_digest: str, published: list[dict]) -> list[str]:
+    """Compare installed content with an independently supplied release record."""
+    identifier, version = manifest.get("id"), manifest.get("version")
+    matches = [item for item in published if item.get("id") == identifier and item.get("version") == version]
+    if len(matches) != 1:
+        return [f"prompt {identifier!r} version {version!r} must have exactly one published identity"]
+    recorded = matches[0].get("body_digest")
+    if recorded != actual_digest or recorded != manifest.get("body_digest"):
+        return [f"prompt {identifier!r} version {version!r} differs from its published body digest"]
+    return []
+
+
+def published_identities() -> list[dict]:
+    """Load reviewed release records, never the installed file's self-declaration."""
+    entries: list[dict] = []
+    for path in sorted((PROMPTS / "releases").glob("*.json")):
+        record = json.loads(path.read_text(encoding="utf-8"))
+        entries.extend(record["prompts"])
+    return entries
+
+
+def execution_identity_violations(request: dict, manifest: dict, actual_digest: str, published: list[dict]) -> list[str]:
+    """An execution must name the installed and published identity exactly."""
+    violations = published_identity_violations(manifest, actual_digest, published)
+    for request_field, manifest_field in (
+        ("prompt_contract_id", "id"),
+        ("prompt_contract_version", "version"),
+        ("prompt_contract_digest", "body_digest"),
+    ):
+        value = request.get(request_field)
+        if not isinstance(value, str) or value != manifest.get(manifest_field):
+            violations.append(f"{request_field} does not pin the installed published prompt")
+    return violations
+
+
+def input_violations(references: list[dict], resolved: dict[str, bytes], manifest: dict, policy: dict | None = None) -> list[str]:
+    """Validate resolved inputs before a caller releases them to a client.
+
+    Byte limits cover the aggregate referenced input, not a per-file allowance.
+    The caller still owns authorization and context construction.
+    """
+    policy = policy or {}
+    limits: dict[str, int] = {}
+    for key, ceiling in (("max_input_bytes", 1_048_576), ("max_json_depth", 64)):
+        declared = manifest.get(key)
+        effective = policy.get(key, ceiling)
+        if type(declared) is not int or declared < 1 or type(effective) is not int or effective < 1:
+            return [f"{key} must declare a positive integer limit"]
+        limits[key] = min(declared, effective, ceiling)
+    accepted = manifest.get("accepted_input_types")
+    if not isinstance(accepted, list) or not accepted or any(not isinstance(item, str) for item in accepted):
+        return ["accepted_input_types must declare the permitted artifact media types"]
+    violations: list[str] = []
+    total = 0
+    seen: set[str] = set()
+    for reference in references:
+        identifier = reference.get("id")
+        if not isinstance(identifier, str) or identifier in seen:
+            violations.append("input references need distinct stable source ids")
+            continue
+        seen.add(identifier)
+        payload = resolved.get(identifier)
+        if not isinstance(payload, bytes):
+            violations.append(f"input {identifier!r} is unresolved")
+            continue
+        total += len(payload)
+        if total > limits["max_input_bytes"]:
+            violations.append("aggregate input bytes exceed the limit; narrow the input, do not truncate")
+            return violations
+        if reference.get("media_type") not in accepted:
+            violations.append(f"input {identifier!r} has an unaccepted media type")
+        if reference.get("digest") != "sha256:" + hashlib.sha256(payload).hexdigest():
+            violations.append(f"input {identifier!r} digest mismatch")
+        try:
+            text = payload.decode("utf-8")
+            if reference.get("media_type") == "application/json":
+                value = json.loads(text, parse_constant=_reject_json_constant)
+                stack = [(value, 0)]
+                while stack:
+                    node, depth = stack.pop()
+                    if isinstance(node, (dict, list)):
+                        depth += 1
+                        if depth > limits["max_json_depth"]:
+                            violations.append(f"input {identifier!r} exceeds JSON depth limit")
+                            break
+                        children = node.values() if isinstance(node, dict) else node
+                        stack.extend((child, depth) for child in children)
+        except (ValueError, RecursionError):
+            violations.append(f"input {identifier!r} is not valid bounded UTF-8 JSON/text")
+    return violations
+
+
+def _reject_json_constant(value: str):
+    raise ValueError(f"{value} is not a JSON number")
+
+
 def prompt_manifest_violations() -> list[str]:
     """Every prompt declares a valid manifest whose references resolve."""
     from .schema import validate_against
 
     violations: list[str] = []
+    published = published_identities()
     seen: dict[str, str] = {}
     paths = sorted(PROMPTS.glob("*.md"))
     if not paths:
@@ -123,6 +221,7 @@ def prompt_manifest_violations() -> list[str]:
 
         declared = manifest.get("body_digest")
         actual = body_digest(path.read_text(encoding="utf-8"))
+        violations.extend(f"{relative}: {item}" for item in published_identity_violations(manifest, actual, published))
         if isinstance(declared, str) and declared != actual:
             violations.append(
                 f"{relative}: body_digest is {declared}, the prompt text hashes to {actual} — "
@@ -181,4 +280,3 @@ def request_invariant_violations(request: dict, installed: dict | None = None) -
             f"the request's invariants do not match prompt {prompt_id!r}: " + " and ".join(detail)
         ]
     return []
-
