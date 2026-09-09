@@ -1,6 +1,6 @@
 # ADR-0016: Separate frame abstraction from system boundary
 
-- Status: accepted
+- Status: accepted; partially superseded by ADR-0018 (migration-disposition attribution only)
 - Date: 2026-09-09
 - Deciders: repository owner, through the frame-axis decision in #86
 - Supersedes: none

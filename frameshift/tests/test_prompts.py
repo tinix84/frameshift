@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from frameshift.validation import prompts  # noqa: E402
+from frameshift.bootstrap import published_identities  # noqa: E402
 
 
 class PlantedPrompt:
@@ -126,47 +127,47 @@ class ManifestTests(unittest.TestCase):
         self.assertTrue(any("published" in item for item in violations), violations)
 
     def test_the_committed_prompts_are_clean(self) -> None:
-        self.assertEqual(prompts.prompt_manifest_violations(), [])
+        self.assertEqual(prompts.prompt_manifest_violations(published_identities(prompts.PROMPTS / "releases")), [])
 
     def test_a_missing_required_field_fails(self) -> None:
         with PlantedPrompt("_probe.md", "---\nid: frameshift.probe.v1\nversion: 1.0.0\n---\n\nbody\n"):
-            violations = prompts.prompt_manifest_violations()
+            violations = prompts.prompt_manifest_violations(published_identities(prompts.PROMPTS / "releases"))
         self.assertTrue(any("engine" in item for item in violations), violations)
 
     def test_an_unknown_engine_fails(self) -> None:
         text = VALID.replace("engine: shared", "engine: telepathy")
         with PlantedPrompt("_probe.md", text):
-            violations = prompts.prompt_manifest_violations()
+            violations = prompts.prompt_manifest_violations(published_identities(prompts.PROMPTS / "releases"))
         self.assertTrue(any("telepathy" in item for item in violations), violations)
 
     def test_a_malformed_version_fails(self) -> None:
         text = VALID.replace("version: 1.0.0", "version: one")
         with PlantedPrompt("_probe.md", text):
-            violations = prompts.prompt_manifest_violations()
+            violations = prompts.prompt_manifest_violations(published_identities(prompts.PROMPTS / "releases"))
         self.assertTrue(violations)
 
     def test_an_output_schema_that_does_not_exist_fails(self) -> None:
         text = VALID.replace("engine: shared", "engine: shared\noutput_schema: schemas/nope.json")
         with PlantedPrompt("_probe.md", text):
-            violations = prompts.prompt_manifest_violations()
+            violations = prompts.prompt_manifest_violations(published_identities(prompts.PROMPTS / "releases"))
         self.assertTrue(any("does not exist" in item for item in violations), violations)
 
     def test_a_fixture_that_does_not_exist_fails(self) -> None:
         text = VALID.replace("engine: shared", "engine: shared\nfixtures: [not-a-case]")
         with PlantedPrompt("_probe.md", text):
-            violations = prompts.prompt_manifest_violations()
+            violations = prompts.prompt_manifest_violations(published_identities(prompts.PROMPTS / "releases"))
         self.assertTrue(any("not-a-case" in item for item in violations), violations)
 
     def test_a_repair_prompt_naming_nothing_fails(self) -> None:
         text = VALID.replace("engine: shared", "engine: shared\nrepair_prompt: frameshift.absent.v1")
         with PlantedPrompt("_probe.md", text):
-            violations = prompts.prompt_manifest_violations()
+            violations = prompts.prompt_manifest_violations(published_identities(prompts.PROMPTS / "releases"))
         self.assertTrue(any("names no committed prompt" in item for item in violations), violations)
 
     def test_a_duplicate_id_fails(self) -> None:
         text = VALID.replace("frameshift.probe.v1", "frameshift.problem-framing.v1")
         with PlantedPrompt("_probe.md", text):
-            violations = prompts.prompt_manifest_violations()
+            violations = prompts.prompt_manifest_violations(published_identities(prompts.PROMPTS / "releases"))
         self.assertTrue(any("already declared" in item for item in violations), violations)
 
     def test_the_framing_prompt_names_its_repair_prompt(self) -> None:
@@ -179,7 +180,7 @@ class ManifestTests(unittest.TestCase):
         """#20's versioning rule: a prompt cannot change under a fixed version."""
         edited = probe().replace("Do the thing.", "Do something materially different.")
         with PlantedPrompt("_probe.md", edited):
-            violations = prompts.prompt_manifest_violations()
+            violations = prompts.prompt_manifest_violations(published_identities(prompts.PROMPTS / "releases"))
         self.assertTrue(
             any("the body changed without the version changing" in item for item in violations),
             violations,

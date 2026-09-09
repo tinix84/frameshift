@@ -108,15 +108,6 @@ def published_identity_violations(manifest: dict, actual_digest: str, published:
     return []
 
 
-def published_identities() -> list[dict]:
-    """Load reviewed release records, never the installed file's self-declaration."""
-    entries: list[dict] = []
-    for path in sorted((PROMPTS / "releases").glob("*.json")):
-        record = json.loads(path.read_text(encoding="utf-8"))
-        entries.extend(record["prompts"])
-    return entries
-
-
 def execution_identity_violations(request: dict, manifest: dict, actual_digest: str, published: list[dict]) -> list[str]:
     """An execution must name the installed and published identity exactly."""
     violations = published_identity_violations(manifest, actual_digest, published)
@@ -192,12 +183,11 @@ def _reject_json_constant(value: str):
     raise ValueError(f"{value} is not a JSON number")
 
 
-def prompt_manifest_violations() -> list[str]:
+def prompt_manifest_violations(published: list[dict]) -> list[str]:
     """Every prompt declares a valid manifest whose references resolve."""
     from .schema import validate_against
 
     violations: list[str] = []
-    published = published_identities()
     seen: dict[str, str] = {}
     paths = sorted(PROMPTS.glob("*.md"))
     if not paths:

@@ -219,6 +219,7 @@ def application_orchestrator(case: dict, load) -> list[str]:
 def prompt_manifests(case: dict, load) -> list[str]:
     """Every prompt declares a manifest, and its references resolve (#20)."""
     from frameshift.validation import prompt_manifest_violations, parse_front_matter
+    from frameshift.bootstrap import published_identities
 
     expect = case["expect"]
     errors: list[str] = []
@@ -229,7 +230,7 @@ def prompt_manifests(case: dict, load) -> list[str]:
     if len(prompts) < minimum:
         errors.append(f"{len(prompts)} prompts found, case expects at least {minimum}")
 
-    violations = prompt_manifest_violations()
+    violations = prompt_manifest_violations(published_identities(root / "prompts" / "releases"))
     outcome = "invalid" if violations else "valid"
     if outcome != expect["outcome"]:
         errors.append(f"prompt manifests are {outcome}, case expects {expect['outcome']}: {violations}")

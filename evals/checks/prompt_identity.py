@@ -1,6 +1,7 @@
 """Published prompt identity enforcement at the existing evaluation seam."""
 
 from frameshift.validation import prompts
+from frameshift.bootstrap import published_identities
 
 
 def prompt_identity(case: dict, load) -> list[str]:
@@ -17,7 +18,8 @@ def prompt_identity(case: dict, load) -> list[str]:
     elif mutation is not None:
         return [f"unknown prompt mutation {mutation!r}"]
     violations = prompts.execution_identity_violations(
-        request, manifest, prompts.body_digest(text), prompts.published_identities()
+        request, manifest, prompts.body_digest(text),
+        published_identities(prompts.PROMPTS / "releases"),
     )
     outcome = "refused" if violations else "accepted"
     expected = case["expect"]["outcome"]
