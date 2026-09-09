@@ -47,6 +47,16 @@ def _find(items: list[dict], item_id: str) -> dict:
 def _apply(state: dict, event: dict) -> dict:
     kind = event["type"]
     payload = event.get("payload", {})
+    if state:
+        if kind == "session.created" or event.get("session_id") != state["id"]:
+            raise UnknownEvent("event cannot reset or change the replay session")
+    elif kind != "session.created" or event.get("session_id") != payload.get("id"):
+        raise UnknownEvent("replay must start with its session.created event")
+    if "revision" in event:
+        revision = event["revision"]
+        current = state.get("revision", 0)
+        if type(revision) is not int or revision not in (current, current + 1):
+            raise UnknownEvent(f"event revision {revision!r} has no current prior revision {current}")
 
     if kind == "session.created":
         state.update(copy.deepcopy(payload))
@@ -101,11 +111,31 @@ def fold(events: list[dict]) -> dict:
     return state
 
 
-def sequence_violations(events: list[dict]) -> list[str]:
+def resume(snapshot: dict, events: list[dict]) -> dict:
+    """Replay a contiguous suffix from a digest-verified snapshot of state.
+
+    This verifies state replay, not checkpoint envelope/artifact admission or
+    an atomic storage commit; those remain separate conformance boundaries.
+    """
+    cursor = snapshot["event_cursor"]
+    if type(cursor) is not int or cursor < 1:
+        raise UnknownEvent("snapshot event cursor must be a positive integer")
+    if canonical.digest(snapshot["state"]) != snapshot["state_digest"]:
+        raise UnknownEvent("snapshot state digest mismatch")
+    violations = sequence_violations(events, cursor)
+    if violations:
+        raise UnknownEvent("; ".join(violations))
+    state = copy.deepcopy(snapshot["state"])
+    for event in events:
+        _apply(state, event)
+    return state
+
+
+def sequence_violations(events: list[dict], cursor: int = 0) -> list[str]:
     """A log is append-only, so sequences start at one and never skip or repeat."""
     violations: list[str] = []
-    for index, event in enumerate(events, start=1):
-        if event.get("sequence") != index:
+    for index, event in enumerate(events, start=cursor + 1):
+        if type(event.get("sequence")) is not int or event["sequence"] != index:
             violations.append(
                 f"{REPLAY_VIOLATION}: event {index} carries sequence {event.get('sequence')!r}, "
                 "so the log is reordered, truncated, or duplicated"
@@ -120,19 +150,28 @@ def replay_equivalence(case: dict, load) -> list[str]:
     errors_found: list[str] = []
 
     events = read_log(case["log"])
+    snapshot = load(case["snapshot"]) if "snapshot" in case else None
+    start = snapshot["event_cursor"] if snapshot is not None else 0
+    if type(start) is not int or start < 0 or start > len(events):
+        return ["invalid snapshot event cursor for the supplied log"]
+    events = events[start:]
     for mutation in case.get("mutate", []):
         if mutation["kind"] == "drop":
             events = [item for item in events if item["sequence"] != mutation["sequence"]]
         elif mutation["kind"] == "swap":
             first, second = mutation["sequences"]
-            index, other = first - 1, second - 1
+            index, other = first - start - 1, second - start - 1
             events[index], events[other] = events[other], events[index]
+        elif mutation["kind"] == "revision":
+            for event in events:
+                if event["sequence"] == mutation["sequence"]:
+                    event["revision"] = mutation["revision"]
         else:
-            return [f"unknown mutation kind: {mutation['kind']} (known: drop, swap)"]
+            return [f"unknown mutation kind: {mutation['kind']} (known: drop, swap, revision)"]
 
-    violations = sequence_violations(events) if expect.get("check_sequence", True) else []
+    violations = sequence_violations(events, start) if expect.get("check_sequence", True) else []
     try:
-        replayed = fold(events)
+        replayed = resume(snapshot, events) if snapshot is not None else fold(events)
     except (UnknownEvent, KeyError) as exc:
         violations.append(f"{REPLAY_VIOLATION}: replay failed: {exc}")
         replayed = None
@@ -145,10 +184,10 @@ def replay_equivalence(case: dict, load) -> list[str]:
                 f"{REPLAY_VIOLATION}: replay reached {digest}, the snapshot records {recorded}"
             )
         cursor = checkpoint.get("event_cursor")
-        if cursor is not None and cursor != len(events):
+        if cursor is not None and cursor != start + len(events):
             violations.append(
                 f"{REPLAY_VIOLATION}: the snapshot's event_cursor is {cursor}, "
-                f"the log carries {len(events)} events"
+                f"the replay reaches cursor {start + len(events)}"
             )
 
     outcome = "diverged" if violations else "equivalent"

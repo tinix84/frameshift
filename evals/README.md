@@ -76,6 +76,15 @@ is evaluated.
 
 ## The reference checkpoint
 
+The `replay_equivalence` check folds the reference JSONL history to this same
+golden checkpoint. A case with `snapshot` starts from that artifact's state and
+event cursor, and replays only the remaining log suffix. The snapshot's state
+digest must verify; the suffix must be contiguous, stay in the same session,
+and cannot skip or roll back a revision. The starting snapshot remains unchanged.
+Cases can mutate a copy of the suffix with `drop`, `swap`, or `revision` to
+demonstrate refusal. This is state-replay evidence, not proof of atomic storage
+commits or of the full checkpoint admission path.
+
 `fixtures/reference.checkpoint.json` is the golden artifact: every later
 adapter, encoder, and migration is measured against its digests. Its
 canonicalization rules live in `checks/canonical.py`, and the `validate`
