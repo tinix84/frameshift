@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import copy
 
-from frameshift.validation import validate_against
+from frameshift.validation import session_violations, validate_against
 
 from . import canonical, checkpoint
 
@@ -36,6 +36,8 @@ def migrate_frame_axes(
     proposals. Lateral legacy values cannot supply a missing ladder value, so
     they remain pending human review instead of being guessed.
     """
+    if not isinstance(source, dict):
+        return _refused(SCHEMA_INVALID, "source checkpoint must be an object")
     if source.get("schema_version") != "1.0.0":
         return _refused(
             SCHEMA_INVALID,
@@ -48,6 +50,21 @@ def migrate_frame_axes(
     integrity = checkpoint.verify(source, artifact_bytes)
     if integrity:
         return _refused(checkpoint.INTEGRITY_VIOLATION, "; ".join(integrity))
+
+    state = source["state"]
+    coherence = []
+    for envelope_field, state_field in (
+        ("session_id", "id"),
+        ("session_revision", "revision"),
+        ("phase", "phase"),
+    ):
+        if source[envelope_field] != state[state_field]:
+            coherence.append(
+                f"checkpoint {envelope_field} does not match state {state_field}"
+            )
+    semantic = session_violations(state)
+    if coherence or semantic:
+        return _refused(INVARIANT_VIOLATION, "; ".join(coherence + semantic))
 
     if checkpoint_id == source["id"] or session_id == source["session_id"]:
         return _refused(

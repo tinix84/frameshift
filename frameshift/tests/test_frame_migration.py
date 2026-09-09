@@ -136,6 +136,32 @@ class FrameContractTests(unittest.TestCase):
                 self.assertEqual(result["code"], code)
                 self.assertIsNone(result["checkpoint"])
 
+    def test_malformed_or_semantically_incoherent_sources_are_refused(self):
+        dangling = reference()
+        dangling["state"]["graph"]["edges"][0]["target"] = "node_missing"
+        dangling = checkpoint.encode(dangling)
+        mismatched = reference()
+        mismatched["session_id"] = "sess_other_001"
+        mismatched = checkpoint.encode(mismatched)
+
+        for source, code in (
+            ([], "schema_invalid"),
+            (dangling, "invariant_violation"),
+            (mismatched, "invariant_violation"),
+        ):
+            with self.subTest(code=code, source_type=type(source).__name__):
+                result = migration.migrate_frame_axes(
+                    source,
+                    artifact_bytes(),
+                    checkpoint_id="ckpt_validated_v2_001",
+                    session_id="sess_validated_v2_001",
+                    prompt_identities=TARGET_PROMPTS,
+                    created_at="2026-09-09T15:00:00Z",
+                )
+                self.assertEqual(result["outcome"], "refused", result)
+                self.assertEqual(result["code"], code)
+                self.assertIsNone(result["checkpoint"])
+
 
 if __name__ == "__main__":
     unittest.main()
