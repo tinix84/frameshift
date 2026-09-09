@@ -44,7 +44,7 @@ def _find(items: list[dict], item_id: str) -> dict:
     raise UnknownEvent(f"event names {item_id!r}, which the log never created")
 
 
-def _apply(state: dict, event: dict) -> dict:
+def _validate_event(state: dict, event: dict) -> None:
     kind = event["type"]
     payload = event.get("payload", {})
     if state:
@@ -59,6 +59,10 @@ def _apply(state: dict, event: dict) -> dict:
         if type(revision) is not int or revision != expected:
             raise UnknownEvent(f"event revision {revision!r} has no current prior revision {current}")
 
+
+def _apply(state: dict, event: dict) -> dict:
+    kind = event["type"]
+    payload = event.get("payload", {})
     if kind == "session.created":
         state.update(copy.deepcopy(payload))
         state.setdefault("statements", [])
@@ -108,6 +112,7 @@ def fold(events: list[dict]) -> dict:
     """Apply every event in order and return the state they describe."""
     state: dict = {}
     for event in events:
+        _validate_event(state, event)
         _apply(state, event)
     return state
 
@@ -128,6 +133,7 @@ def resume(snapshot: dict, events: list[dict]) -> dict:
         raise UnknownEvent("; ".join(violations))
     state = copy.deepcopy(snapshot["state"])
     for event in events:
+        _validate_event(state, event)
         _apply(state, event)
     return state
 
