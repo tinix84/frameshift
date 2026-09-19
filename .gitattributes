@@ -1,0 +1,15 @@
+# FrameShift checkpoints and eval fixtures are digested over raw file bytes,
+# so a line ending is part of the content, not a presentation detail.
+#
+# Without this, a Windows runner checks out with core.autocrlf=true, rewrites
+# every LF file to CRLF on disk, and every digest over those bytes changes. That
+# is not hypothetical: it turned `evals/run.py` red in CI on 2026-09-19 while it
+# passed locally (`invariant_violation: input 'art_evidence_001' digest
+# mismatch`), because local working copies were never re-converted.
+#
+# The committed tree is deliberately mixed - 293 LF-only files, 21 CRLF-only,
+# and 24 that carry both inside one file, several as digest perturbation
+# evidence (#42). Normalising would rewrite those bytes and break the fixtures
+# it is meant to protect, so conversion is disabled outright: the working tree
+# is byte-identical to the blob on every platform.
+* -text
