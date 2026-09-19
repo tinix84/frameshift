@@ -9,6 +9,7 @@ and asserts the mutation is refused before anything is restored.
 from __future__ import annotations
 
 import copy
+import json
 from pathlib import Path
 
 from . import canonical, errors
@@ -38,14 +39,29 @@ def _reverse_key_order(value: object) -> object:
     return value
 
 
-def _crlf_line_endings(value: object) -> object:
+def _crlf(value: object) -> object:
     if isinstance(value, dict):
-        return {key: _crlf_line_endings(item) for key, item in value.items()}
+        return {key: _crlf(item) for key, item in value.items()}
     if isinstance(value, list):
-        return [_crlf_line_endings(item) for item in value]
+        return [_crlf(item) for item in value]
     if isinstance(value, str):
         return value.replace("\n", "\r\n")
     return value
+
+
+def _line_endings(value: dict) -> tuple[dict, dict]:
+    """The LF and CRLF spellings of one multi-line string hash identically.
+
+    The reference checkpoint holds no string with a newline in it, so replacing
+    newlines across its strings produced a byte-identical document and this leg
+    passed while proving nothing (#42). Rewriting the golden artifact to carry
+    one would move every recorded digest; instead the leg gives both sides the
+    same two-line title and compares them to each other, so the normalization
+    is exercised on this artifact without changing what it records.
+    """
+    baseline = copy.deepcopy(value)
+    baseline["state"]["title"] = f"{value['state']['title']}\nsecond line"
+    return baseline, _crlf(baseline)
 
 
 def _reverse_set_order(value: object, field: str | None = None) -> object:
@@ -86,13 +102,23 @@ def _respell_timestamps(value: object) -> object:
     return value
 
 
+# A perturbation returns either a modified copy, compared against the original,
+# or a `(baseline, variant)` pair compared against each other.
 PERTURBATIONS = {
     "key_order": _reverse_key_order,
-    "line_endings": _crlf_line_endings,
+    "line_endings": _line_endings,
     "set_order": _reverse_set_order,
     "execution_metadata": _replace_execution_metadata,
     "timestamp_spelling": _respell_timestamps,
 }
+
+
+def perturbed_pair(perturb, checkpoint: dict) -> tuple[dict, dict]:
+    """The two documents a leg compares: what it started from and what it changed."""
+    outcome = perturb(copy.deepcopy(checkpoint))
+    if isinstance(outcome, tuple):
+        return outcome
+    return checkpoint, outcome
 
 
 def read_artifact(uri: str) -> bytes:
@@ -207,10 +233,15 @@ def checkpoint_digest(case: dict, load) -> list[str]:
         if perturb is None:
             errors.append(f"unknown perturbation: {name} (known: {sorted(PERTURBATIONS)})")
             continue
-        perturbed = perturb(copy.deepcopy(checkpoint))
-        if canonical.state_digest(perturbed) != computed_state:
+        baseline, perturbed = perturbed_pair(perturb, checkpoint)
+        # A leg whose two documents are the same bytes has tested nothing; the
+        # line-endings leg passed that way for months (#42).
+        if json.dumps(baseline) == json.dumps(perturbed):
+            errors.append(f"{name} left the artifact byte-identical, so the leg proves nothing")
+            continue
+        if canonical.state_digest(perturbed) != canonical.state_digest(baseline):
             errors.append(f"{name} changed the state digest")
-        if canonical.checkpoint_digest(perturbed) != computed_checkpoint:
+        if canonical.checkpoint_digest(perturbed) != canonical.checkpoint_digest(baseline):
             errors.append(f"{name} changed the checkpoint digest")
 
     return errors

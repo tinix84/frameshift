@@ -150,6 +150,56 @@ class DigestCheckTests(unittest.TestCase):
         errors = run.evaluate(case)
         self.assertTrue(any("unknown perturbation: gravity" in error for error in errors), errors)
 
+    def test_a_perturbation_that_changes_nothing_is_reported(self) -> None:
+        """#42: a leg whose perturbed document is byte-identical proves nothing."""
+        case = run.load("evals/fixtures/checkpoint-digest-stability.case.json")
+        case["expect"]["invariant_under"] = ["identity"]
+        original = dict(checkpoint.PERTURBATIONS)
+        checkpoint.PERTURBATIONS["identity"] = lambda value: value
+        try:
+            errors = run.evaluate(case)
+        finally:
+            checkpoint.PERTURBATIONS.clear()
+            checkpoint.PERTURBATIONS.update(original)
+        self.assertTrue(any("identity left the artifact byte-identical" in error for error in errors), errors)
+
+    def test_every_declared_leg_perturbs_the_reference_checkpoint(self) -> None:
+        case = run.load("evals/fixtures/checkpoint-digest-stability.case.json")
+        reference = load_reference()
+        for name in case["expect"]["invariant_under"]:
+            with self.subTest(leg=name):
+                baseline, variant = checkpoint.perturbed_pair(checkpoint.PERTURBATIONS[name], reference)
+                self.assertNotEqual(json.dumps(baseline), json.dumps(variant))
+
+    def test_the_line_endings_leg_compares_lf_and_crlf_spellings_of_one_string(self) -> None:
+        """The reference checkpoint holds no multi-line string, so replacing
+        newlines in it changed nothing (#42). The leg now supplies one."""
+        baseline, variant = checkpoint.perturbed_pair(checkpoint.PERTURBATIONS["line_endings"], load_reference())
+        self.assertIn("\n", baseline["state"]["title"])
+        self.assertIn("\r\n", variant["state"]["title"])
+        self.assertNotIn("\r", baseline["state"]["title"])
+        self.assertEqual(canonical.state_digest(baseline), canonical.state_digest(variant))
+        self.assertNotEqual(canonical.state_digest(baseline), canonical.state_digest(load_reference()))
+
+    def test_the_line_endings_leg_fails_when_normalization_stops(self) -> None:
+        case = run.load("evals/fixtures/checkpoint-digest-stability.case.json")
+        case["expect"]["invariant_under"] = ["line_endings"]
+        original = canonical.canonicalize
+
+        def unnormalized(value, *, drop=frozenset()):
+            if isinstance(value, dict):
+                return {k: unnormalized(v) for k, v in sorted(value.items()) if k not in drop}
+            if isinstance(value, list):
+                return [unnormalized(item, drop=drop) for item in value]
+            return value
+
+        canonical.canonicalize = unnormalized
+        try:
+            errors = run.evaluate(case)
+        finally:
+            canonical.canonicalize = original
+        self.assertTrue(any("line_endings changed the state digest" in error for error in errors), errors)
+
 
 class IntegrityTests(unittest.TestCase):
     def test_intact_checkpoint_verifies(self) -> None:
