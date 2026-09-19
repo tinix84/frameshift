@@ -28,6 +28,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from frameshift.contracts import errors
+
+INVARIANT_VIOLATION = errors.INVARIANT_VIOLATION
+
 # The session phases, in the order the reasoner walks them. Mirrored from the
 # `phase` enum in `schemas/session.schema.json`, which is the structural
 # authority; a test asserts the two still agree.
@@ -86,18 +90,18 @@ def advance(phase: str, gate_name: str, to_phase: str | None = None) -> list[str
     binding guard, and a transition must satisfy both.
     """
     if phase not in PHASES:
-        return [f"invariant_violation: unknown phase {phase!r}"]
+        return [f"{INVARIANT_VIOLATION}: unknown phase {phase!r}"]
     gate = GATES.get(gate_name)
     if gate is None:
-        return [f"invariant_violation: unknown gate {gate_name!r}"]
+        return [f"{INVARIANT_VIOLATION}: unknown gate {gate_name!r}"]
     if gate.from_phase != phase:
         return [
-            f"invariant_violation: gate {gate_name} is passed from {gate.from_phase!r}, "
+            f"{INVARIANT_VIOLATION}: gate {gate_name} is passed from {gate.from_phase!r}, "
             f"and the session is in {phase!r}"
         ]
     if to_phase is not None and to_phase != gate.to_phase:
         return [
-            f"invariant_violation: gate {gate_name} leads to {gate.to_phase!r}, "
+            f"{INVARIANT_VIOLATION}: gate {gate_name} leads to {gate.to_phase!r}, "
             f"not {to_phase!r}"
         ]
     return []

@@ -19,12 +19,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from frameshift.contracts import errors
+
 from . import canonical
 
 ROOT = Path(__file__).resolve().parents[2]
 
-INTEGRITY_VIOLATION = "checkpoint_integrity_failed"
-LIMIT_VIOLATION = "checkpoint_limits_exceeded"
+INTEGRITY_VIOLATION = errors.CHECKPOINT_INTEGRITY_FAILED
+LIMIT_VIOLATION = errors.CHECKPOINT_LIMITS_EXCEEDED
 
 # Step 1 of the restore algorithm: bound the checkpoint before anything walks it.
 PARSE_LIMITS = {"max_bytes": 1_048_576, "max_depth": 64}

@@ -18,7 +18,7 @@ Two properties make the record worth keeping rather than merely writing:
 
 from __future__ import annotations
 
-from frameshift.broker.port import TOOL_POLICY_DENIED, request_digest
+from frameshift.broker.port import SCHEMA_INVALID, TOOL_POLICY_DENIED, request_digest
 from frameshift.persistence import canonical
 from frameshift.validation import validate_against
 
@@ -65,7 +65,7 @@ def record(
 
 def record_violations(entry: dict, request: dict, result: dict | None = None) -> list[str]:
     """Whether this record faithfully describes the call it claims to."""
-    violations = [f"schema_invalid: {item}" for item in validate_against(entry, RECORD_SCHEMA)]
+    violations = [f"{SCHEMA_INVALID}: {item}" for item in validate_against(entry, RECORD_SCHEMA)]
     if violations:
         return violations
 

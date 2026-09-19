@@ -10,20 +10,22 @@ happen from the phase the session is in; binding asks whether the approval is
 good. Sequence runs first, because weighing an approval for a transition that
 cannot happen is wasted work and a misleading error.
 
-The refusal codes come from #24's published vocabulary. Nothing new is invented
-here either.
+The refusal codes come from #24's published vocabulary, through
+`frameshift.contracts.errors`. Nothing new is invented here either.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
+from frameshift.contracts import errors
+
 from . import phases
 
-APPROVAL_REQUIRED = "approval_required"
-APPROVAL_STALE = "approval_stale"
-INVARIANT_VIOLATION = "invariant_violation"
-REVISION_CONFLICT = "revision_conflict"
+APPROVAL_REQUIRED = errors.APPROVAL_REQUIRED
+APPROVAL_STALE = errors.APPROVAL_STALE
+INVARIANT_VIOLATION = errors.INVARIANT_VIOLATION
+REVISION_CONFLICT = errors.REVISION_CONFLICT
 
 # The eight gates and who may pass each one. The first slice's reference policy;
 # separation-of-duty rules are #16.

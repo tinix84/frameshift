@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import copy
 
+from frameshift.contracts import errors
 from frameshift.validation import session_violations, validate_against
 
 from . import canonical, checkpoint
 
-SCHEMA_INVALID = "schema_invalid"
-INVARIANT_VIOLATION = "invariant_violation"
-APPROVAL_REQUIRED = "approval_required"
+SCHEMA_INVALID = errors.SCHEMA_INVALID
+INVARIANT_VIOLATION = errors.INVARIANT_VIOLATION
+APPROVAL_REQUIRED = errors.APPROVAL_REQUIRED
 
 _AUTOMATIC_AXES = {
     "component": ("component", "component"),
