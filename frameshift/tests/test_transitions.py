@@ -189,6 +189,7 @@ class AttemptTests(unittest.TestCase):
         self.assertIn("lacks authority", result["detail"])
 
     def test_a_runtime_cannot_approve_on_a_humans_behalf(self) -> None:
+        """Refused for the reason the reference guard gives, not a generic one (#3)."""
         state = session("decision")
         approval = bound(state, "node_decision_001", {"id": "bot", "kind": "runtime", "role": "decision_owner"})
         result = transitions.attempt(
@@ -196,7 +197,31 @@ class AttemptTests(unittest.TestCase):
             {"gate": "decision_approval", "target_id": "node_decision_001", "to_phase": "monitoring"},
             approval,
         )
+        self.assertEqual(result["outcome"], "refused")
+        self.assertEqual(result["code"], transitions.INVARIANT_VIOLATION)
+        self.assertEqual(result["detail"], "actor kind runtime cannot approve")
+
+    def test_a_well_formed_approval_passed_as_data_still_needs_a_trusted_confirmation(self) -> None:
+        """Measuring an approval against the binding guard grants it nothing (ADR-0014)."""
+        state = session("decision")
+        result = transitions.attempt(
+            state,
+            {"gate": "decision_approval", "target_id": "node_decision_001", "to_phase": "monitoring"},
+            bound(state, "node_decision_001"),
+        )
+        self.assertEqual(result["outcome"], "refused")
+        self.assertEqual(result["code"], transitions.APPROVAL_REQUIRED)
         self.assertIn("trusted confirmation", result["detail"])
+        self.assertEqual(result["events"], [])
+
+    def test_a_missing_approval_names_the_gate(self) -> None:
+        result = transitions.attempt(
+            session("decision"),
+            {"gate": "decision_approval", "target_id": "node_decision_001", "to_phase": "monitoring"},
+            None,
+        )
+        self.assertEqual(result["code"], transitions.APPROVAL_REQUIRED)
+        self.assertEqual(result["detail"], "gate decision_approval has no approval")
 
     def test_an_unknown_gate_is_refused(self) -> None:
         result = transitions.attempt(session("decision"), {"gate": "teleport", "target_id": "x"}, None)

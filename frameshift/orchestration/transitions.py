@@ -120,6 +120,15 @@ def attempt(session: dict, transition: dict, approval) -> dict:
     from frameshift.broker.confirmation import TrustedConfirmation
 
     if not isinstance(approval, TrustedConfirmation):
+        # An approval that arrives as data grants nothing (ADR-0014). It is
+        # still measured against the binding guard first, so the refusal names
+        # what is wrong with the approval on its own terms — no approval, a
+        # runtime actor, a stale digest — with the same code the reference
+        # guard gives (#3), before falling back to the one thing the guard
+        # cannot see: that nothing supplied as an argument can pass this gate.
+        unbound = binding_refusal(session, transition, approval if isinstance(approval, dict) else None)
+        if unbound is not None:
+            return _refused(session, unbound)
         return _refused(
             session,
             Refused(APPROVAL_REQUIRED, "gate requires a trusted confirmation from the native client"),
