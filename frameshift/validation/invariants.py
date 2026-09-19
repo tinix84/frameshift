@@ -16,10 +16,12 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from frameshift.contracts import errors
+
 ROOT = Path(__file__).resolve().parents[2]
 CONTEXT = ROOT / "CONTEXT.md"
 
-INVARIANT_VIOLATION = "invariant_violation"
+INVARIANT_VIOLATION = errors.INVARIANT_VIOLATION
 TARGET_COLLECTIONS = ("statements", "frames", "options", "criteria")
 REGISTRY_ROW = re.compile(r"^\|\s*`([a-z_]+)`\s*\|[^|]*\|\s*(yes|no)\s*\|", re.MULTILINE)
 

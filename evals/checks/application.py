@@ -195,7 +195,10 @@ def application_orchestrator(case: dict, load) -> list[str]:
                 "to_phase": item.get("to_phase"),
             }
             theirs = reference_guard.attempt_transition(session, transition, approval)
-            trusted = None
+            # A human's approval reaches the orchestrator as a trusted
+            # confirmation; anything else reaches it as the data it is, and the
+            # orchestrator must refuse it for the same reason the reference does.
+            trusted = approval
             actor = approval.get("actor", {}) if approval else {}
             if approval is not None and actor.get("kind") == "human":
                 request = build_request(
@@ -245,8 +248,11 @@ def application_orchestrator(case: dict, load) -> list[str]:
             attempts += 1
 
             label = f"{corpus_case['id']}/{item['id']}"
-            fields = ("outcome",) if approval is None or actor.get("kind") != "human" else ("outcome", "code", "detail")
-            for field in fields:
+            # Every field on every attempt. #205 narrowed this to `outcome` for
+            # attempts with no approval or a non-human actor, and the reference
+            # and the application then disagreed on a runtime actor's code
+            # without the check noticing (#3 review).
+            for field in ("outcome", "code", "detail"):
                 if mine[field] != theirs[field]:
                     errors.append(
                         f"{label}: application {field} {mine[field]!r}, reference {theirs[field]!r}"

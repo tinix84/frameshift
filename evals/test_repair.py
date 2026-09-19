@@ -92,6 +92,34 @@ class SubsetRuleTests(unittest.TestCase):
         violations = repair.subset_violations(before, after)
         self.assertTrue(any("summary" in item for item in violations), violations)
 
+    def test_a_repointed_domain_identifier_is_caught(self) -> None:
+        """#43 review: `statement_id` escaped a fixed list of three key names."""
+        before = run.load(INVALID)
+        after = run.load(REPAIRED)
+        after["proposals"][0]["value"]["statement_id"] = "stmt_777"
+        violations = repair.subset_violations(before, after)
+        self.assertTrue(any("identifiers" in item and "stmt_777" in item for item in violations), violations)
+        self.assertEqual(repair.run_repair(before, after)["outcome"], "refused")
+
+    def test_a_rewritten_classification_inside_a_proposal_is_caught(self) -> None:
+        """#103 review: `primary_role`, `abstraction_level` and `levels` were accepted as clean."""
+        probes = (
+            ("proposals", 1, "value", "levels", ["component", "galaxy"]),
+            ("proposals", 0, "value", "primary_role", "observation"),
+            ("proposals", 2, "value", "abstraction_level", "component"),
+        )
+        for *path, value in probes:
+            with self.subTest(field=path[-1]):
+                before = run.load(INVALID)
+                after = run.load(REPAIRED)
+                container = after
+                for key in path[:-1]:
+                    container = container[key]
+                container[path[-1]] = value
+                violations = repair.subset_violations(before, after)
+                self.assertTrue(any(str(path[-1]) in item for item in violations), (path, violations))
+                self.assertEqual(repair.run_repair(before, after)["outcome"], "refused")
+
     def test_a_new_capability_request_is_caught(self) -> None:
         before = run.load(VALID)
         after = copy.deepcopy(before)

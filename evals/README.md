@@ -8,8 +8,16 @@ Run:
 ```sh
 python evals/run.py
 python evals/run.py --json
+python evals/run.py --conformance
 python -m unittest discover -s evals -p "test_*.py" -t .
 ```
+
+`--conformance` also prints the adapter conformance report: every registered
+adapter, each check it was run through, and each case it broke with the
+violations. An adapter no case exercised is reported as `uncovered`, which is
+not a pass. With `--json` the same matrix is added under a `conformance` key,
+one report per `adapter_conformance_report` case discovered; without the flag
+the JSON shape is unchanged.
 
 ## Cases and named checks
 
@@ -111,10 +119,14 @@ the corpus runs them through. Each case pins the prompt under test by path, id,
 and version, so the corpus cannot silently start measuring a different prompt.
 
 The rule the corpus exists for is the subset rule in `checks/repair.py`: a
-repaired artifact may gain structure, but every identifier, evidence reference,
-and proposal kind in it must already have been in the invalid output. Schema
-validation alone cannot catch an invented referent, because the repaired output
-is valid by construction.
+repaired artifact may gain structure, but every identifier (`id` and any
+`*_id`), evidence reference (any `*_ids` and requested capabilities), proposal
+kind, and assertion in it must already have been in the invalid output. An
+assertion is a free-text field the engine speaks in and every string under a
+proposal's `value`, so repointing a `statement_id` or flipping a `primary_role`
+is refused, while filling a missing envelope enum such as `status` is not.
+Schema validation alone cannot catch an invented referent, because the
+repaired output is valid by construction.
 
 `checks/schema.py` validates against the committed schemas rather than
 restating them, and refuses a schema using a keyword it does not implement, so

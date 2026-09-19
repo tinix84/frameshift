@@ -20,6 +20,13 @@ anything. Two differences are not information at all:
 
 Those refuse. A refusal here is not corruption and not a limit, so it carries
 its own code.
+
+`profile_differences` is the reference comparison. Since #125 the application
+holds the same guard in `frameshift.persistence.restore`, and the check runs
+both: the reference decides what the case expects, and the application's
+restore plan must agree with it — report the same differences, refuse the
+same downgrades — or the case fails naming the application. A check that
+refuses and a restore that does not is a guard that does not exist.
 """
 
 from __future__ import annotations
@@ -95,6 +102,46 @@ def profile_differences(recorded: dict, available: dict) -> dict:
     return {"reported": reported, "refused": refused}
 
 
+def _application_agrees(
+    checkpoint: dict, adapter_profile: dict, reference: dict, recorded_mutated: bool, restore
+) -> list[str]:
+    """The application's restore plan carries the reference's verdict (#125)."""
+    from .checkpoint import read_artifact
+
+    if restore is None:
+        from frameshift.persistence import restore as application_restore
+
+        restore = application_restore
+    if recorded_mutated:
+        # The recorded profile is inside the checkpoint digest, so a case that
+        # mutates it describes a checkpoint honestly taken under that profile:
+        # re-encode rather than hand the application a corrupt envelope.
+        from frameshift.persistence import encode
+
+        checkpoint = encode(checkpoint)
+
+    payloads = {item["id"]: read_artifact(item["uri"]) for item in checkpoint.get("artifacts", [])}
+    plan = restore(checkpoint, payloads, capability_profile=adapter_profile)
+    errors: list[str] = []
+
+    expected = "refused" if reference["refused"] else "verified"
+    if plan["outcome"] != expected:
+        errors.append(
+            f"the application restore is {plan['outcome']}, the reference comparison says {expected}: "
+            f"{plan.get('violations')}"
+        )
+    if plan.get("capability_differences") != reference["reported"]:
+        errors.append(
+            f"the application reports {plan.get('capability_differences')}, "
+            f"the reference reports {reference['reported']}"
+        )
+    if reference["refused"] and plan.get("violations") != reference["refused"]:
+        errors.append(
+            f"the application refuses with {plan.get('violations')}, the reference with {reference['refused']}"
+        )
+    return errors
+
+
 def _apply(document: dict, mutations: list[dict]) -> None:
     for mutation in mutations:
         container: object = document
@@ -103,8 +150,12 @@ def _apply(document: dict, mutations: list[dict]) -> None:
         container[mutation["path"][-1]] = mutation["value"]
 
 
-def capability_compatibility(case: dict, load) -> list[str]:
-    """Compare a checkpoint's recorded profile against the adapter restoring it."""
+def capability_compatibility(case: dict, load, restore=None) -> list[str]:
+    """Compare a checkpoint's recorded profile against the adapter restoring it.
+
+    `restore` is injectable so a test can hand in a restore that ignores the
+    offered profile and watch the case fail.
+    """
     checkpoint = load(case["artifact"])
     with (ROOT / case["adapter"]).open("r", encoding="utf-8") as handle:
         adapter_profile = json.load(handle)
@@ -125,6 +176,8 @@ def capability_compatibility(case: dict, load) -> list[str]:
             f"restore is {outcome}, case expects {expect['outcome']}: "
             f"{result['refused'] or result['reported'] or 'no difference'}"
         )
+
+    errors.extend(_application_agrees(checkpoint, adapter_profile, result, bool(case.get("mutate_recorded")), restore))
 
     for fragment in expect.get("reported_naming", []):
         if not any(fragment in item for item in result["reported"]):

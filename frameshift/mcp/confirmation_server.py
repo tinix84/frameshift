@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 from typing import Callable, TextIO
 
+from frameshift.contracts import errors
 from frameshift.orchestration.api import ConfirmationWorkflow
 
 PROTOCOL_VERSION = "2025-11-25"
@@ -55,12 +56,12 @@ class ConfirmationMcpServer:
 
     def call_tool(self, name: str, arguments: dict, elicit: Callable[[dict], dict]) -> dict:
         if name != TOOL_NAME:
-            return _pending("schema_invalid", f"unknown tool {name!r}")
+            return _pending(errors.SCHEMA_INVALID, f"unknown tool {name!r}")
         if not isinstance(arguments, dict) or set(arguments) != {"request_id"}:
-            return _pending("schema_invalid", "tool input must contain only request_id")
+            return _pending(errors.SCHEMA_INVALID, "tool input must contain only request_id")
         if not self._form_elicitation:
             return _pending(
-                "unsupported_configuration",
+                errors.UNSUPPORTED_CONFIGURATION,
                 "client did not declare native form elicitation support",
             )
         attestation = self._attestation_loader()
@@ -72,12 +73,12 @@ class ConfirmationMcpServer:
             or self._client_info.get("version") != attestation.get("client_version")
         ):
             return _pending(
-                "unsupported_configuration",
+                errors.UNSUPPORTED_CONFIGURATION,
                 "live MCP client identity does not match the attested approval profile",
             )
         request = self._workflow.pending(arguments["request_id"])
         if request is None:
-            return _pending("approval_stale", "no such pending confirmation request")
+            return _pending(errors.APPROVAL_STALE, "no such pending confirmation request")
 
         for _ in range(5):
             native = elicit(elicitation_parameters(request))
@@ -92,7 +93,7 @@ class ConfirmationMcpServer:
             if result["outcome"] != "revised":
                 return result
             request = result["confirmation_request"]
-        return _pending("approval_required", "too many consecutive edits; proposal remains pending")
+        return _pending(errors.APPROVAL_REQUIRED, "too many consecutive edits; proposal remains pending")
 
 
 def elicitation_parameters(request: dict) -> dict:

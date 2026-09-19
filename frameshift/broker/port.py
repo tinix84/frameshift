@@ -29,15 +29,18 @@ approval, a proposal, or an instruction.
 
 from __future__ import annotations
 
-from frameshift.orchestration.transitions import APPROVAL_REQUIRED, APPROVAL_STALE
+from frameshift.contracts import errors
 from frameshift.persistence import canonical
 from frameshift.validation import validate_against
 
-CAPABILITY_UNAVAILABLE = "capability_unavailable"
-DATA_CLASS_NOT_ALLOWED = "data_class_not_allowed"
-TOOL_POLICY_DENIED = "tool_policy_denied"
-SCHEMA_INVALID = "schema_invalid"
-RETRY_CONFIRMATION_REQUIRED = "retry_confirmation_required"
+APPROVAL_REQUIRED = errors.APPROVAL_REQUIRED
+APPROVAL_STALE = errors.APPROVAL_STALE
+CAPABILITY_UNAVAILABLE = errors.CAPABILITY_UNAVAILABLE
+DATA_CLASS_NOT_ALLOWED = errors.DATA_CLASS_NOT_ALLOWED
+TOOL_POLICY_DENIED = errors.TOOL_POLICY_DENIED
+SCHEMA_INVALID = errors.SCHEMA_INVALID
+RETRY_CONFIRMATION_REQUIRED = errors.RETRY_CONFIRMATION_REQUIRED
+EXECUTION_FAILED = errors.EXECUTION_FAILED
 
 REQUEST_SCHEMA = "tool-request.schema.json"
 RESULT_SCHEMA = "tool-result.schema.json"
@@ -273,7 +276,7 @@ def execute(
     try:
         result = executor(request)
     except Exception as exc:
-        return failed(f"execution_failed: {type(exc).__name__}")
+        return failed(f"{EXECUTION_FAILED}: {type(exc).__name__}")
     result_refusals = accept_result(request, result)
     if result_refusals:
         return failed(result_refusals[0])

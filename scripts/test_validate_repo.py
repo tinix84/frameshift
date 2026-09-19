@@ -11,8 +11,10 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 import unittest
 from contextlib import redirect_stdout
 from io import StringIO
@@ -22,15 +24,68 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 VALIDATOR = ROOT / "scripts" / "validate_repo.py"
 
+# Every test runs the validator against a private copy of the repository, never
+# the working tree (#163). Planting a probe at a fixed path in the checkout meant
+# two concurrent runs corrupted each other and an interrupted run left residue
+# behind; a copy per test process has neither problem, and nothing here can
+# dirty `git status`.
+SANDBOX: Path
+_sandbox_directory: tempfile.TemporaryDirectory | None = None
 
-def run_validator() -> subprocess.CompletedProcess:
-    spec = importlib.util.spec_from_file_location("validate_repo_test_runner", VALIDATOR)
+
+def _tracked_and_untracked_files() -> list[Path] | None:
+    """What a checkout contains, ignoring what `.gitignore` ignores."""
+    try:
+        listing = subprocess.run(
+            ["git", "-C", str(ROOT), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+            capture_output=True, check=True, timeout=60,
+        ).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return [ROOT / name.decode("utf-8") for name in listing.split(b"\0") if name]
+
+
+def copy_repository(destination: Path) -> None:
+    files = _tracked_and_untracked_files()
+    if files is None:
+        ignored = shutil.ignore_patterns(".git", "__pycache__", ".tmp", ".trash", "outputs", ".scratch")
+        shutil.copytree(ROOT, destination, ignore=ignored)
+        return
+    for source in files:
+        if not source.is_file():
+            continue
+        target = destination / source.relative_to(ROOT)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, target)
+
+
+def setUpModule() -> None:
+    global SANDBOX, _sandbox_directory
+    _sandbox_directory = tempfile.TemporaryDirectory(prefix="frameshift-validate-")
+    SANDBOX = Path(_sandbox_directory.name) / "repo"
+    copy_repository(SANDBOX)
+
+
+def tearDownModule() -> None:
+    if _sandbox_directory is not None:
+        _sandbox_directory.cleanup()
+
+
+def validator_module():
+    """The validator, pointed at the sandbox copy rather than the working tree."""
+    spec = importlib.util.spec_from_file_location("validate_repo", VALIDATOR)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    module.ROOT = SANDBOX
+    return module
+
+
+def run_validator() -> subprocess.CompletedProcess:
+    module = validator_module()
     output = StringIO()
     labels = (
         module.backbone_columns()
-        if (ROOT / "docs" / "story-map.md").is_file()
+        if (SANDBOX / "docs" / "story-map.md").is_file()
         else []
     )
     labels = labels + ["story", "P1", "documentation"]
@@ -45,13 +100,14 @@ def run_validator() -> subprocess.CompletedProcess:
 
 
 class PlantedFile:
-    """Write a file into the repository for the duration of one assertion."""
+    """Write a file into the sandbox copy for the duration of one assertion."""
 
     def __init__(self, relative: str, content: str) -> None:
-        self.path = ROOT / relative
+        self.path = SANDBOX / relative
         self.content = content
 
     def __enter__(self) -> Path:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(self.content, encoding="utf-8")
         return self.path
 
@@ -160,11 +216,46 @@ class ChainOfThoughtCheckTests(unittest.TestCase):
         self.assertIn("$.thinking", result.stdout)
         self.assertIn("thinking", result.stdout)
 
+    def test_an_unparseable_line_does_not_disable_the_jsonl_scan(self) -> None:
+        """#156 follow-up: one bad line used to silence the whole file, and
+        `main` validated only `*.json`, so nothing reported the bad line either."""
+        content = '{"model_thoughts": "x"}\nnot json\n'
+        with PlantedFile("evals/fixtures/_probe.jsonl", content):
+            result = run_validator()
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("$.model_thoughts", result.stdout)
+        self.assertIn("invalid JSON evals/fixtures/_probe.jsonl:2", result.stdout)
+
+    def test_the_corpus_is_scanned(self) -> None:
+        """`corpus/` instructs the engines as much as `prompts/` does (#46)."""
+        content = "# Probe\n\nWork through the analysis step by step and show your reasoning.\n"
+        with PlantedFile("corpus/_probe.md", content):
+            result = run_validator()
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("corpus/_probe.md:3", result.stdout)
+        self.assertIn("step by step", result.stdout)
+
     def test_exempt_paths_may_name_the_prohibition(self) -> None:
         result = run_validator()
         self.assertEqual(result.returncode, 0, result.stdout)
         adr = (ROOT / "docs" / "adr" / "0007-no-chain-of-thought-persistence.md").read_text(encoding="utf-8")
         self.assertIn("chain-of-thought", adr.lower())
+
+
+class SandboxTests(unittest.TestCase):
+    """The suite never writes into the checkout it was started from (#163)."""
+
+    def test_a_planted_file_lands_in_the_sandbox_not_the_working_tree(self) -> None:
+        with PlantedFile("prompts/_probe.md", "# Probe\n") as planted:
+            self.assertTrue(planted.is_file())
+            self.assertTrue(planted.is_relative_to(SANDBOX))
+            self.assertFalse((ROOT / "prompts" / "_probe.md").exists())
+        self.assertFalse(planted.exists())
+
+    def test_the_validator_under_test_reads_the_sandbox(self) -> None:
+        module = validator_module()
+        self.assertEqual(module.ROOT, SANDBOX)
+        self.assertTrue(all(path.is_relative_to(SANDBOX) for path in module.scan_paths()))
 
 
 class RationaleSummaryCheckTests(unittest.TestCase):
@@ -221,12 +312,33 @@ class RationaleSummaryCheckTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
 
 
+class CorpusCoverageTests(unittest.TestCase):
+    """`corpus/` joined after #46 closed and was in none of the scans."""
+
+    def test_a_corpus_engine_result_needs_rationale_summaries(self) -> None:
+        content = json.dumps(
+            {"schema_version": "1.0.0", "execution_id": "exec_probe_001", "engine": "problem_framing",
+             "proposals": []},
+            indent=2,
+        )
+        with PlantedFile("corpus/_probe.result.json", content):
+            result = run_validator()
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("engine result without rationale summaries: corpus/_probe.result.json", result.stdout)
+
+    def test_corpus_credential_material_is_caught(self) -> None:
+        content = json.dumps({"schema_version": "1.0.0", "api_key": "redacted"}, indent=2)
+        with PlantedFile("corpus/_probe.json", content):
+            result = run_validator()
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("corpus/_probe.json at $.api_key", result.stdout)
+
+
 class StoryMapCheckTests(unittest.TestCase):
     """A map that names an exemplar nobody can run is the failure being caught."""
 
-    MAP = ROOT / "docs" / "story-map.md"
-
     def setUp(self) -> None:
+        self.MAP = SANDBOX / "docs" / "story-map.md"
         self.original = self.MAP.read_bytes()
 
     def tearDown(self) -> None:
@@ -378,15 +490,6 @@ class CredentialMaterialCheckTests(unittest.TestCase):
         contributing = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8").lower()
         self.assertTrue("secret" in security or "credential" in security)
         self.assertTrue("secret" in contributing or "credential" in contributing)
-
-
-def validator_module():
-    import importlib.util
-
-    spec = importlib.util.spec_from_file_location("validate_repo", VALIDATOR)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
 
 
 def story(number, labels, milestone="M0"):

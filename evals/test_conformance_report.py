@@ -128,5 +128,66 @@ class CaseWiringTests(unittest.TestCase):
         self.assertEqual(set(report["results"][0]), {"case", "passed", "errors"})
 
 
+class EmittedReportTests(unittest.TestCase):
+    """The report reaches an adapter author (#114).
+
+    `conformance_report` built the matrix and validated its shape, and then
+    nothing printed it: `run.py` knew only `PASS adapter-conformance-report`.
+    """
+
+    def test_the_rendering_names_every_adapter_check_and_verdict(self) -> None:
+        text = adapter.render_conformance(build(["echo", "crlf_text"]))
+        self.assertIn("echo: conformant", text)
+        self.assertIn("crlf_text: conformant", text)
+        self.assertIn("extension_annotating: uncovered", text)
+        self.assertIn("request_id_promoting: uncovered", text)
+        for check in run.load(CASE)["corpus"]:
+            self.assertIn(f"  {check}: conformant", text)
+
+    def test_the_rendering_of_a_failure_names_the_case_and_the_violation(self) -> None:
+        text = adapter.render_conformance(build(["request_id_promoting"]))
+        self.assertIn("request_id_promoting: nonconformant", text)
+        self.assertIn("engine_result_repair: nonconformant", text)
+        self.assertIn("    - repair-wrong-typed-field", text)
+        self.assertIn("outcome is unrepairable, case expects repaired", text)
+
+    def test_the_conformance_flag_emits_the_matrix_beside_the_results(self) -> None:
+        import json
+        import subprocess
+
+        result = subprocess.run(
+            [sys.executable, "evals/run.py", "--json", "--conformance"],
+            cwd=run.ROOT, capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout[-2000:])
+        report = json.loads(result.stdout)
+        self.assertEqual(set(report), {"passed", "total", "results", "conformance"})
+        matrix = report["conformance"]["adapter-conformance-report"]
+        self.assertEqual(
+            verdicts(matrix),
+            {
+                "crlf_text": "conformant",
+                "echo": "conformant",
+                "extension_annotating": "uncovered",
+                "reordering": "conformant",
+                "request_id_promoting": "uncovered",
+            },
+        )
+        conformant = next(item for item in matrix["adapters"] if item["name"] == "echo")
+        self.assertEqual({item["name"] for item in conformant["checks"]}, set(run.load(CASE)["corpus"]))
+
+    def test_the_human_rendering_is_printed_with_the_flag(self) -> None:
+        import subprocess
+
+        result = subprocess.run(
+            [sys.executable, "evals/run.py", "--conformance", "--root", "evals/fixtures"],
+            cwd=run.ROOT, capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout[-2000:])
+        self.assertIn("Adapter conformance (adapter-conformance-report)", result.stdout)
+        self.assertIn("echo: conformant", result.stdout)
+        self.assertIn("extension_annotating: uncovered", result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

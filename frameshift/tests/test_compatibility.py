@@ -312,6 +312,19 @@ class CompatibilityTests(unittest.TestCase):
         differences = compatibility.contract_differences(checkpoint(), tampered)
         self.assertTrue(any("has been rewritten" in item for item in differences), differences)
 
+    def test_bootstrap_carries_the_offered_capability_profile_into_the_plan(self) -> None:
+        """#125: the wired restore reports differences and refuses a downgrade."""
+        cp = checkpoint()
+        offered = json.loads((ROOT / "adapters" / "claude-code" / "capabilities.json").read_text(encoding="utf-8"))
+        plan = restore_checkpoint(cp, artifacts(cp), capability_profile=offered)
+        self.assertEqual(plan["outcome"], "verified")
+        self.assertTrue(any("code.execute.sandboxed" in item for item in plan["capability_differences"]))
+
+        offered["capabilities"][0]["side_effect"] = "irreversible"
+        refused = restore_checkpoint(cp, artifacts(cp), capability_profile=offered)
+        self.assertEqual(refused["outcome"], "refused")
+        self.assertFalse(refused["reasoning_allowed"])
+
     def test_a_checkpoint_pinning_nothing_reports_missing_engine_contracts(self) -> None:
         cp = checkpoint()
         cp["contracts"]["prompts"] = {}

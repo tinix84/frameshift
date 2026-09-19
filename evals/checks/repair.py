@@ -14,9 +14,13 @@ import re
 from . import schema
 
 # Keys whose values name something in the domain rather than describe a shape.
-# A repair may add structure; it may not add a referent.
-IDENTIFIER_KEYS = frozenset({"execution_id", "id", "target_id"})
-REFERENCE_KEYS = frozenset({"requested_capabilities", "source_ids"})
+# A repair may add structure; it may not add a referent. The rule is by shape
+# rather than by list: `statement_id` escaped a list of three names (#43), and
+# `proposals[].value` is an open object, so any list would be short again.
+IDENTIFIER_KEYS = frozenset({"id"})
+IDENTIFIER_SUFFIX = "_id"
+REFERENCE_KEYS = frozenset({"requested_capabilities"})
+REFERENCE_SUFFIX = "_ids"
 # Free-text keys whose values assert something rather than describe a shape: the
 # text of a statement, the question a frame poses, what a rationale summary says.
 # Rewriting one of these leaves every identifier and reference untouched while
@@ -32,24 +36,55 @@ ASSERTION_KEYS = frozenset(
         "warnings",
     }
 )
+# Everything a proposal's `value` says is a claim the engine made about the
+# domain — the role a statement plays, the level a frame sits at, the rungs of
+# a ladder — so every string under it is an assertion whatever key it sits
+# under (#103). Envelope fields outside `value`, such as `status`, stay shape:
+# filling a missing enum there is the repair the prompt exists for.
+ASSERTION_ROOTS = ("proposals",)
+ASSERTION_CONTAINER = "value"
 
 FRONT_MATTER_ID = re.compile(r"^id:\s*(?P<id>\S+)\s*$", re.MULTILINE)
 FRONT_MATTER_VERSION = re.compile(r"^version:\s*(?P<version>\S+)\s*$", re.MULTILINE)
 
 
-def _collect(value: object, keys: frozenset[str], found: set[str], *, qualify: bool = False) -> set[str]:
+def _strings(item: object, prefix: str = "") -> set[str]:
+    if isinstance(item, str):
+        return {prefix + item}
+    if isinstance(item, list):
+        return {prefix + entry for entry in item if isinstance(entry, str)}
+    return set()
+
+
+def _collect(value: object, matches, found: set[str], *, qualify: bool = False) -> set[str]:
     if isinstance(value, dict):
         for name, item in value.items():
-            if name in keys:
-                prefix = f"{name}: " if qualify else ""
-                if isinstance(item, str):
-                    found.add(prefix + item)
-                elif isinstance(item, list):
-                    found.update(prefix + entry for entry in item if isinstance(entry, str))
-            _collect(item, keys, found, qualify=qualify)
+            if matches(name):
+                found |= _strings(item, f"{name}: " if qualify else "")
+            _collect(item, matches, found, qualify=qualify)
     elif isinstance(value, list):
         for item in value:
-            _collect(item, keys, found, qualify=qualify)
+            _collect(item, matches, found, qualify=qualify)
+    return found
+
+
+def _is_identifier(name: str) -> bool:
+    return name in IDENTIFIER_KEYS or name.endswith(IDENTIFIER_SUFFIX)
+
+
+def _is_reference(name: str) -> bool:
+    return name in REFERENCE_KEYS or name.endswith(REFERENCE_SUFFIX)
+
+
+def _proposal_claims(artifact: object) -> set[str]:
+    """Every string under `proposals[].value`, qualified by the key it sits under."""
+    found: set[str] = set()
+    if not isinstance(artifact, dict):
+        return found
+    for root in ASSERTION_ROOTS:
+        for proposal in artifact.get(root, []):
+            if isinstance(proposal, dict) and isinstance(proposal.get(ASSERTION_CONTAINER), dict):
+                _collect(proposal[ASSERTION_CONTAINER], lambda name: True, found, qualify=True)
     return found
 
 
@@ -60,9 +95,10 @@ def referents(artifact: object) -> dict[str, set[str]]:
     rewritten rather than only quoting the sentence that replaced it.
     """
     return {
-        "identifiers": _collect(artifact, IDENTIFIER_KEYS, set()),
-        "references": _collect(artifact, REFERENCE_KEYS, set()),
-        "assertions": _collect(artifact, ASSERTION_KEYS, set(), qualify=True),
+        "identifiers": _collect(artifact, _is_identifier, set()),
+        "references": _collect(artifact, _is_reference, set()),
+        "assertions": _collect(artifact, ASSERTION_KEYS.__contains__, set(), qualify=True)
+        | _proposal_claims(artifact),
         "proposal kinds": {
             item.get("kind")
             for item in (artifact.get("proposals", []) if isinstance(artifact, dict) else [])

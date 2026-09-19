@@ -6,6 +6,7 @@ import copy
 import json
 
 from frameshift.broker.confirmation import bind_confirmation_response, build_request
+from frameshift.contracts import errors
 from frameshift.validation import validate_against
 
 from . import transitions
@@ -65,7 +66,7 @@ class ConfirmationWorkflow:
         if entry is None:
             return {
                 "outcome": "pending",
-                "code": "approval_stale",
+                "code": errors.APPROVAL_STALE,
                 "detail": "no such pending confirmation request",
                 "events": [],
             }
@@ -73,7 +74,7 @@ class ConfirmationWorkflow:
         if current_profile is not None and current_profile != self._profile:
             return {
                 "outcome": "pending",
-                "code": "unsupported_configuration",
+                "code": errors.UNSUPPORTED_CONFIGURATION,
                 "detail": "approval profile changed after session start",
                 "events": [],
             }
@@ -105,7 +106,7 @@ class ConfirmationWorkflow:
         if transitions.find_target(self._session, transition["target_id"]) is None:
             return {
                 "outcome": "refused",
-                "code": "invariant_violation",
+                "code": errors.INVARIANT_VIOLATION,
                 "detail": f"no such target {transition['target_id']}",
                 "phase": self._session.get("phase"),
                 "events": [],
@@ -113,7 +114,7 @@ class ConfirmationWorkflow:
         if base_revision != self._session.get("revision"):
             return {
                 "outcome": "refused",
-                "code": "approval_stale",
+                "code": errors.APPROVAL_STALE,
                 "detail": "confirmation was bound to an older session revision",
                 "phase": self._session.get("phase"),
                 "events": [],
@@ -124,7 +125,7 @@ class ConfirmationWorkflow:
         if request["target_digest"] != transitions.content_digest(confirmed_candidate):
             return {
                 "outcome": "refused",
-                "code": "approval_stale",
+                "code": errors.APPROVAL_STALE,
                 "detail": "confirmed proposal does not match the displayed target digest",
                 "phase": self._session.get("phase"),
                 "events": [],
@@ -171,14 +172,14 @@ class ConfirmationWorkflow:
         except json.JSONDecodeError as exc:
             return {
                 "outcome": "pending",
-                "code": "schema_invalid",
+                "code": errors.SCHEMA_INVALID,
                 "detail": f"edited proposal is not JSON: {exc.msg}",
                 "events": [],
             }
         if not isinstance(replacement, dict) or replacement.get("id") != transition["target_id"]:
             return {
                 "outcome": "pending",
-                "code": "schema_invalid",
+                "code": errors.SCHEMA_INVALID,
                 "detail": "edited proposal must be an object retaining the displayed target id",
                 "events": [],
             }
@@ -192,7 +193,7 @@ class ConfirmationWorkflow:
         if not _replace_target(revised, transition["target_id"], replacement):
             return {
                 "outcome": "pending",
-                "code": "approval_stale",
+                "code": errors.APPROVAL_STALE,
                 "detail": "target no longer exists",
                 "events": [],
             }
@@ -201,7 +202,7 @@ class ConfirmationWorkflow:
         if violations:
             return {
                 "outcome": "pending",
-                "code": "schema_invalid",
+                "code": errors.SCHEMA_INVALID,
                 "detail": "; ".join(violations),
                 "events": [],
             }
@@ -230,7 +231,7 @@ class ConfirmationWorkflow:
         )
         return {
             "outcome": "revised",
-            "code": "approval_required",
+            "code": errors.APPROVAL_REQUIRED,
             "detail": "edited proposal is valid and requires a fresh native dialog",
             "confirmation_request": fresh,
             "events": [],

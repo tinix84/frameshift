@@ -63,9 +63,15 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--json", action="store_true", help="emit machine-readable result")
     parser.add_argument("--root", action="append", type=Path, help="case root (repeatable)")
+    parser.add_argument(
+        "--conformance",
+        action="store_true",
+        help="also emit the adapter conformance report: adapter by check by case (#114)",
+    )
     args = parser.parse_args()
 
     results = []
+    conformance: dict[str, dict] = {}
     roots = args.root or [FIXTURES, CORPUS]
     try:
         paths = discover_cases([p if p.is_absolute() else ROOT / p for p in roots])
@@ -75,11 +81,22 @@ def main() -> int:
     for path in paths:
         with path.open("r", encoding="utf-8") as handle:
             case = json.load(handle)
-        errors = evaluate(case, lambda reference, directory=path.parent: load(reference, directory))
+        loader = lambda reference, directory=path.parent: load(reference, directory)  # noqa: E731
+        errors = evaluate(case, loader)
         results.append({"case": case["id"], "passed": not errors, "errors": errors})
+        if args.conformance and case.get("check") == "adapter_conformance_report":
+            # The case declares which adapters and which corpus the matrix
+            # covers; the runner only asks for the matrix it already built.
+            from evals.checks.adapter import conformance_report
+
+            conformance[case["id"]] = conformance_report(
+                loader, case.get("transports", []), set(case.get("corpus", []))
+            )
 
     passed = sum(item["passed"] for item in results)
     report = {"passed": passed, "total": len(results), "results": results}
+    if args.conformance:
+        report["conformance"] = conformance
     if args.json:
         print(json.dumps(report, indent=2, sort_keys=True))
     else:
@@ -89,6 +106,14 @@ def main() -> int:
             for error in item["errors"]:
                 print(f"  - {error}")
         print(f"{passed}/{len(results)} fixtures passed")
+        if args.conformance:
+            from evals.checks.adapter import render_conformance
+
+            if not conformance:
+                print("no adapter_conformance_report case was discovered, so there is no matrix to show")
+            for case_id, matrix in sorted(conformance.items()):
+                print(f"\nAdapter conformance ({case_id})")
+                print(render_conformance(matrix), end="")
     return 0 if passed == len(results) and results else 1
 
 

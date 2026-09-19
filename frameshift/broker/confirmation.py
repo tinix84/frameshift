@@ -6,14 +6,15 @@ from dataclasses import dataclass
 import json
 from pathlib import Path
 
+from frameshift.contracts import errors
 from frameshift.validation import validate_against
 
 from .port import request_digest as _canonical_digest
 
-APPROVAL_REQUIRED = "approval_required"
-APPROVAL_STALE = "approval_stale"
-SCHEMA_INVALID = "schema_invalid"
-UNSUPPORTED_CONFIGURATION = "unsupported_configuration"
+APPROVAL_REQUIRED = errors.APPROVAL_REQUIRED
+APPROVAL_STALE = errors.APPROVAL_STALE
+SCHEMA_INVALID = errors.SCHEMA_INVALID
+UNSUPPORTED_CONFIGURATION = errors.UNSUPPORTED_CONFIGURATION
 
 _ISSUER = object()
 

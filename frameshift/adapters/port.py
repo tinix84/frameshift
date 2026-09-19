@@ -28,6 +28,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
+from frameshift.contracts import errors
 from frameshift.validation import validate_against
 from frameshift.validation.prompts import (
     MalformedFrontMatter,
@@ -44,10 +45,10 @@ ENVELOPE_SCHEMA = "execution-envelope.schema.json"
 RESULT_SCHEMA = "engine-result.schema.json"
 REASONING_CONTEXT_SCHEMA = "reasoning-context.schema.json"
 
-CAPABILITY_UNAVAILABLE = "capability_unavailable"
-RUNTIME_OUTPUT_INVALID = "runtime_output_invalid"
-INVARIANT_VIOLATION = "invariant_violation"
-SCHEMA_INVALID = "schema_invalid"
+CAPABILITY_UNAVAILABLE = errors.CAPABILITY_UNAVAILABLE
+RUNTIME_OUTPUT_INVALID = errors.RUNTIME_OUTPUT_INVALID
+INVARIANT_VIOLATION = errors.INVARIANT_VIOLATION
+SCHEMA_INVALID = errors.SCHEMA_INVALID
 
 
 @dataclass
