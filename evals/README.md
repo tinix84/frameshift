@@ -119,10 +119,14 @@ the corpus runs them through. Each case pins the prompt under test by path, id,
 and version, so the corpus cannot silently start measuring a different prompt.
 
 The rule the corpus exists for is the subset rule in `checks/repair.py`: a
-repaired artifact may gain structure, but every identifier, evidence reference,
-and proposal kind in it must already have been in the invalid output. Schema
-validation alone cannot catch an invented referent, because the repaired output
-is valid by construction.
+repaired artifact may gain structure, but every identifier (`id` and any
+`*_id`), evidence reference (any `*_ids` and requested capabilities), proposal
+kind, and assertion in it must already have been in the invalid output. An
+assertion is a free-text field the engine speaks in and every string under a
+proposal's `value`, so repointing a `statement_id` or flipping a `primary_role`
+is refused, while filling a missing envelope enum such as `status` is not.
+Schema validation alone cannot catch an invented referent, because the
+repaired output is valid by construction.
 
 `checks/schema.py` validates against the committed schemas rather than
 restating them, and refuses a schema using a keyword it does not implement, so
