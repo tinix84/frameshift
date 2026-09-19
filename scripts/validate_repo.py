@@ -86,7 +86,11 @@ MACHINE_READABLE_SUFFIXES = {".json", ".jsonl", ".yaml", ".yml"}
 # however the file is formatted. YAML has no parser here and keeps the line scan.
 PARSEABLE_SUFFIXES = {".json", ".jsonl"}
 # Where state is defined, behavior is requested, and agents are instructed.
-COT_SCAN_DIRS = ["schemas", "prompts", "evals/fixtures", "adapters"]
+# `corpus/` holds engine results and narratives that exemplify what an engine
+# should produce, which instructs it as surely as a prompt does (#46).
+COT_SCAN_DIRS = ["schemas", "prompts", "evals/fixtures", "adapters", "corpus"]
+# Where engine results live, for the positive half of ADR-0007.
+ENGINE_RESULT_DIRS = ["evals/fixtures", "corpus"]
 COT_ROOT_FILES = ["README.md", "AGENTS.md", "CLAUDE.md", "CONTRIBUTING.md", "SECURITY.md"]
 # The shape of an engine result. `proposals` is the field only a result carries:
 # an execution request names an `engine` too, and an envelope names an
@@ -172,15 +176,45 @@ def scan_paths() -> list[Path]:
 def _documents(text: str, suffix: str) -> list[object]:
     """The parsed documents in a file: one for `.json`, one per line for `.jsonl`.
 
-    An unparseable file yields nothing here; `main` already reports invalid JSON
-    separately, so failing twice for one cause would only obscure it.
+    An unparseable document yields nothing here; `main` reports invalid JSON
+    separately, so failing twice for one cause would only obscure it. For
+    `.jsonl` that is decided line by line: one bad line used to return an empty
+    list and silently switch the scan off for every good line around it (#156).
     """
-    try:
-        if suffix == ".jsonl":
-            return [json.loads(line) for line in text.splitlines() if line.strip()]
-        return [json.loads(text)]
-    except json.JSONDecodeError:
-        return []
+    documents: list[object] = []
+    chunks = [line for line in text.splitlines() if line.strip()] if suffix == ".jsonl" else [text]
+    for chunk in chunks:
+        try:
+            documents.append(json.loads(chunk))
+        except json.JSONDecodeError:
+            continue
+    return documents
+
+
+def invalid_json_errors() -> list[str]:
+    """Every `.json` file parses, and every non-blank line of a `.jsonl` file does."""
+    errors: list[str] = []
+    for path in sorted(ROOT.rglob("*.json")):
+        try:
+            with path.open("r", encoding="utf-8") as handle:
+                json.load(handle)
+        except (OSError, json.JSONDecodeError) as exc:
+            errors.append(f"invalid JSON {path.relative_to(ROOT)}: {exc}")
+    for path in sorted(ROOT.rglob("*.jsonl")):
+        relative = path.relative_to(ROOT).as_posix()
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except (OSError, UnicodeDecodeError) as exc:
+            errors.append(f"invalid JSON {relative}: {exc}")
+            continue
+        for number, line in enumerate(lines, start=1):
+            if not line.strip():
+                continue
+            try:
+                json.loads(line)
+            except json.JSONDecodeError as exc:
+                errors.append(f"invalid JSON {relative}:{number}: {exc}")
+    return errors
 
 
 def key_errors(node: object, relative: str, path: str = "$") -> list[str]:
@@ -352,7 +386,8 @@ def credential_material_errors() -> list[str]:
 def rationale_summary_errors() -> list[str]:
     """The positive half of ADR-0007: engine results carry rationale summaries."""
     errors: list[str] = []
-    for path in sorted((ROOT / "evals" / "fixtures").rglob("*.json")):
+    paths = sorted(path for directory in ENGINE_RESULT_DIRS for path in (ROOT / directory).rglob("*.json"))
+    for path in paths:
         try:
             with path.open("r", encoding="utf-8") as handle:
                 artifact = json.load(handle)
@@ -550,12 +585,7 @@ def main() -> int:
         if not (ROOT / relative).is_file():
             errors.append(f"missing required file: {relative}")
 
-    for path in sorted(ROOT.rglob("*.json")):
-        try:
-            with path.open("r", encoding="utf-8") as handle:
-                json.load(handle)
-        except (OSError, json.JSONDecodeError) as exc:
-            errors.append(f"invalid JSON {path.relative_to(ROOT)}: {exc}")
+    errors.extend(invalid_json_errors())
 
     for path in sorted(ROOT.rglob("*.md")):
         text = path.read_text(encoding="utf-8")

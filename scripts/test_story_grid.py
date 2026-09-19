@@ -8,10 +8,11 @@ testable without a network. `gh` is the caller's problem and stays out of these.
 from __future__ import annotations
 
 import importlib.util
-import subprocess
-import sys
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
+from io import StringIO
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 GENERATOR = ROOT / "scripts" / "story_grid.py"
@@ -127,22 +128,38 @@ class RenderTests(unittest.TestCase):
 
 
 class EndToEndTests(unittest.TestCase):
-    def test_the_generator_runs_and_prints_a_grid(self) -> None:
-        result = subprocess.run(
-            [sys.executable, str(GENERATOR)], cwd=ROOT, capture_output=True, text=True
-        )
-        if result.returncode != 0:
-            self.assertIn("gh is unavailable", result.stderr)
-            return
-        self.assertIn("# Story map grid", result.stdout)
-        self.assertIn("Get reframed", result.stdout)
+    """`main` end to end, with the tracker answered locally (#163).
+
+    The previous version shelled out to the script and let it call `gh`, so
+    the default suite reached GitHub and its assertions depended on whatever
+    the live tracker held that day.
+    """
+
+    def run_main(self, issues):
+        grid = module()
+        out, err = StringIO(), StringIO()
+        with patch.object(grid, "fetch_stories", return_value=issues), \
+             redirect_stdout(out), redirect_stderr(err):
+            code = grid.main()
+        return code, out.getvalue(), err.getvalue()
+
+    def test_the_generator_prints_a_grid(self) -> None:
+        code, stdout, _ = self.run_main([issue(8, ["column:reframe"])])
+        self.assertEqual(code, 0)
+        self.assertIn("# Story map grid", stdout)
+        self.assertIn("Get reframed", stdout)
+        self.assertIn("#8", stdout)
 
     def test_an_empty_tracker_says_so_on_stderr(self) -> None:
-        result = subprocess.run(
-            [sys.executable, str(GENERATOR)], cwd=ROOT, capture_output=True, text=True
-        )
-        if result.returncode == 0 and "no issue carries" in result.stderr:
-            self.assertIn("every cell is empty", result.stderr)
+        code, _, stderr = self.run_main([])
+        self.assertEqual(code, 0)
+        self.assertIn("no issue carries", stderr)
+        self.assertIn("every cell is empty", stderr)
+
+    def test_an_unavailable_tracker_is_a_named_failure(self) -> None:
+        code, _, stderr = self.run_main(None)
+        self.assertEqual(code, 1)
+        self.assertIn("gh is unavailable", stderr)
 
 
 class UnplacedDiagnosisTests(unittest.TestCase):
