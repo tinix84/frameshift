@@ -155,9 +155,28 @@ class RestoreTests(unittest.TestCase):
     def manifest(self, adapter: str) -> dict:
         return json.loads((ROOT / "adapters" / adapter / "capabilities.json").read_text(encoding="utf-8"))
 
-    def test_restore_without_an_offered_profile_reports_no_capability_differences(self) -> None:
+    def test_restore_without_an_offered_profile_says_it_could_not_compare(self) -> None:
+        """#125: a checkpoint that records a profile is never silently unchecked.
+
+        Skipping the comparison when the caller passed nothing made the guard
+        opt-in, so the issue's own reproduction — `restore(reference, artifacts)`
+        — still returned a clean plan. An unverifiable restore is reported.
+        """
         reference = reference_checkpoint()
+        self.assertIsInstance(reference.get("capability_profile"), dict)
         plan = checkpoint.restore(reference, self.artifacts(reference))
+        self.assertEqual(plan["outcome"], "verified")
+        self.assertTrue(
+            any("not compared" in item for item in plan["capability_differences"]),
+            plan["capability_differences"],
+        )
+
+    def test_a_checkpoint_recording_no_profile_reports_nothing(self) -> None:
+        """Nothing to compare against is not the same as declining to compare."""
+        reference = reference_checkpoint()
+        reference.pop("capability_profile", None)
+        recorded = checkpoint.encode(reference)
+        plan = checkpoint.restore(recorded, self.artifacts(recorded))
         self.assertEqual(plan["capability_differences"], [])
 
     def test_restore_reports_capability_differences_in_the_plan(self) -> None:

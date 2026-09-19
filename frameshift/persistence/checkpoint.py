@@ -118,8 +118,9 @@ def restore(
     `capability_profile` is what the restoring adapter offers. Differences from
     the profile the checkpoint records are attached to the plan (#22 step 7);
     a weakened approval gate or an escalated side effect refuses it instead
-    (#125). Integrity comes first: a corrupt checkpoint's profile is not worth
-    comparing.
+    (#125). Omitting it against a checkpoint that records one is reported as an
+    uncompared profile rather than passing silently. Integrity comes first: a
+    corrupt checkpoint's profile is not worth comparing.
     """
     journal = journal if journal is not None else RestoreJournal()
     violations = verify(checkpoint, artifact_bytes)
@@ -137,13 +138,21 @@ def restore(
         return plan
 
     recorded = checkpoint.get("capability_profile")
-    if capability_profile is not None and isinstance(recorded, dict):
-        differences = compatibility.capability_differences(recorded, capability_profile)
-        plan["capability_differences"] = differences["reported"]
-        if differences["refused"]:
-            plan["outcome"] = "refused"
-            plan["violations"] = differences["refused"]
-            return plan
+    if isinstance(recorded, dict):
+        if capability_profile is None:
+            # Declining to compare is itself a difference. Staying silent here
+            # made the guard opt-in, so #125's own reproduction still passed.
+            plan["capability_differences"] = [
+                f"profile not compared: the checkpoint records "
+                f"{recorded.get('profile_id', 'a profile')!r} and no offered profile was given"
+            ]
+        else:
+            differences = compatibility.capability_differences(recorded, capability_profile)
+            plan["capability_differences"] = differences["reported"]
+            if differences["refused"]:
+                plan["outcome"] = "refused"
+                plan["violations"] = differences["refused"]
+                return plan
 
     # Reading a pending proposal is not committing it: the ids are listed so a
     # human can see what awaits a gate, and nothing here advances a phase.
