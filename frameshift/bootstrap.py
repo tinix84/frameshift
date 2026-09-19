@@ -43,8 +43,13 @@ def restore_checkpoint(
     installed_prompts: dict[str, dict] | None = None,
     published_prompts: list[dict] | None = None,
     prompt_change_confirmations=(),
+    capability_profile: dict | None = None,
 ) -> dict:
-    """Wire persistence evidence, prompt resources, broker authority and orchestration."""
+    """Wire persistence evidence, prompt resources, broker authority and orchestration.
+
+    `capability_profile` is the restoring adapter's manifest; differences from
+    the recorded profile ride on the plan and a downgrade refuses it (#125).
+    """
     from frameshift.orchestration.restore import plan_restore
     from frameshift.persistence import compatibility
     from frameshift.persistence.checkpoint import restore
@@ -54,7 +59,7 @@ def restore_checkpoint(
         if installed_prompts is None
         else installed_prompts
     )
-    base_plan = restore(checkpoint, artifact_bytes, journal)
+    base_plan = restore(checkpoint, artifact_bytes, journal, capability_profile=capability_profile)
     differences = (
         compatibility.contract_differences(checkpoint, available, published_prompts)
         if base_plan["outcome"] == "verified"

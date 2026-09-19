@@ -18,7 +18,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from frameshift.persistence import canonical, checkpoint  # noqa: E402
+from frameshift.contracts import errors  # noqa: E402
+from frameshift.persistence import canonical, checkpoint, compatibility  # noqa: E402
 
 REFERENCE = ROOT / "evals" / "fixtures" / "reference.checkpoint.json"
 
@@ -150,6 +151,70 @@ class RestoreTests(unittest.TestCase):
         reference = reference_checkpoint()
         violations = checkpoint.verify(reference, {})
         self.assertTrue(any("is missing" in item for item in violations), violations)
+
+    def manifest(self, adapter: str) -> dict:
+        return json.loads((ROOT / "adapters" / adapter / "capabilities.json").read_text(encoding="utf-8"))
+
+    def test_restore_without_an_offered_profile_reports_no_capability_differences(self) -> None:
+        reference = reference_checkpoint()
+        plan = checkpoint.restore(reference, self.artifacts(reference))
+        self.assertEqual(plan["capability_differences"], [])
+
+    def test_restore_reports_capability_differences_in_the_plan(self) -> None:
+        """#125: differences are attached to the plan and the plan is still produced."""
+        reference = reference_checkpoint()
+        plan = checkpoint.restore(
+            reference, self.artifacts(reference), capability_profile=self.manifest("claude-code")
+        )
+        self.assertEqual(plan["outcome"], "verified")
+        self.assertTrue(plan["pending_proposal_ids"])
+        reported = plan["capability_differences"]
+        for name in ("artifact.write", "code.execute.sandboxed", "external.connector", "profile changed"):
+            self.assertTrue(any(name in item for item in reported), (name, reported))
+
+    def test_restore_into_the_recorded_adapter_reports_nothing(self) -> None:
+        reference = reference_checkpoint()
+        plan = checkpoint.restore(reference, self.artifacts(reference), capability_profile=self.manifest("generic"))
+        self.assertEqual(plan["outcome"], "verified")
+        self.assertEqual(plan["capability_differences"], [])
+
+    def test_restore_refuses_a_weakened_approval_gate(self) -> None:
+        """ADR-0002's gate crossed by changing runtimes is the thing ADR-0004 exists to prevent."""
+        reference = reference_checkpoint()
+        reference["capability_profile"]["capabilities"][0]["approval"] = "each_call"
+        recorded = checkpoint.encode(reference)  # a checkpoint honestly taken under that profile
+        plan = checkpoint.restore(recorded, self.artifacts(recorded), capability_profile=self.manifest("generic"))
+        self.assertEqual(plan["outcome"], "refused")
+        self.assertTrue(plan["violations"])
+        self.assertTrue(all(item.startswith(errors.CAPABILITY_DOWNGRADE_REFUSED) for item in plan["violations"]))
+        self.assertTrue(any("artifact.read" in item and "approval weakened" in item for item in plan["violations"]))
+        self.assertEqual(plan["pending_proposal_ids"], [])
+        self.assertEqual(plan["required_checkpoints"], [])
+
+    def test_restore_refuses_an_escalated_side_effect(self) -> None:
+        reference = reference_checkpoint()
+        offered = self.manifest("generic")
+        offered["capabilities"][0]["side_effect"] = "irreversible"
+        plan = checkpoint.restore(reference, self.artifacts(reference), capability_profile=offered)
+        self.assertEqual(plan["outcome"], "refused")
+        self.assertTrue(any("side_effect escalated" in item for item in plan["violations"]), plan)
+
+    def test_integrity_is_checked_before_capabilities(self) -> None:
+        reference = reference_checkpoint()
+        reference["state"]["title"] = "tampered"
+        offered = self.manifest("generic")
+        offered["capabilities"][0]["side_effect"] = "irreversible"
+        plan = checkpoint.restore(reference, self.artifacts(reference), capability_profile=offered)
+        self.assertTrue(all(item.startswith(checkpoint.INTEGRITY_VIOLATION) for item in plan["violations"]), plan)
+        self.assertEqual(plan["capability_differences"], [])
+
+    def test_the_orderings_mirror_the_capability_manifest_schema(self) -> None:
+        manifest = json.loads((ROOT / "schemas" / "capability-manifest.schema.json").read_text(encoding="utf-8"))
+        properties = manifest["properties"]["capabilities"]["items"]["properties"]
+        self.assertEqual(set(compatibility.APPROVAL_STRENGTH), set(properties["approval"]["enum"]))
+        self.assertEqual(set(compatibility.SIDE_EFFECT_SEVERITY), set(properties["side_effect"]["enum"]))
+        self.assertEqual(compatibility.APPROVAL_STRENGTH[0], "never")
+        self.assertEqual(compatibility.SIDE_EFFECT_SEVERITY[-1], "irreversible")
 
     def test_version_two_execution_identity_is_inside_the_checkpoint_digest(self) -> None:
         source = json.loads(

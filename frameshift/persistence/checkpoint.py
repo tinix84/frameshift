@@ -21,7 +21,7 @@ from pathlib import Path
 
 from frameshift.contracts import errors
 
-from . import canonical
+from . import canonical, compatibility
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -106,12 +106,20 @@ def restore(
     checkpoint: dict,
     artifact_bytes: dict[str, bytes],
     journal: RestoreJournal | None = None,
+    *,
+    capability_profile: dict | None = None,
 ) -> dict:
     """Verify, then plan. Never execute and never commit.
 
     The plan names what is pending and which gates remain. Both action lists come
     from the journal, so they are a record of what happened rather than a claim
     about what should have.
+
+    `capability_profile` is what the restoring adapter offers. Differences from
+    the profile the checkpoint records are attached to the plan (#22 step 7);
+    a weakened approval gate or an escalated side effect refuses it instead
+    (#125). Integrity comes first: a corrupt checkpoint's profile is not worth
+    comparing.
     """
     journal = journal if journal is not None else RestoreJournal()
     violations = verify(checkpoint, artifact_bytes)
@@ -119,6 +127,7 @@ def restore(
     plan = {
         "outcome": "refused" if violations else "verified",
         "violations": violations,
+        "capability_differences": [],
         "executed_capabilities": list(journal.executed_capabilities),
         "committed_proposal_ids": list(journal.committed_proposal_ids),
         "pending_proposal_ids": [],
@@ -126,6 +135,15 @@ def restore(
     }
     if violations:
         return plan
+
+    recorded = checkpoint.get("capability_profile")
+    if capability_profile is not None and isinstance(recorded, dict):
+        differences = compatibility.capability_differences(recorded, capability_profile)
+        plan["capability_differences"] = differences["reported"]
+        if differences["refused"]:
+            plan["outcome"] = "refused"
+            plan["violations"] = differences["refused"]
+            return plan
 
     # Reading a pending proposal is not committing it: the ids are listed so a
     # human can see what awaits a gate, and nothing here advances a phase.

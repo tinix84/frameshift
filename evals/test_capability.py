@@ -160,6 +160,29 @@ class CaseWiringTests(unittest.TestCase):
                 case.pop("mutate_adapter", None)
                 self.assertTrue(run.evaluate(case), "without its mutation the case must fail")
 
+    def test_the_case_measures_the_application_restore(self) -> None:
+        """#125: the refusal is a guard in `frameshift.persistence.restore`, not only a check."""
+        for name in self.CASES:
+            with self.subTest(case=name):
+                case = run.load(f"evals/fixtures/{name}.case.json")
+                seen = {}
+
+                def blind_restore(checkpoint, payloads, **kwargs):
+                    from frameshift.persistence import restore as application_restore
+
+                    seen["profile"] = kwargs.get("capability_profile")
+                    return application_restore(checkpoint, payloads)  # the profile is dropped
+
+                errors = capability.capability_compatibility(
+                    case, lambda relative: run.load(relative, run.FIXTURES), restore=blind_restore
+                )
+                self.assertIsNotNone(seen.get("profile"), "the check must hand the adapter profile to restore")
+                if case["expect"]["outcome"] == "refused" or case["expect"].get("reported_naming"):
+                    self.assertTrue(
+                        any("application" in item for item in errors),
+                        f"a restore that ignores the profile must fail the case, got {errors}",
+                    )
+
     def test_a_checkpoint_without_a_recorded_profile_is_reported(self) -> None:
         case = run.load("evals/fixtures/capability-restore-into-the-recorded-adapter.case.json")
 
