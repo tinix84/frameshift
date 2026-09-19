@@ -12,6 +12,7 @@ import ast
 import importlib
 import re
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -26,10 +27,34 @@ APPLICATION = ROOT / "frameshift"
 # A module-level constant whose value is a bare snake_case string: the shape a
 # hand-written error code takes.
 BARE_CODE = re.compile(r'^(?P<name>[A-Z][A-Z_]*) = "(?P<value>[a-z]+(?:_[a-z]+)+)"$', re.MULTILINE)
+# Constants that take the shape of a code but are not one. Every entry is a
+# (path, name) pair so the exemption cannot widen to a whole file, and the
+# pairs are pinned by a test so one cannot be added without saying why.
+NOT_A_CODE = {("frameshift/mcp/confirmation_server.py", "TOOL_NAME")}
 # The shape of a violation string: a code, a colon, a detail.
 CODED_MESSAGE = re.compile(r"^(?P<code>[a-z]+(?:_[a-z]+)+): ")
 # Functions whose first positional argument is an error code.
 EMITTERS = {"Refused", "Refusal", "_pending", "_refused"}
+
+
+def bare_code_offenders(paths: list[Path]) -> list[str]:
+    """Every module-level constant spelling a code, exempting only `NOT_A_CODE`.
+
+    Membership in a vocabulary is deliberately not consulted: filtering on it
+    caught a re-spelling of a published code and let a brand-new one through,
+    which is the hole #127 named.
+    """
+    offenders: list[str] = []
+    for path in paths:
+        try:
+            where = path.relative_to(ROOT).as_posix()
+        except ValueError:
+            where = path.name
+        for match in BARE_CODE.finditer(path.read_text(encoding="utf-8")):
+            if (where, match.group("name")) in NOT_A_CODE:
+                continue
+            offenders.append(f"{where}: {match.group('name')} = {match.group('value')!r}")
+    return offenders
 
 
 def _modules(root: Path) -> list[Path]:
@@ -192,13 +217,28 @@ class NoBareCodeTests(unittest.TestCase):
         self.assertEqual(offenders, [], "declare the code in errors.py and import it")
 
     def test_no_application_module_re_declares_a_published_code(self) -> None:
-        """The same rule for `frameshift/`, whose codes come from `contracts.errors`."""
-        offenders: list[str] = []
-        for path in _modules(APPLICATION):
-            for match in BARE_CODE.finditer(path.read_text(encoding="utf-8")):
-                if match.group("value") in application_errors.VOCABULARY | errors.VOCABULARY:
-                    offenders.append(f"{path.relative_to(ROOT).as_posix()}: {match.group('name')}")
+        """The same rule for `frameshift/`, whose codes come from `contracts.errors`.
+
+        Every match is an offender whether or not the value is already in a
+        vocabulary. Filtering on membership was the defect #127 named: it caught
+        a re-spelling of a known code and let a brand-new invention through.
+        """
+        offenders = bare_code_offenders(_modules(APPLICATION))
         self.assertEqual(offenders, [], "import the code from frameshift.contracts.errors")
+
+    def test_the_application_detector_catches_an_unpublished_invention(self) -> None:
+        """The scan above is only worth running if an unknown value offends too."""
+        with tempfile.TemporaryDirectory() as tmp:
+            planted = Path(tmp) / "invented.py"
+            planted.write_text('NEVER_PUBLISHED = "wholly_invented_code"\n', encoding="utf-8")
+            offenders = bare_code_offenders([planted])
+        self.assertEqual(len(offenders), 1)
+        self.assertIn("NEVER_PUBLISHED", offenders[0])
+        self.assertNotIn("wholly_invented_code", application_errors.VOCABULARY | errors.VOCABULARY)
+
+    def test_the_only_exempt_constant_is_the_one_that_is_not_a_code(self) -> None:
+        """The exemption is narrow and named, so it cannot quietly grow."""
+        self.assertEqual(NOT_A_CODE, {("frameshift/mcp/confirmation_server.py", "TOOL_NAME")})
 
     def test_the_detector_would_catch_a_reintroduced_code(self) -> None:
         """The scan above is only reassuring if it can actually match."""
