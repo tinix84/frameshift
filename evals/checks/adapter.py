@@ -300,6 +300,30 @@ def conformance_report(load, transports: list[str], corpus_checks: set[str]) -> 
     return {"schema_version": "1.0.0", "adapters": adapters}
 
 
+def render_conformance(report: dict) -> str:
+    """The report as an adapter author reads it: adapter, then check, then failure.
+
+    A conformant check is one line. A nonconformant one lists each case it
+    broke with the violations, because "nonconformant" alone sends the author
+    back to the harness to find out what happened. An uncovered adapter says
+    so rather than printing an empty matrix that reads like a pass.
+    """
+    lines: list[str] = []
+    for item in report["adapters"]:
+        lines.append(f"{item['name']}: {item['outcome']}")
+        if item["outcome"] == "uncovered":
+            lines.append("  no case exercised this adapter")
+            continue
+        for check in item["checks"]:
+            cases = check["cases"]
+            lines.append(f"  {check['name']}: {check['outcome']} ({len(cases)} cases)")
+            for case in cases:
+                if case["outcome"] == "fail":
+                    lines.append(f"    - {case['id']}")
+                    lines.extend(f"        {violation}" for violation in case.get("violations", []))
+    return "\n".join(lines) + "\n"
+
+
 def adapter_conformance_report(case: dict, load) -> list[str]:
     """Build the conformance report, validate its shape, and assert its verdicts."""
     from . import schema

@@ -8,8 +8,16 @@ Run:
 ```sh
 python evals/run.py
 python evals/run.py --json
+python evals/run.py --conformance
 python -m unittest discover -s evals -p "test_*.py" -t .
 ```
+
+`--conformance` also prints the adapter conformance report: every registered
+adapter, each check it was run through, and each case it broke with the
+violations. An adapter no case exercised is reported as `uncovered`, which is
+not a pass. With `--json` the same matrix is added under a `conformance` key,
+one report per `adapter_conformance_report` case discovered; without the flag
+the JSON shape is unchanged.
 
 ## Cases and named checks
 
