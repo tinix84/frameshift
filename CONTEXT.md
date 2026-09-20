@@ -220,3 +220,13 @@ time, which live in **execution metadata**.
 
 **Revision** — the integer version of a mutable aggregate, used for optimistic
 concurrency. A command declares the revision it expects.
+
+**Fold** — rebuilding a session's state by applying its history from the first
+event, or resuming from a digest-verified checkpoint state plus the events after
+its cursor. Both reach the same state, and the log wins where they disagree.
+
+**Reducer** — the application's own fold, owned by orchestration. It admits an
+event only when it continues this session's history at this point, refuses a
+skipped, repeated, or reordered sequence before applying anything, and treats
+an unknown event type as an error, never a skip. The evaluation harness carries
+a separate reference reducer the application is measured against.

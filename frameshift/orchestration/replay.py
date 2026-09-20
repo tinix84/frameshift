@@ -52,7 +52,7 @@ EVENT_TYPES = frozenset(
 EMPTY_GRAPH = {"schema_version": "1.0.0", "nodes": [], "edges": []}
 
 
-class Refused(Exception):
+class ReplayRefused(Exception):
     """The reducer will not fold this: it is not a history, or not this one."""
 
     code: str
@@ -89,7 +89,7 @@ def resume(state: dict, cursor: int, events: list[dict], *, check_sequence: bool
     this trusts that and only refuses events that do not continue it.
     """
     if type(cursor) is not int or cursor < 0:
-        raise Refused(INVARIANT_VIOLATION, f"snapshot cursor {cursor!r} is not a position in a history")
+        raise ReplayRefused(INVARIANT_VIOLATION, f"snapshot cursor {cursor!r} is not a position in a history")
     return _replay(copy.deepcopy(state), cursor, events, check_sequence=check_sequence)
 
 
@@ -97,7 +97,7 @@ def _replay(state: dict, cursor: int, events: list[dict], *, check_sequence: boo
     if check_sequence:
         violations = sequence_violations(events, cursor)
         if violations:
-            raise Refused(INVARIANT_VIOLATION, "; ".join(violations))
+            raise ReplayRefused(INVARIANT_VIOLATION, "; ".join(violations))
     for event in events:
         _admit(state, event)
         _apply(state, event)
@@ -109,15 +109,15 @@ def _admit(state: dict, event: dict) -> None:
     kind = event.get("type")
     payload = event.get("payload", {})
     if kind not in EVENT_TYPES:
-        raise Refused(INVARIANT_VIOLATION, f"no reducer for event type {kind!r}")
+        raise ReplayRefused(INVARIANT_VIOLATION, f"no reducer for event type {kind!r}")
     if not state:
         if kind != "session.created" or event.get("session_id") != payload.get("id"):
-            raise Refused(INVARIANT_VIOLATION, "a history must begin with its own session.created event")
+            raise ReplayRefused(INVARIANT_VIOLATION, "a history must begin with its own session.created event")
     else:
         if kind == "session.created":
-            raise Refused(INVARIANT_VIOLATION, "a second session.created cannot reset a history")
+            raise ReplayRefused(INVARIANT_VIOLATION, "a second session.created cannot reset a history")
         if event.get("session_id") != state.get("id"):
-            raise Refused(
+            raise ReplayRefused(
                 INVARIANT_VIOLATION,
                 f"event {event.get('sequence')!r} belongs to session {event.get('session_id')!r}, "
                 f"not {state.get('id')!r}",
@@ -126,7 +126,7 @@ def _admit(state: dict, event: dict) -> None:
         current = state.get("revision", 0)
         expected = current + 1 if state else 0
         if type(event["revision"]) is not int or event["revision"] != expected:
-            raise Refused(
+            raise ReplayRefused(
                 REVISION_CONFLICT,
                 f"event revision {event['revision']!r} does not follow revision {current}",
             )
@@ -173,7 +173,7 @@ def _apply(state: dict, event: dict) -> None:
         # `_admit` already refuses a type outside EVENT_TYPES; this catches a
         # type admitted there but never given a branch here, so it can still
         # never fall through as a skip.
-        raise Refused(INVARIANT_VIOLATION, f"no reducer for event type {kind!r}")
+        raise ReplayRefused(INVARIANT_VIOLATION, f"no reducer for event type {kind!r}")
     if "revision" in event:
         state["revision"] = event["revision"]
 
@@ -182,4 +182,4 @@ def _named(items: list[dict], item_id: str) -> dict:
     for item in items:
         if item.get("id") == item_id:
             return item
-    raise Refused(INVARIANT_VIOLATION, f"event names {item_id!r}, which this history never created")
+    raise ReplayRefused(INVARIANT_VIOLATION, f"event names {item_id!r}, which this history never created")
