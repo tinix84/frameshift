@@ -1,4 +1,4 @@
-"""The persistence port: canonical encoding, checkpoints, and restore."""
+"""Persistence: canonical encoding, checkpoints, restore, and the event log store."""
 
 from .canonical import canonical_bytes, checkpoint_digest, digest, state_digest
 from .checkpoint import RestoreJournal, encode, restore, verify
