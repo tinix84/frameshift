@@ -10,6 +10,7 @@ not know, a revision that does not follow.
 
 from __future__ import annotations
 
+import ast
 import copy
 import json
 import sys
@@ -157,8 +158,16 @@ class RefusingWhatIsNotAHistory(unittest.TestCase):
 class TheReducerStaysInsideItsBoundary(unittest.TestCase):
     def test_orchestration_replay_imports_no_persistence_and_no_harness(self) -> None:
         source = (ROOT / "frameshift" / "orchestration" / "replay.py").read_text(encoding="utf-8")
-        self.assertNotIn("frameshift.persistence", source)
-        self.assertNotIn("evals", source)
+        for node in ast.walk(ast.parse(source)):
+            if isinstance(node, ast.Import):
+                names = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                self.assertEqual(node.level, 0, "a relative import could reach persistence unseen")
+                names = [node.module]
+            else:
+                continue
+            for name in names:
+                self.assertFalse(name.startswith(("frameshift.persistence", "evals")), name)
 
 
 if __name__ == "__main__":

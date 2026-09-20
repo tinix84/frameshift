@@ -169,6 +169,11 @@ def _apply(state: dict, event: dict) -> None:
         state["phase"] = payload["phase"]
     elif kind == "approval.recorded":
         state["approvals"].append(copy.deepcopy(payload))
+    else:
+        # `_admit` already refuses a type outside EVENT_TYPES; this catches a
+        # type admitted there but never given a branch here, so it can still
+        # never fall through as a skip.
+        raise Refused(INVARIANT_VIOLATION, f"no reducer for event type {kind!r}")
     if "revision" in event:
         state["revision"] = event["revision"]
 
