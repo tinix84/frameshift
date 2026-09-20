@@ -197,6 +197,8 @@ def replay_equivalence(case: dict, load) -> list[str]:
                 f"the replay reaches cursor {start + len(events)}"
             )
 
+    errors_found.extend(_application_agrees(snapshot, start, events, expect.get("check_sequence", True), replayed))
+
     outcome = "diverged" if violations else "equivalent"
     if outcome != expect["outcome"]:
         errors_found.append(
@@ -206,3 +208,41 @@ def replay_equivalence(case: dict, load) -> list[str]:
         if not any(fragment in item for item in violations):
             errors_found.append(f"expected a violation naming {fragment}, got {violations}")
     return errors_found
+
+
+def _application_agrees(snapshot, start: int, events: list[dict], check_sequence: bool, reference_state) -> list[str]:
+    """The application reducer reaches the reference's verdicts and digest (#225).
+
+    Three verdicts are compared, not messages: whether the events are a
+    contiguous history, whether they fold at all, and what digest the fold
+    reaches. The reference's `fold` never checks sequence itself - the check
+    above does - so the application is asked the same two questions separately.
+    """
+    from frameshift.orchestration import replay as application
+
+    findings: list[str] = []
+    if check_sequence:
+        reference_gap = bool(sequence_violations(events, start))
+        application_gap = bool(application.sequence_violations(events, start))
+        if reference_gap != application_gap:
+            findings.append(
+                f"{REPLAY_VIOLATION}: the application reducer "
+                f"{'refuses' if application_gap else 'accepts'} the sequence the reference "
+                f"{'refuses' if reference_gap else 'accepts'}"
+            )
+    try:
+        if snapshot is not None:
+            state = application.resume(snapshot["state"], start, events, check_sequence=False)
+        else:
+            state = application.fold(events, check_sequence=False)
+    except application.Refused as exc:
+        if reference_state is not None:
+            findings.append(f"{REPLAY_VIOLATION}: the application reducer refused a history the reference folded: {exc}")
+        return findings
+    if reference_state is None:
+        findings.append(f"{REPLAY_VIOLATION}: the application reducer folded a history the reference refused")
+        return findings
+    reached, reference = canonical.digest(state), canonical.digest(reference_state)
+    if reached != reference:
+        findings.append(f"{REPLAY_VIOLATION}: the application reducer reached {reached}, the reference {reference}")
+    return findings
