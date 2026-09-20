@@ -18,17 +18,34 @@ from __future__ import annotations
 from typing import Protocol, runtime_checkable
 
 
+class EventLogRefused(Exception):
+    """A log declined to write or to trust what it read.
+
+    Declared with the port so a coordinator can catch it without knowing which
+    store raised it. `code` is a published error code; `detail` says why.
+    """
+
+    code: str
+    detail: str
+
+    def __init__(self, code: str, detail: str) -> None:
+        super().__init__(f"{code}: {detail}")
+        self.code = code
+        self.detail = detail
+
+
 @runtime_checkable
 class EventLog(Protocol):
     """A session's history: appended in commits, read back whole."""
 
-    def append(self, session_id: str, bodies: list[dict], *, revision: int | None = None) -> list[dict]:
+    def append(self, session_id: str, bodies: list[dict], *, revision: int) -> list[dict]:
         """Append one commit's event bodies and return the events as written.
 
         Each body carries `type` and `payload`. The log assigns `sequence`,
         `event_id`, `session_id` and `schema_version`, and places `revision` on
-        the event that carries the commit. Nothing lands unless the whole
-        commit can.
+        the event that carries the commit. Every commit declares the revision
+        it advances to; the log refuses one that does not follow. Nothing is
+        written unless the whole commit is admitted.
         """
 
     def read(self, session_id: str) -> list[dict]:

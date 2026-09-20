@@ -7,7 +7,10 @@ event lands at, its id, its session, and which event of a commit carries the
 revision. It refuses, before writing a byte, anything that would make the file
 stop being a history: a body that names a sequence other than the next one, a
 revision that does not follow the last committed one, a body for another
-session, or an empty commit.
+session, or an empty commit. The admitted commit is then one buffered append;
+a write torn part-way through is not prevented here, but the next read refuses
+the file, because a truncated last line is not JSON and a missing one breaks
+the sequence.
 
 This module makes no policy judgement. Whether a transition may happen, whether
 an approval binds, whether a proposal is stale — those are orchestration's
@@ -29,6 +32,7 @@ import re
 from pathlib import Path
 
 from frameshift.contracts import errors
+from frameshift.orchestration.ports import EventLogRefused
 
 INVARIANT_VIOLATION = errors.INVARIANT_VIOLATION
 REVISION_CONFLICT = errors.REVISION_CONFLICT
@@ -41,24 +45,6 @@ SCHEMA_VERSION = "1.0.0"
 # narrower shape below; anything else is refused rather than mangled, because
 # two ids that mangle to one filename would share a history.
 FILENAME_SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{2,127}$")
-
-# What the log assigns. A caller-supplied value is dropped, not honoured; the
-# one exception is `sequence`, which is checked and then dropped, so a body
-# replayed from another runtime can assert where it expects to land.
-ASSIGNED = ("event_id", "session_id", "schema_version", "revision")
-
-
-class Refused(Exception):
-    """The log declined to write or to trust what it read."""
-
-    code: str
-    detail: str
-
-    def __init__(self, code: str, detail: str) -> None:
-        super().__init__(f"{code}: {detail}")
-        self.code = code
-        self.detail = detail
-
 
 def encode_line(event: dict) -> str:
     """One event as one line, in the committed fixture's exact encoding."""
@@ -73,7 +59,7 @@ class JsonlEventLog:
 
     def path(self, session_id: str) -> Path:
         if not FILENAME_SAFE_ID.match(session_id):
-            raise Refused(SCHEMA_INVALID, f"session id {session_id!r} cannot name a history file")
+            raise EventLogRefused(SCHEMA_INVALID, f"session id {session_id!r} cannot name a history file")
         return self._root / f"{session_id}.events.jsonl"
 
     def read(self, session_id: str) -> list[dict]:
@@ -88,19 +74,21 @@ class JsonlEventLog:
             try:
                 event = json.loads(line)
             except json.JSONDecodeError as exc:
-                raise Refused(SCHEMA_INVALID, f"line {number} is not one JSON event: {exc.msg}") from None
+                raise EventLogRefused(SCHEMA_INVALID, f"line {number} is not one JSON event: {exc.msg}") from None
             if not isinstance(event, dict):
-                raise Refused(SCHEMA_INVALID, f"line {number} is not one JSON event")
+                raise EventLogRefused(SCHEMA_INVALID, f"line {number} is not one JSON event")
             history.append(event)
         _refuse_unless_a_history(history, session_id)
         return history
 
-    def append(self, session_id: str, bodies: list[dict], *, revision: int | None = None) -> list[dict]:
+    def append(self, session_id: str, bodies: list[dict], *, revision: int) -> list[dict]:
         if not bodies:
-            raise Refused(INVARIANT_VIOLATION, "a commit must carry at least one event")
+            raise EventLogRefused(INVARIANT_VIOLATION, "a commit must carry at least one event")
+        if type(revision) is not int:
+            raise EventLogRefused(SCHEMA_INVALID, f"a commit must declare an integer revision, not {revision!r}")
         for index, body in enumerate(bodies):
             if not isinstance(body, dict) or not isinstance(body.get("type"), str) or not isinstance(body.get("payload"), dict):
-                raise Refused(SCHEMA_INVALID, f"body {index} must carry a string type and an object payload")
+                raise EventLogRefused(SCHEMA_INVALID, f"body {index} must carry a string type and an object payload")
 
         history = self.read(session_id)
         next_sequence = len(history) + 1
@@ -109,9 +97,9 @@ class JsonlEventLog:
         last_revision = _last_revision(history)
         if fresh:
             if revision != 0:
-                raise Refused(REVISION_CONFLICT, f"a new history begins at revision 0, not {revision!r}")
-        elif revision is not None and revision != last_revision + 1:
-            raise Refused(
+                raise EventLogRefused(REVISION_CONFLICT, f"a new history begins at revision 0, not {revision!r}")
+        elif revision != last_revision + 1:
+            raise EventLogRefused(
                 REVISION_CONFLICT,
                 f"commit declares revision {revision} but the history is at {last_revision}",
             )
@@ -124,21 +112,23 @@ class JsonlEventLog:
         for offset, body in enumerate(bodies):
             sequence = next_sequence + offset
             if "sequence" in body and body["sequence"] != sequence:
-                raise Refused(
+                raise EventLogRefused(
                     INVARIANT_VIOLATION,
                     f"body names sequence {body['sequence']!r} but the next sequence is {sequence}",
                 )
             if "session_id" in body and body["session_id"] != session_id:
-                raise Refused(INVARIANT_VIOLATION, f"body belongs to session {body['session_id']!r}, not {session_id!r}")
+                raise EventLogRefused(INVARIANT_VIOLATION, f"body belongs to session {body['session_id']!r}, not {session_id!r}")
             event = {
-                "event_id": f"evt_{sequence:06d}",
+                # Qualified by session, so ids are unique across a store and
+                # not only within one file.
+                "event_id": f"evt_{session_id}_{sequence:06d}",
                 "payload": copy.deepcopy(body["payload"]),
                 "schema_version": SCHEMA_VERSION,
                 "sequence": sequence,
                 "session_id": session_id,
                 "type": body["type"],
             }
-            if offset == carrier and revision is not None:
+            if offset == carrier:
                 event["revision"] = revision
             written.append(event)
 
@@ -163,12 +153,12 @@ def _refuse_unless_a_history(history: list[dict], session_id: str) -> None:
     for index, event in enumerate(history, start=1):
         sequence = event.get("sequence")
         if type(sequence) is not int or sequence != index:
-            raise Refused(
+            raise EventLogRefused(
                 INVARIANT_VIOLATION,
                 f"event {index} carries sequence {sequence!r}, so the history is reordered, truncated, or duplicated",
             )
         if event.get("session_id") != session_id:
-            raise Refused(
+            raise EventLogRefused(
                 INVARIANT_VIOLATION,
                 f"event {index} belongs to session {event.get('session_id')!r}, not {session_id!r}",
             )

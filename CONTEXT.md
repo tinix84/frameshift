@@ -209,6 +209,15 @@ portable.
 
 **Event** — an immutable domain fact appended to the session's history.
 
+**Event log** — the append-only, one-event-per-line store of a session's
+history, reached through a port orchestration owns. A coordinator hands it
+event bodies (type and payload); the log assigns sequence, event id, and
+session id, and refuses anything that would skip, repeat, or reorder.
+
+**Commit** — one atomic batch of events appended together, declaring the
+revision it advances the session to. The last event of the batch carries the
+revision; session creation carries revision zero on its own event.
+
 **Checkpoint** — the portable, integrity-verifiable boundary between runtimes:
 canonical state, pending proposals and required approvals, event cursor,
 contract and engine versions, capability profile, artifact references, and

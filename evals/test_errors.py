@@ -34,7 +34,7 @@ NOT_A_CODE = {("frameshift/mcp/confirmation_server.py", "TOOL_NAME")}
 # The shape of a violation string: a code, a colon, a detail.
 CODED_MESSAGE = re.compile(r"^(?P<code>[a-z]+(?:_[a-z]+)+): ")
 # Functions whose first positional argument is an error code.
-EMITTERS = {"Refused", "ReplayRefused", "Refusal", "_pending", "_refused"}
+EMITTERS = {"Refused", "ReplayRefused", "EventLogRefused", "Refusal", "_pending", "_refused"}
 
 
 def bare_code_offenders(paths: list[Path]) -> list[str]:

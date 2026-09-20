@@ -112,6 +112,17 @@ class AppendAssignsTheLogsOwnFields(LogTestCase):
         for event_id in ids:
             self.assertRegex(event_id, ID_PATTERN)
 
+    def test_event_ids_differ_across_sessions_of_one_store(self) -> None:
+        mine = self.log.append(SESSION, [created()], revision=0)
+        other = events.JsonlEventLog(self.root).append("sess_other", [created()], revision=0)
+        self.assertNotEqual(mine[0]["event_id"], other[0]["event_id"])
+
+    def test_a_commit_without_a_revision_is_refused(self) -> None:
+        with self.assertRaises(ports.EventLogRefused) as raised:
+            self.log.append(SESSION, [created()], revision=None)  # type: ignore[arg-type]
+        self.assertEqual(raised.exception.code, errors.SCHEMA_INVALID)
+        self.assertFalse(self.path().exists())
+
     def test_every_written_event_has_the_reference_shape(self) -> None:
         written = self.log.append(SESSION, [created()], revision=0)
         reference_keys = set(json.loads(REFERENCE_LOG.read_text(encoding="utf-8").splitlines()[0]))
@@ -126,8 +137,8 @@ class AppendAssignsTheLogsOwnFields(LogTestCase):
 
 
 class AppendRefusesWhatWouldBreakTheHistory(LogTestCase):
-    def assert_refused(self, fn, *, code: str = errors.INVARIANT_VIOLATION) -> events.Refused:
-        with self.assertRaises(events.Refused) as raised:
+    def assert_refused(self, fn, *, code: str = errors.INVARIANT_VIOLATION) -> ports.EventLogRefused:
+        with self.assertRaises(ports.EventLogRefused) as raised:
             fn()
         self.assertEqual(raised.exception.code, code)
         return raised.exception
@@ -183,7 +194,7 @@ class ReadReturnsTheHistoryOrRefusesIt(LogTestCase):
         self.log.append(SESSION, [created(), added(), classified()], revision=0)
         lines = self.path().read_text(encoding="utf-8").splitlines()
         self.path().write_text("\n".join([lines[0], lines[2]]) + "\n", encoding="utf-8")
-        with self.assertRaises(events.Refused) as raised:
+        with self.assertRaises(ports.EventLogRefused) as raised:
             self.log.read(SESSION)
         self.assertEqual(raised.exception.code, errors.INVARIANT_VIOLATION)
 
@@ -191,21 +202,21 @@ class ReadReturnsTheHistoryOrRefusesIt(LogTestCase):
         self.log.append(SESSION, [created(), added()], revision=0)
         lines = self.path().read_text(encoding="utf-8").splitlines()
         self.path().write_text("\n".join([lines[0], lines[1], lines[1]]) + "\n", encoding="utf-8")
-        with self.assertRaises(events.Refused):
+        with self.assertRaises(ports.EventLogRefused):
             self.log.read(SESSION)
 
     def test_a_reordered_log_on_disk_is_refused_on_read(self) -> None:
         self.log.append(SESSION, [created(), added()], revision=0)
         lines = self.path().read_text(encoding="utf-8").splitlines()
         self.path().write_text("\n".join([lines[1], lines[0]]) + "\n", encoding="utf-8")
-        with self.assertRaises(events.Refused):
+        with self.assertRaises(ports.EventLogRefused):
             self.log.read(SESSION)
 
     def test_a_line_that_is_not_json_is_refused_by_line(self) -> None:
         self.log.append(SESSION, [created()], revision=0)
         with self.path().open("a", encoding="utf-8") as handle:
             handle.write("{not json\n")
-        with self.assertRaises(events.Refused) as raised:
+        with self.assertRaises(ports.EventLogRefused) as raised:
             self.log.read(SESSION)
         self.assertEqual(raised.exception.code, errors.SCHEMA_INVALID)
         self.assertIn("line 2", raised.exception.detail)
