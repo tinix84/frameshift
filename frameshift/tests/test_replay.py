@@ -70,7 +70,7 @@ class ResumingFromASnapshot(unittest.TestCase):
     def test_a_suffix_whose_first_sequence_does_not_follow_the_cursor_is_refused(self) -> None:
         snapshot = start_snapshot()
         events = reference_events()
-        with self.assertRaises(replay.Refused) as raised:
+        with self.assertRaises(replay.ReplayRefused) as raised:
             replay.resume(snapshot["state"], snapshot["event_cursor"], events[snapshot["event_cursor"] + 1 :])
         self.assertEqual(raised.exception.code, errors.INVARIANT_VIOLATION)
 
@@ -83,7 +83,7 @@ class ResumingFromASnapshot(unittest.TestCase):
 
 class RefusingWhatIsNotAHistory(unittest.TestCase):
     def assert_refused(self, events: list[dict], *, naming: str, code: str = errors.INVARIANT_VIOLATION) -> None:
-        with self.assertRaises(replay.Refused) as raised:
+        with self.assertRaises(replay.ReplayRefused) as raised:
             replay.fold(events)
         self.assertEqual(raised.exception.code, code)
         self.assertIn(naming, raised.exception.detail)

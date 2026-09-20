@@ -235,7 +235,7 @@ def _application_agrees(snapshot, start: int, events: list[dict], check_sequence
             state = application.resume(snapshot["state"], start, events, check_sequence=False)
         else:
             state = application.fold(events, check_sequence=False)
-    except application.Refused as exc:
+    except application.ReplayRefused as exc:
         if reference_state is not None:
             findings.append(f"{REPLAY_VIOLATION}: the application reducer refused a history the reference folded: {exc}")
         return findings
