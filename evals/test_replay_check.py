@@ -48,7 +48,7 @@ class TheCheckMeasuresTheApplication(unittest.TestCase):
 
     def test_an_application_reducer_that_refuses_a_good_history_is_reported(self) -> None:
         def refuse(*args, **kwargs):
-            raise application.Refused(application.INVARIANT_VIOLATION, "refusing everything")
+            raise application.ReplayRefused(application.INVARIANT_VIOLATION, "refusing everything")
 
         with mock.patch.object(application, "fold", refuse):
             findings = check(REPRODUCES)
