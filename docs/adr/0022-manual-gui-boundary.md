@@ -51,6 +51,28 @@ every API call must carry a per-launch token embedded in the page, sent in a
 custom header a cross-origin page cannot send without a preflight the server
 never answers.
 
+### Hosted mode
+
+The same server may run on a container platform for one operator working from
+a browser or phone. `--hosted` changes three things and nothing about the
+approval guards:
+
+- it listens on all interfaces behind the platform's TLS proxy and answers only
+  for the configured public host name;
+- every request, the page included, must carry HTTP Basic credentials matching
+  a deployment password of at least sixteen characters; the server refuses to
+  start without one, and refuses any non-loopback bind without both a password
+  and a host name;
+- the launch token remains as the cross-site defence, because a browser resends
+  Basic credentials on a cross-site request by itself but cannot add the
+  token's custom header without a preflight.
+
+The operator attestation then means "whoever holds the deployment password",
+and the attested configuration digest includes the bind address, the public
+host names and the authentication scheme, so changing any of them is a change
+of profile. Event logs live on a persistent volume, never on the container's
+own filesystem.
+
 ## Consequences
 
 The journey can be walked, demonstrated and regression-tested without a model,
@@ -61,6 +83,11 @@ process has no model connected; connecting one, or running the MCP server in
 the same process, is outside this decision and must not reuse its profile.
 Nothing here protects against a compromised browser, operating system or local
 user, which ADR-0014 also excludes.
+
+Hosted mode moves the trust boundary from "this machine" to "this password".
+A leaked password grants the operator's full approval authority until it is
+rotated, and nothing here rate-limits guessing; a long random password and the
+platform's own access controls carry that risk.
 
 Columns the event vocabulary cannot yet express — options, criteria, the signed
 decision — are absent from the GUI rather than stored outside the log.
@@ -82,7 +109,9 @@ decision — are absent from the GUI rather than stored outside the log.
 `frameshift/tests/test_sessions.py` and `frameshift/tests/test_gui.py` hold the
 evidence: the GUI imports only what the table above permits; forged request
 digests, stale content, wrong phase and insufficient role are refused and
-append nothing; requests without the token or with a foreign `Host` are refused;
+append nothing; requests without the token or with a foreign `Host` are refused; in hosted
+mode, requests without the password are refused, the password alone does not
+open the API, and a network bind without a password will not start;
 and a session walked from request to `solutions` folds to a schema-valid state.
 If accepted, the import rule joins the enforcement owned by
 [#216](https://github.com/tinix84/frameshift/issues/216).

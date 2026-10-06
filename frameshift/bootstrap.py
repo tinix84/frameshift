@@ -154,7 +154,9 @@ def gui_vocabulary() -> dict:
     }
 
 
-def manual_approval_configuration(store: Path, operator: dict, *, attested_at: str) -> tuple[dict, dict]:
+def manual_approval_configuration(
+    store: Path, operator: dict, *, attested_at: str, bind: str = "127.0.0.1", public_hosts: tuple[str, ...] = ()
+) -> tuple[dict, dict]:
     """The approval profile and attestation for the manual GUI (ADR-0022, proposed).
 
     The operator attests by launching the server: loopback only, no model
@@ -166,7 +168,9 @@ def manual_approval_configuration(store: Path, operator: dict, *, attested_at: s
     configuration = {
         "client_id": GUI_CLIENT_ID,
         "client_version": GUI_CLIENT_VERSION,
-        "bind": "127.0.0.1",
+        "bind": bind,
+        "public_hosts": sorted(public_hosts),
+        "authentication": "basic" if public_hosts else "loopback",
         "model_connected": False,
         "store": str(store.resolve()),
     }
@@ -192,7 +196,15 @@ def manual_approval_configuration(store: Path, operator: dict, *, attested_at: s
     return profile, attestation
 
 
-def manual_coordinator(store: Path, operator: dict, *, clock=None, new_suffix=None):
+def manual_coordinator(
+    store: Path,
+    operator: dict,
+    *,
+    clock=None,
+    new_suffix=None,
+    bind: str = "127.0.0.1",
+    public_hosts: tuple[str, ...] = (),
+):
     """Wire the JSON-lines store behind orchestration's port (#229, ADR-0015)."""
     import secrets
 
@@ -200,7 +212,9 @@ def manual_coordinator(store: Path, operator: dict, *, clock=None, new_suffix=No
     from frameshift.persistence.events import JsonlEventLog
 
     clock = clock or _utc_now
-    profile, attestation = manual_approval_configuration(store, operator, attested_at=clock())
+    profile, attestation = manual_approval_configuration(
+        store, operator, attested_at=clock(), bind=bind, public_hosts=public_hosts
+    )
 
     def suffix() -> str:
         return datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S") + secrets.token_hex(2)
@@ -214,32 +228,71 @@ def manual_coordinator(store: Path, operator: dict, *, clock=None, new_suffix=No
     )
 
 
-def gui_main(argv: list[str] | None = None) -> int:
-    """Serve the manual GUI on loopback. No model is connected in this mode."""
+MIN_PASSWORD_LENGTH = 16
+
+
+def gui_main(argv: list[str] | None = None, environ: dict | None = None) -> int:
+    """Serve the manual GUI. No model is connected in this mode.
+
+    Locally it binds loopback. With `--hosted` it is configured from the
+    environment for a container platform (ADR-0022, hosted mode) and refuses to
+    start unless a password and a public host name are both set.
+    """
+    import os
     import secrets
     import webbrowser
 
     from frameshift.export.decision_record import render
     from frameshift.gui.server import ManualApp, serve
 
-    parser = argparse.ArgumentParser(description="Run FrameShift locally with every proposal written by hand")
-    parser.add_argument("--store", type=Path, default=Path(".frameshift") / "sessions",
+    env = os.environ if environ is None else environ
+    parser = argparse.ArgumentParser(description="Run FrameShift with every proposal written by hand")
+    parser.add_argument("--hosted", action="store_true",
+                        help="listen on all interfaces, configured from FRAMESHIFT_* and platform variables")
+    parser.add_argument("--store", type=Path, default=None,
                         help="directory for session event logs (default: ./.frameshift/sessions)")
-    parser.add_argument("--operator", default="user_local", help="your actor id, as approvals will record it")
-    parser.add_argument("--role", default="decision_owner",
+    parser.add_argument("--operator", default=None, help="your actor id, as approvals will record it")
+    parser.add_argument("--role", default=None,
                         choices=["decision_owner", "facilitator", "operator", "workspace_owner"])
-    parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--port", type=int, default=None)
     parser.add_argument("--no-browser", action="store_true")
     args = parser.parse_args(argv)
 
-    operator = {"id": args.operator, "kind": "human", "role": args.role}
-    coordinator = manual_coordinator(args.store, operator)
-    app = ManualApp(coordinator, token=secrets.token_urlsafe(24), vocabulary=gui_vocabulary(), record=render)
-    server = serve(app, port=args.port)
-    url = f"http://127.0.0.1:{server.server_address[1]}/"
-    print(f"FrameShift manual GUI on {url}  (store: {args.store.resolve()}; Ctrl+C to stop)")
-    if not args.no_browser:
-        webbrowser.open(url)
+    operator_id = args.operator or env.get("FRAMESHIFT_OPERATOR") or "user_local"
+    role = args.role or env.get("FRAMESHIFT_ROLE") or "decision_owner"
+    operator = {"id": operator_id, "kind": "human", "role": role}
+
+    if args.hosted:
+        password = env.get("FRAMESHIFT_PASSWORD", "")
+        public = env.get("FRAMESHIFT_PUBLIC_HOST") or env.get("RAILWAY_PUBLIC_DOMAIN") or ""
+        if len(password) < MIN_PASSWORD_LENGTH:
+            parser.error(f"--hosted requires FRAMESHIFT_PASSWORD of at least {MIN_PASSWORD_LENGTH} characters")
+        if not public:
+            parser.error("--hosted requires FRAMESHIFT_PUBLIC_HOST (or the platform's RAILWAY_PUBLIC_DOMAIN)")
+        bind = "0.0.0.0"
+        port = args.port or int(env.get("PORT", "8080"))
+        public_hosts = (public, f"{public}:443")
+        volume = env.get("RAILWAY_VOLUME_MOUNT_PATH")
+        default_store = Path(volume) / "sessions" if volume else Path("/data/sessions")
+    else:
+        password, bind, public_hosts = None, "127.0.0.1", ()
+        port = args.port or 8765
+        default_store = Path(".frameshift") / "sessions"
+    store = args.store or (Path(env["FRAMESHIFT_STORE"]) if env.get("FRAMESHIFT_STORE") else default_store)
+
+    coordinator = manual_coordinator(store, operator, bind=bind, public_hosts=public_hosts)
+    app = ManualApp(
+        coordinator,
+        token=secrets.token_urlsafe(24),
+        vocabulary=gui_vocabulary(),
+        record=render,
+        password=password,
+    )
+    server = serve(app, port=port, host=bind, public_hosts=public_hosts)
+    shown = f"https://{public_hosts[0]}/" if public_hosts else f"http://127.0.0.1:{server.server_address[1]}/"
+    print(f"FrameShift manual GUI on {shown}  (store: {store.resolve()}; operator: {operator_id})", flush=True)
+    if not args.hosted and not args.no_browser:
+        webbrowser.open(shown)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

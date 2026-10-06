@@ -8,7 +8,10 @@ so these test the boundary's translation and refusals, not a stub.
 
 from __future__ import annotations
 
+import base64
+import contextlib
 import http.client
+import io
 import itertools
 import json
 import re
@@ -21,7 +24,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from frameshift.bootstrap import gui_vocabulary, manual_coordinator  # noqa: E402
+from frameshift.bootstrap import gui_main, gui_vocabulary, manual_coordinator  # noqa: E402
 from frameshift.export.decision_record import render  # noqa: E402
 from frameshift.gui.server import ManualApp, serve  # noqa: E402
 
@@ -136,6 +139,70 @@ class GuiBoundary(unittest.TestCase):
                   "status": "submitted", "disposition": "approved", "edited_proposal": None}
         status, body = self.call("POST", f"/api/confirmations/{request['id']}", {"response": answer})
         self.assertEqual((status, body["code"]), (409, "approval_stale"))
+
+
+class HostedMode(unittest.TestCase):
+    """ADR-0022, hosted mode: a network bind is never unauthenticated."""
+
+    PASSWORD = "correct horse battery staple"
+    PUBLIC = "frameshift-test.up.railway.app"
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls._dir = tempfile.TemporaryDirectory()
+        coordinator = manual_coordinator(Path(cls._dir.name), OWNER, public_hosts=(cls.PUBLIC,), bind="0.0.0.0")
+        cls.app = ManualApp(coordinator, token="hosted-token-0123456789", vocabulary=gui_vocabulary(),
+                            record=render, password=cls.PASSWORD)
+        cls.server = serve(cls.app, port=0, host="0.0.0.0", public_hosts=(cls.PUBLIC, f"{cls.PUBLIC}:443"))
+        cls.port = cls.server.server_address[1]
+        threading.Thread(target=cls.server.serve_forever, daemon=True).start()
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.server.shutdown()
+        cls.server.server_close()
+        cls._dir.cleanup()
+
+    def get(self, path: str, *, password: str | None = None, host: str | None = None, token: bool = True):
+        connection = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        headers = {"Host": host or self.PUBLIC}
+        if password is not None:
+            headers["Authorization"] = "Basic " + base64.b64encode(f"me:{password}".encode()).decode()
+        if token:
+            headers["X-FrameShift-Token"] = self.app.token
+        connection.request("GET", path, headers=headers)
+        response = connection.getresponse()
+        response.read()
+        connection.close()
+        return response.status, response.getheader("WWW-Authenticate")
+
+    def test_the_page_itself_needs_the_password(self) -> None:
+        status, challenge = self.get("/", token=False)
+        self.assertEqual(status, 401)
+        self.assertIn("Basic", challenge)
+        self.assertEqual(self.get("/", password=self.PASSWORD, token=False)[0], 200)
+
+    def test_a_wrong_password_is_refused(self) -> None:
+        self.assertEqual(self.get("/api/sessions", password="nope")[0], 401)
+
+    def test_the_password_alone_does_not_open_the_api(self) -> None:
+        """Basic credentials ride along on cross-site requests; the token does not."""
+        self.assertEqual(self.get("/api/sessions", password=self.PASSWORD, token=False)[0], 403)
+        self.assertEqual(self.get("/api/sessions", password=self.PASSWORD)[0], 200)
+
+    def test_only_the_public_host_is_served(self) -> None:
+        self.assertEqual(self.get("/api/sessions", password=self.PASSWORD, host="evil.example")[0], 421)
+
+    def test_a_network_bind_without_a_password_will_not_start(self) -> None:
+        bare = ManualApp(self.app.coordinator, token="t" * 20, vocabulary={}, record=render)
+        with self.assertRaises(ValueError):
+            serve(bare, port=0, host="0.0.0.0", public_hosts=(self.PUBLIC,))
+
+    def test_hosted_launch_refuses_a_short_password_or_no_host(self) -> None:
+        for env in ({"FRAMESHIFT_PASSWORD": "short", "RAILWAY_PUBLIC_DOMAIN": self.PUBLIC},
+                    {"FRAMESHIFT_PASSWORD": self.PASSWORD}):
+            with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+                gui_main(["--hosted", "--store", self._dir.name], environ=env)
 
 
 if __name__ == "__main__":

@@ -8,8 +8,8 @@ assembles it.
 Standard library only, like the rest of the repository. The page and its
 script are one static file; every route below is JSON in, JSON out.
 
-The server is meant for one person on one machine. Three things keep it that
-way, and none of them is a substitute for ADR-0014's trust boundary:
+The server is meant for one person. Locally, three things keep it that way, and
+none of them is a substitute for ADR-0014's trust boundary:
 
 - it binds to the loopback interface and refuses a `Host` header that does not
   name it, which closes DNS rebinding;
@@ -17,12 +17,23 @@ way, and none of them is a substitute for ADR-0014's trust boundary:
   custom header, which a cross-origin page cannot send without a preflight this
   server never answers;
 - no model is connected, so no tool call can reach a route.
+
+Hosted (ADR-0022, hosted mode), it listens on all interfaces behind the
+platform's TLS proxy, accepts only the configured public host name, and every
+request - the page included - must also carry HTTP Basic credentials matching
+the deployment password. The launch token stays: a browser resends Basic
+credentials on a cross-site request by itself, but it cannot add the custom
+token header without a preflight, so the token is what stops a hostile page
+from driving the API with the operator's login.
 """
 
 from __future__ import annotations
 
+import base64
+import hmac
 import json
 import re
+import sys
 import threading
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -69,9 +80,18 @@ ROUTES = [
 class ManualApp:
     """Route table to coordinator calls. No state of its own beyond the token."""
 
-    def __init__(self, coordinator: SessionCoordinator, *, token: str, vocabulary: dict, record) -> None:
+    def __init__(
+        self,
+        coordinator: SessionCoordinator,
+        *,
+        token: str,
+        vocabulary: dict,
+        record,
+        password: str | None = None,
+    ) -> None:
         self.coordinator = coordinator
         self.token = token
+        self.password = password
         self.vocabulary = vocabulary
         self._record = record
         # One command at a time: the log checks revisions, but two threads
@@ -169,8 +189,19 @@ def make_handler(app: ManualApp, allowed_hosts: frozenset[str]):
             self._dispatch("DELETE")
 
         def _dispatch(self, method: str) -> None:
-            if self.headers.get("Host", "") not in allowed_hosts:
+            host = self.headers.get("Host", "")
+            if host not in allowed_hosts:
+                print(f"refused Host header {host!r}; served: {sorted(allowed_hosts)}", file=sys.stderr)
                 return self._json(HTTPStatus.MISDIRECTED_REQUEST, _refusal("host not served here"))
+            if app.password is not None and not _basic_matches(self.headers.get("Authorization", ""), app.password):
+                data = json.dumps(_refusal("login required")).encode("utf-8")
+                self.send_response(HTTPStatus.UNAUTHORIZED)
+                self.send_header("WWW-Authenticate", 'Basic realm="FrameShift", charset="UTF-8"')
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+                return None
             path = urlparse(self.path).path
             if method == "GET" and path in {"/", "/index.html"}:
                 return self._page()
@@ -232,14 +263,39 @@ def make_handler(app: ManualApp, allowed_hosts: frozenset[str]):
     return Handler
 
 
-def serve(app: ManualApp, *, port: int) -> ThreadingHTTPServer:
-    """Bind to loopback only. Returns the server; the caller runs it."""
-    host = "127.0.0.1"
+def serve(
+    app: ManualApp,
+    *,
+    port: int,
+    host: str = "127.0.0.1",
+    public_hosts: tuple[str, ...] = (),
+) -> ThreadingHTTPServer:
+    """Bind and return the server; the caller runs it.
+
+    Loopback by default. Any other bind requires a password on the app and at
+    least one public host name, so a server reachable from a network is never
+    also unauthenticated or answering for any name it is given.
+    """
+    if host not in {"127.0.0.1", "localhost"} and (app.password is None or not public_hosts):
+        raise ValueError("a non-loopback bind requires a password and a public host name")
     server = ThreadingHTTPServer((host, port), None)
     bound = server.server_address[1]
-    allowed = frozenset({f"127.0.0.1:{bound}", f"localhost:{bound}"})
+    allowed = frozenset({f"127.0.0.1:{bound}", f"localhost:{bound}", *public_hosts})
     server.RequestHandlerClass = make_handler(app, allowed)
     return server
+
+
+def _basic_matches(header: str, password: str) -> bool:
+    """Any user name; the password must match, compared in constant time."""
+    scheme, _, encoded = header.partition(" ")
+    if scheme.lower() != "basic" or not encoded:
+        return False
+    try:
+        decoded = base64.b64decode(encoded.strip(), validate=True).decode("utf-8")
+    except (ValueError, UnicodeDecodeError):
+        return False
+    supplied = decoded.partition(":")[2]
+    return hmac.compare_digest(supplied.encode("utf-8"), password.encode("utf-8"))
 
 
 def _refusal(detail: str, code: str = errors.INVARIANT_VIOLATION) -> dict:
