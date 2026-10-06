@@ -12,3 +12,6 @@ evals/results/
 checkpoints/local/
 .scratch/
 docs/superpowers/
+
+# Local session stores written by the manual GUI
+.frameshift/

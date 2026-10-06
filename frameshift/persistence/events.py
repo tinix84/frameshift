@@ -62,6 +62,18 @@ class JsonlEventLog:
             raise EventLogRefused(SCHEMA_INVALID, f"session id {session_id!r} cannot name a history file")
         return self._root / f"{session_id}.events.jsonl"
 
+    def session_ids(self) -> list[str]:
+        """Every session with a history file here, sorted (`orchestration.ports.SessionIndex`)."""
+        if not self._root.is_dir():
+            return []
+        suffix = ".events.jsonl"
+        found = []
+        for path in sorted(self._root.glob(f"*{suffix}")):
+            session_id = path.name[: -len(suffix)]
+            if FILENAME_SAFE_ID.match(session_id):
+                found.append(session_id)
+        return found
+
     def read(self, session_id: str) -> list[dict]:
         path = self.path(session_id)
         if not path.exists():
