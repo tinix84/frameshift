@@ -96,6 +96,15 @@ def _apply(state: dict, event: dict) -> dict:
         state["active_frame_id"] = payload["id"]
     elif kind == "frame.digest.recorded":
         _find(state["frames"], payload["id"])["digest"] = payload["digest"]
+    elif kind == "ladder.rung.recorded":
+        # ADR-0024: one rung per id; a later recording is the correction and
+        # replaces it where it stands, leaving the earlier one in the log.
+        ladder = state.setdefault("ladder", [])
+        positions = [index for index, rung in enumerate(ladder) if rung.get("id") == payload["id"]]
+        if positions:
+            ladder[positions[0]] = copy.deepcopy(payload)
+        else:
+            ladder.append(copy.deepcopy(payload))
     elif kind == "phase.changed":
         state["phase"] = payload["phase"]
     elif kind == "approval.recorded":

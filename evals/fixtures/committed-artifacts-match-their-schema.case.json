@@ -17,13 +17,14 @@
     "evals/fixtures/reference.tool-audit-record.json": "tool-audit-record.schema.json",
     "evals/fixtures/reference.tool-request.json": "tool-request.schema.json",
     "evals/fixtures/reference.tool-result.json": "tool-result.schema.json",
-    "evals/fixtures/repair/*.repaired.json": "engine-result.schema.json"
+    "evals/fixtures/repair/*.repaired.json": "engine-result.schema.json",
+    "evals/fixtures/ladder.checkpoint.v2.json": "checkpoint.v2.schema.json"
   },
   "deliberately_invalid": {
     "evals/fixtures/repair/unnamed-engine.repaired.json": "the repair-unrepairable-output corpus case needs an attempt that still fails validation"
   },
   "expect": {
     "outcome": "valid",
-    "min_artifacts": 18
+    "min_artifacts": 19
   }
 }

@@ -96,7 +96,7 @@ class AdditionalPropertiesTests(unittest.TestCase):
 class ProvenanceRegistryTests(unittest.TestCase):
     def test_the_registry_is_read_from_the_glossary(self) -> None:
         local, external = invariants.provenance_namespaces()
-        self.assertEqual(local, frozenset({"stmt_", "frame_", "node_", "opt_", "crit_"}))
+        self.assertEqual(local, frozenset({"stmt_", "frame_", "node_", "opt_", "crit_", "rung_"}))
         self.assertEqual(external, frozenset({"intake_", "art_"}))
 
     def test_the_registry_is_not_empty_if_the_table_moves(self) -> None:

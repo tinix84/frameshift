@@ -44,6 +44,7 @@ EVENT_TYPES = frozenset(
         "frame.added",
         "frame.activated",
         "frame.digest.recorded",
+        "ladder.rung.recorded",
         "phase.changed",
         "approval.recorded",
     }
@@ -165,6 +166,8 @@ def _apply(state: dict, event: dict) -> None:
         state["active_frame_id"] = payload["id"]
     elif kind == "frame.digest.recorded":
         _named(state["frames"], payload["id"])["digest"] = payload["digest"]
+    elif kind == "ladder.rung.recorded":
+        _record_rung(state, payload)
     elif kind == "phase.changed":
         state["phase"] = payload["phase"]
     elif kind == "approval.recorded":
@@ -176,6 +179,16 @@ def _apply(state: dict, event: dict) -> None:
         raise ReplayRefused(INVARIANT_VIOLATION, f"no reducer for event type {kind!r}")
     if "revision" in event:
         state["revision"] = event["revision"]
+
+
+def _record_rung(state: dict, rung: dict) -> None:
+    """ADR-0024: a rung recorded under an existing id replaces it in place."""
+    ladder = state.setdefault("ladder", [])
+    for index, standing in enumerate(ladder):
+        if standing.get("id") == rung.get("id"):
+            ladder[index] = copy.deepcopy(rung)
+            return
+    ladder.append(copy.deepcopy(rung))
 
 
 def _named(items: list[dict], item_id: str) -> dict:

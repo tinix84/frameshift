@@ -94,6 +94,7 @@ rather than an assumed external reference.
 |---|---|---|
 | `stmt_` | an authored statement | yes |
 | `frame_` | a problem frame | yes |
+| `rung_` | a rung of the abstraction ladder | yes |
 | `node_` | a graph node | yes |
 | `opt_` | an option | yes |
 | `crit_` | a criterion | yes |

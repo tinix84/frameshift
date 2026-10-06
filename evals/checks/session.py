@@ -28,14 +28,14 @@ from . import errors
 INVARIANT_VIOLATION = errors.INVARIANT_VIOLATION
 
 # Collections whose members carry an `id` that a reference may name.
-TARGET_COLLECTIONS = ("statements", "frames", "options", "criteria")
+TARGET_COLLECTIONS = ("statements", "frames", "options", "criteria", "ladder")
 
 # The provenance namespaces from ADR-0012. This mirrors the registry table in
 # `CONTEXT.md`, which is the contract; `evals/test_session.py` asserts the two
 # still agree, so adding a namespace means editing the glossary and not this
 # file. A prefix in SESSION_LOCAL must resolve inside canonical state; one in
 # EXTERNAL is accepted on its prefix alone.
-SESSION_LOCAL_PREFIXES = ("crit_", "frame_", "node_", "opt_", "stmt_")
+SESSION_LOCAL_PREFIXES = ("crit_", "frame_", "node_", "opt_", "rung_", "stmt_")
 EXTERNAL_PREFIXES = ("art_", "intake_")
 CONTEXT = Path(__file__).resolve().parents[2] / "CONTEXT.md"
 
@@ -105,6 +105,19 @@ def reference_violations(session: dict) -> list[str]:
                 f"{INVARIANT_VIOLATION}: $.statements[{index}] is {statement.get('status')!r} "
                 "without a primary_role; only a draft statement may be unclassified"
             )
+    # ADR-0024: at most one rung stands at each level of the ladder.
+    held: dict = {}
+    for index, rung in enumerate(session.get("ladder", [])):
+        if not isinstance(rung, dict):
+            continue
+        level = rung.get("abstraction_level")
+        if level in held:
+            violations.append(
+                f"{INVARIANT_VIOLATION}: $.ladder[{index}] stands at level {level!r}, "
+                f"which $.ladder[{held[level]}] already holds"
+            )
+        else:
+            held[level] = index
     return violations
 
 

@@ -1,0 +1,19 @@
+{
+  "id": "replay-ladder-without-the-correction-diverges",
+  "check": "replay_equivalence",
+  "artifact": "ladder.checkpoint.v2.json",
+  "log": "evals/fixtures/ladder.events.jsonl",
+  "mutate": [
+    {
+      "kind": "drop",
+      "sequence": 9
+    }
+  ],
+  "expect": {
+    "outcome": "diverged",
+    "check_sequence": false,
+    "violations_naming": [
+      "replay reached"
+    ]
+  }
+}

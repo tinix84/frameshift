@@ -298,6 +298,86 @@ class ApprovalsNameTheirInterface(Fixture):
         self.assertEqual(session_violations(legacy), [])
 
 
+def _rung(level: str = "product", loss: str = "Cell chemistry choices drop out of view.") -> dict:
+    return {
+        "abstraction_level": level,
+        "outcome": "Pack cost per usable kWh meets the 2027 target.",
+        "scope": "The pack as sold, across its service life.",
+        "system_boundary": "product",
+        "success_measures": ["cost per usable kWh"],
+        "assumptions": ["the 2027 volume step holds"],
+        "loss": loss,
+        "provenance": {"kind": "inferred", "source_ids": ["stmt_001"]},
+    }
+
+
+class RecordTheLadder(Fixture):
+    """#237 (ADR-0024)."""
+
+    def test_a_rung_is_one_event_in_framing_and_validates(self) -> None:
+        self.seal_intake()
+        before = len(self.co.history(self.sid))
+        self.co.record_rung(self.sid, rung=_rung(), expected_revision=self.revision())
+        history = self.co.history(self.sid)
+        self.assertEqual([e["type"] for e in history[before:]], ["ladder.rung.recorded"])
+        state = self.co.state(self.sid)
+        self.assertEqual(state["ladder"][0]["id"], "rung_001")
+        self.assertEqual(session_violations(state), [])
+
+    def test_a_rung_is_refused_outside_framing(self) -> None:
+        with self.assertRaises(CommandRefused) as refused:
+            self.co.record_rung(self.sid, rung=_rung(), expected_revision=self.revision())
+        self.assertEqual(refused.exception.code, "invariant_violation")
+        self.assertNotIn("ladder", self.co.state(self.sid))
+
+    def test_re_recording_replaces_the_rung_and_keeps_both_recordings(self) -> None:
+        self.seal_intake()
+        self.co.record_rung(self.sid, rung=_rung(), expected_revision=self.revision())
+        self.co.record_rung(self.sid, rung=_rung(loss="Supplier options drop out of view."), rung_id="rung_001", expected_revision=self.revision())
+        state = self.co.state(self.sid)
+        self.assertEqual([r["loss"] for r in state["ladder"]], ["Supplier options drop out of view."])
+        recorded = [e for e in self.co.history(self.sid) if e["type"] == "ladder.rung.recorded"]
+        self.assertEqual(len(recorded), 2)
+
+    def test_re_recording_a_rung_that_does_not_exist_is_refused(self) -> None:
+        self.seal_intake()
+        with self.assertRaises(CommandRefused):
+            self.co.record_rung(self.sid, rung=_rung(), rung_id="rung_404", expected_revision=self.revision())
+
+    def test_a_second_rung_at_an_occupied_level_commits_nothing(self) -> None:
+        self.seal_intake()
+        self.co.record_rung(self.sid, rung=_rung(), expected_revision=self.revision())
+        before = len(self.co.history(self.sid))
+        with self.assertRaises(CommandRefused) as refused:
+            self.co.record_rung(self.sid, rung=_rung(), expected_revision=self.revision())
+        self.assertEqual(refused.exception.code, "schema_invalid")
+        self.assertIn("already holds", refused.exception.detail)
+        self.assertEqual(len(self.co.history(self.sid)), before)
+
+    def test_a_rung_without_its_loss_commits_nothing(self) -> None:
+        self.seal_intake()
+        with self.assertRaises(CommandRefused):
+            self.co.record_rung(self.sid, rung=dict(_rung(), loss=""), expected_revision=self.revision())
+
+    def test_a_rung_citing_a_missing_statement_commits_nothing(self) -> None:
+        self.seal_intake()
+        rung = dict(_rung(), provenance={"kind": "inferred", "source_ids": ["stmt_999"]})
+        with self.assertRaises(CommandRefused):
+            self.co.record_rung(self.sid, rung=rung, expected_revision=self.revision())
+
+    def test_the_view_orders_the_ladder_by_level_not_by_recording(self) -> None:
+        self.seal_intake()
+        self.co.record_rung(self.sid, rung=_rung("business"), expected_revision=self.revision())
+        self.co.record_rung(self.sid, rung=_rung("component"), expected_revision=self.revision())
+        self.co.record_rung(self.sid, rung=_rung("product"), expected_revision=self.revision())
+        self.assertEqual(self.co.view(self.sid)["derived"]["ladder_order"], ["rung_002", "rung_003", "rung_001"])
+
+    def test_a_restarted_coordinator_folds_the_same_ladder(self) -> None:
+        self.seal_intake()
+        self.co.record_rung(self.sid, rung=_rung(), expected_revision=self.revision())
+        self.assertEqual(coordinator(self.store).state(self.sid)["ladder"], self.co.state(self.sid)["ladder"])
+
+
 class TheShallowJourney(Fixture):
     """#89, as far as the current event vocabulary reaches: intake to solutions."""
 
