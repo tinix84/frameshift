@@ -185,5 +185,32 @@ class CaseWiringTests(unittest.TestCase):
         self.assertTrue(run.evaluate(without))
 
 
+
+class TheLadderInvariantAgrees(unittest.TestCase):
+    """#237: both validators refuse a second rung at one level, word for word."""
+
+    def test_application_and_reference_name_the_same_violation(self) -> None:
+        from frameshift.validation import invariants as application
+
+        state = copy.deepcopy(run.load("evals/fixtures/ladder.checkpoint.v2.json")["state"])
+        self.assertEqual(session.reference_violations(state), [])
+        self.assertEqual(application.reference_violations(state), [])
+        state["ladder"][1]["abstraction_level"] = state["ladder"][0]["abstraction_level"]
+        mine, theirs = application.reference_violations(state), session.reference_violations(state)
+        self.assertEqual(mine, theirs)
+        self.assertEqual(len(mine), 1)
+        self.assertIn("$.ladder[1]", mine[0])
+
+    def test_a_rung_citation_resolves_in_both_validators(self) -> None:
+        from frameshift.validation import invariants as application
+
+        state = copy.deepcopy(run.load("evals/fixtures/ladder.checkpoint.v2.json")["state"])
+        state["graph"]["nodes"].append(
+            {"id": "node_cites_rung", "type": "outcome", "label": "x", "confidence": "low", "status": "proposed",
+             "provenance": {"kind": "sourced", "source_ids": ["rung_001"]}}
+        )
+        self.assertEqual(session.reference_violations(state), application.reference_violations(state))
+        self.assertFalse(any("rung_001" in item for item in session.reference_violations(state)))
+
 if __name__ == "__main__":
     unittest.main()

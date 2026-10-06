@@ -15,6 +15,7 @@
     "active_frame_id": {"anyOf": [{"$ref": "common.schema.json#/$defs/id"}, {"type": "null"}]},
     "statements": {"type": "array", "items": {"$ref": "#/$defs/statement"}},
     "frames": {"type": "array", "items": {"$ref": "#/$defs/frame"}},
+    "ladder": {"type": "array", "items": {"$ref": "#/$defs/rung"}},
     "graph": {"$ref": "graph.schema.json"},
     "options": {"type": "array", "items": {"$ref": "#/$defs/option"}},
     "criteria": {"type": "array", "items": {"$ref": "#/$defs/criterion"}},
@@ -32,6 +33,22 @@
         "primary_role": {"type": "string", "enum": ["observation", "need", "outcome", "problem", "function", "requirement", "constraint", "assumption", "proposal", "question"]},
         "secondary_roles": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
         "status": {"type": "string", "enum": ["draft", "proposed", "approved", "rejected", "superseded", "archived"]},
+        "provenance": {"$ref": "common.schema.json#/$defs/provenance"}
+      },
+      "additionalProperties": false
+    },
+    "rung": {
+      "type": "object",
+      "required": ["id", "abstraction_level", "outcome", "scope", "system_boundary", "success_measures", "assumptions", "loss", "provenance"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/id"},
+        "abstraction_level": {"type": "string", "enum": ["component", "subsystem", "system", "product", "business"]},
+        "outcome": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "scope": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "system_boundary": {"type": "string", "enum": ["component", "subsystem", "product", "lifecycle", "operations", "supply_chain", "portfolio", "business_model"]},
+        "success_measures": {"type": "array", "items": {"type": "string"}},
+        "assumptions": {"type": "array", "items": {"type": "string"}},
+        "loss": {"type": "string", "minLength": 1, "maxLength": 1000},
         "provenance": {"$ref": "common.schema.json#/$defs/provenance"}
       },
       "additionalProperties": false

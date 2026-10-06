@@ -1,0 +1,11 @@
+{
+  "id": "session-ladder-is-valid",
+  "check": "session_invariants",
+  "artifact": "ladder.checkpoint.v2.json",
+  "at": [
+    "state"
+  ],
+  "expect": {
+    "outcome": "valid"
+  }
+}

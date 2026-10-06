@@ -1,0 +1,9 @@
+{
+  "id": "replay-ladder-rungs-reproduce-the-snapshot",
+  "check": "replay_equivalence",
+  "artifact": "ladder.checkpoint.v2.json",
+  "log": "evals/fixtures/ladder.events.jsonl",
+  "expect": {
+    "outcome": "equivalent"
+  }
+}

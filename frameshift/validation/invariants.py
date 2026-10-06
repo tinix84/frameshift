@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[2]
 CONTEXT = ROOT / "CONTEXT.md"
 
 INVARIANT_VIOLATION = errors.INVARIANT_VIOLATION
-TARGET_COLLECTIONS = ("statements", "frames", "options", "criteria")
+TARGET_COLLECTIONS = ("statements", "frames", "options", "criteria", "ladder")
 REGISTRY_ROW = re.compile(r"^\|\s*`([a-z_]+)`\s*\|[^|]*\|\s*(yes|no)\s*\|", re.MULTILINE)
 
 
@@ -131,6 +131,19 @@ def reference_violations(session: dict) -> list[str]:
                 f"{INVARIANT_VIOLATION}: $.statements[{index}] is {statement.get('status')!r} "
                 "without a primary_role; only a draft statement may be unclassified"
             )
+    # ADR-0024: at most one rung stands at each level of the ladder.
+    held: dict = {}
+    for index, rung in enumerate(session.get("ladder", [])):
+        if not isinstance(rung, dict):
+            continue
+        level = rung.get("abstraction_level")
+        if level in held:
+            violations.append(
+                f"{INVARIANT_VIOLATION}: $.ladder[{index}] stands at level {level!r}, "
+                f"which $.ladder[{held[level]}] already holds"
+            )
+        else:
+            held[level] = index
     return violations
 
 

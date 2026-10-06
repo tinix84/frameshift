@@ -1,0 +1,26 @@
+{
+  "id": "session-two-rungs-at-one-level",
+  "check": "session_invariants",
+  "artifact": "ladder.checkpoint.v2.json",
+  "at": [
+    "state"
+  ],
+  "mutate": [
+    {
+      "path": [
+        "ladder",
+        1,
+        "abstraction_level"
+      ],
+      "value": "product"
+    }
+  ],
+  "expect": {
+    "outcome": "invalid",
+    "violations_naming": [
+      "$.ladder[1]",
+      "invariant_violation",
+      "already holds"
+    ]
+  }
+}

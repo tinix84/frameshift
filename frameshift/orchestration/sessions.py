@@ -20,6 +20,7 @@ What is here, by issue:
 - #228 correct a classification, and derive whether abstraction is required;
 - #229 seal a phase through its existing gate, with the existing trusted
   confirmation, appending the gate's own events;
+- #237 record a rung of the abstraction ladder, or re-record it (ADR-0024);
 - the shallow framing and causal steps the walking skeleton (#89) needs that
   the current event vocabulary already expresses: propose and activate a frame,
   add a graph node or edge.
@@ -136,6 +137,7 @@ class SessionCoordinator:
                 "abstraction_required": abstraction_required(state),
                 "unclassified": [s["id"] for s in state["statements"] if "primary_role" not in s],
                 "gates": gates_available(state),
+                "ladder_order": ladder_order(state),
                 "pending_confirmations": [
                     request_id
                     for request_id, (owner, _, _) in self._pending.items()
@@ -324,6 +326,41 @@ class SessionCoordinator:
         self._commit_next(state, [{"type": "frame.added", "payload": candidate}])
         return self.view(session_id)
 
+    def record_rung(
+        self,
+        session_id: str,
+        *,
+        rung: dict,
+        expected_revision: int,
+        rung_id: str | None = None,
+    ) -> dict:
+        """#237: record one rung of the ladder, or re-record it to correct it.
+
+        ADR-0024: without `rung_id` this adds a rung under a fresh id; with one
+        it replaces that rung, and the earlier recording stays in the history.
+        One rung per level is the validators' invariant, enforced on commit.
+        """
+        state = self._expect(session_id, expected_revision, phase="framing")
+        ladder = state.get("ladder", [])
+        if rung_id is not None and rung_id not in {item["id"] for item in ladder}:
+            raise CommandRefused(INVARIANT_VIOLATION, f"no rung {rung_id!r} to re-record")
+        recorded = {
+            "id": rung_id or _next_id("rung", ladder),
+            "abstraction_level": rung.get("abstraction_level", ""),
+            "outcome": rung.get("outcome", ""),
+            "scope": rung.get("scope", ""),
+            "system_boundary": rung.get("system_boundary", ""),
+            "success_measures": _strings(rung.get("success_measures")),
+            "assumptions": _strings(rung.get("assumptions")),
+            "loss": rung.get("loss", ""),
+            "provenance": copy.deepcopy(
+                rung.get("provenance")
+                or {"kind": "assumed", "source_ids": [], "note": "Recorded by the operator."}
+            ),
+        }
+        self._commit_next(state, [{"type": "ladder.rung.recorded", "payload": recorded}])
+        return self.view(session_id)
+
     def activate_frame(self, session_id: str, *, frame_id: str, expected_revision: int) -> dict:
         """Make one candidate the working frame, ready for `frame_selection`.
 
@@ -508,6 +545,17 @@ def abstraction_required(state: dict) -> bool:
     has_proposal = any(s.get("primary_role") == "proposal" for s in live)
     has_outcome = any(s.get("primary_role") == "outcome" for s in live)
     return has_proposal and not has_outcome
+
+
+# ADR-0024: the ladder reads bottom to top by level rank, never by the order
+# rungs were recorded. The rank is the schema enum's own order.
+LADDER_RANK = {level: rank for rank, level in enumerate(("component", "subsystem", "system", "product", "business"))}
+
+
+def ladder_order(state: dict) -> list[str]:
+    """Rung ids from mechanism (how) up to outcome (why)."""
+    rungs = [rung for rung in state.get("ladder", []) if rung.get("abstraction_level") in LADDER_RANK]
+    return [rung["id"] for rung in sorted(rungs, key=lambda rung: LADDER_RANK[rung["abstraction_level"]])]
 
 
 def gates_available(state: dict) -> list[dict]:

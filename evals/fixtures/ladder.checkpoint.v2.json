@@ -1,0 +1,159 @@
+{
+  "artifacts": [],
+  "capability_profile": {
+    "adapter": {
+      "id": "frameshift.generic",
+      "version": "0.1.0"
+    },
+    "capabilities": [
+      {
+        "approval": "never",
+        "available": true,
+        "data_classes": [
+          "user-provided"
+        ],
+        "id": "artifact.read",
+        "limitations": [
+          "Only artifacts provided in the current context."
+        ],
+        "operations": [
+          "read-inline"
+        ],
+        "side_effect": "none",
+        "version": "1"
+      }
+    ],
+    "profile_id": "generic-conversation-only",
+    "schema_version": "1.0.0"
+  },
+  "checkpoint_digest": "sha256:713a39cbceda3773994e49d8cd5120e6656b597809b1df208bca216733612836",
+  "contracts": {
+    "engines": {
+      "problem_framing": "1.0.0"
+    },
+    "prompts": {
+      "problem_framing": {
+        "digest": "sha256:bb57c98a14c2fd82ae287787c19cc079266a28160650326df33daf2cd685bea2",
+        "id": "frameshift.problem-framing.v2",
+        "version": "2.0.0"
+      }
+    }
+  },
+  "created_at": "2026-10-06T09:00:00Z",
+  "event_cursor": 9,
+  "execution_summaries": [],
+  "id": "ckpt_ladder_001",
+  "pending_proposals": [],
+  "phase": "framing",
+  "prior_checkpoint_digest": null,
+  "prompt_version_changes": [],
+  "schema_version": "2.0.0",
+  "session_id": "sess_ladder_001",
+  "session_revision": 6,
+  "state": {
+    "active_frame_id": null,
+    "approvals": [
+      {
+        "actor": {
+          "id": "user_lead_eng",
+          "kind": "human",
+          "role": "decision_owner"
+        },
+        "created_at": "2026-10-06T09:00:00Z",
+        "disposition": "approved",
+        "id": "appr_confirm_t0003",
+        "profile_id": "approval-profile-frameshift-manual-gui-local-0.1.0",
+        "session_revision": 2,
+        "target_digest": "sha256:619e0d3cc5ce615fe3bab79ea981b458a23ffc4a881da07f0321d89412ab6c37",
+        "target_id": "stmt_001"
+      }
+    ],
+    "criteria": [],
+    "frames": [],
+    "graph": {
+      "edges": [],
+      "nodes": [],
+      "schema_version": "1.0.0"
+    },
+    "id": "sess_ladder_001",
+    "ladder": [
+      {
+        "abstraction_level": "product",
+        "assumptions": [
+          "the 2027 volume step holds"
+        ],
+        "id": "rung_001",
+        "loss": "Cell-level choices become one lever among several.",
+        "outcome": "Pack cost per usable kWh meets the 2027 target.",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "stmt_001"
+          ]
+        },
+        "scope": "The pack as sold, across its service life.",
+        "success_measures": [
+          "cost per usable kWh"
+        ],
+        "system_boundary": "product"
+      },
+      {
+        "abstraction_level": "component",
+        "assumptions": [
+          "the 2027 volume step holds"
+        ],
+        "id": "rung_002",
+        "loss": "The outcome the cells serve is out of view; only the cell format is weighed.",
+        "outcome": "A cell format is chosen for the pack.",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "stmt_001"
+          ]
+        },
+        "scope": "The cell and its packaging.",
+        "success_measures": [
+          "cost per usable kWh"
+        ],
+        "system_boundary": "component"
+      }
+    ],
+    "options": [],
+    "phase": "framing",
+    "revision": 6,
+    "schema_version": "2.0.0",
+    "statements": [
+      {
+        "id": "stmt_001",
+        "primary_role": "proposal",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "intake_t0001"
+          ]
+        },
+        "secondary_roles": [
+          "need"
+        ],
+        "status": "draft",
+        "text": "Switch the pack to prismatic cells so we hit the cost target."
+      },
+      {
+        "id": "stmt_002",
+        "primary_role": "outcome",
+        "provenance": {
+          "kind": "observed",
+          "note": "Added by the reasoner during intake.",
+          "source_ids": []
+        },
+        "secondary_roles": [],
+        "status": "draft",
+        "text": "Pack cost per usable kWh meets the target."
+      }
+    ],
+    "status": "active",
+    "title": "Pack cost per kWh at the 2027 volume step",
+    "workspace_id": "ws_local"
+  },
+  "state_digest": "sha256:1a5599161daf7ec782846b5e2069d8cb1f406b4bf93c179a807b27b042eafa53"
+}
