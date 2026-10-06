@@ -96,6 +96,7 @@
         "disposition": {"type": "string", "enum": ["approved", "edited", "rejected", "deferred", "evidence_requested"]},
         "actor": {"$ref": "common.schema.json#/$defs/actor"},
         "session_revision": {"type": "integer", "minimum": 0},
+        "profile_id": {"$ref": "common.schema.json#/$defs/id", "description": "The attested approval profile the confirmation was bound under (ADR-0022), so approvals from different confirmation interfaces stay distinguishable in the log."},
         "rationale": {"type": "string", "maxLength": 3000},
         "created_at": {"$ref": "common.schema.json#/$defs/timestamp"}
       },

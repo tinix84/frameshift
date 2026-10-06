@@ -135,6 +135,9 @@ def confirmation_server_main(argv: list[str] | None = None) -> int:
 
 GUI_CLIENT_ID = "frameshift-manual-gui"
 GUI_CLIENT_VERSION = "0.1.0"
+# ADR-0022: the claim the operator makes by launching the manual GUI. It is
+# part of the pinned configuration, so rewording it is a change of profile.
+MANUAL_ATTESTATION = "no agent or model runs under the operator's account while this server is open"
 
 
 def gui_vocabulary() -> dict:
@@ -157,11 +160,15 @@ def gui_vocabulary() -> dict:
 def manual_approval_configuration(
     store: Path, operator: dict, *, attested_at: str, bind: str = "127.0.0.1", public_hosts: tuple[str, ...] = ()
 ) -> tuple[dict, dict]:
-    """The approval profile and attestation for the manual GUI (ADR-0022, proposed).
+    """The approval profile and attestation for the manual GUI (ADR-0022, ADR-0023).
 
-    The operator attests by launching the server: loopback only, no model
-    connected. The digest pins that configuration, so a change to it is a
-    change of profile and suspends approvals, as ADR-0014 requires.
+    The operator attests by launching the server. What they attest is that no
+    agent or model runs under their account while it is open: the process
+    cannot check that, and an agent that could reach loopback could read the
+    page and answer a confirmation. The digest pins the configuration, so a
+    change to it is a change of profile and suspends approvals, as ADR-0014
+    requires. Local and hosted runs are distinct profiles, so every approval
+    records which trust boundary bound it.
     """
     from frameshift.persistence import canonical
 
@@ -172,10 +179,12 @@ def manual_approval_configuration(
         "public_hosts": sorted(public_hosts),
         "authentication": "basic" if public_hosts else "loopback",
         "model_connected": False,
+        "operator_attests": MANUAL_ATTESTATION,
         "store": str(store.resolve()),
     }
     digest = canonical.digest(configuration)
-    profile_id = f"approval-profile-{GUI_CLIENT_ID}-{GUI_CLIENT_VERSION}"
+    mode = "hosted" if public_hosts else "local"
+    profile_id = f"approval-profile-{GUI_CLIENT_ID}-{mode}-{GUI_CLIENT_VERSION}"
     profile = {
         "schema_version": "1.0.0",
         "id": profile_id,
@@ -235,7 +244,7 @@ def gui_main(argv: list[str] | None = None, environ: dict | None = None) -> int:
     """Serve the manual GUI. No model is connected in this mode.
 
     Locally it binds loopback. With `--hosted` it is configured from the
-    environment for a container platform (ADR-0022, hosted mode) and refuses to
+    environment for a container platform (ADR-0023) and refuses to
     start unless a password and a public host name are both set.
     """
     import os
@@ -291,6 +300,12 @@ def gui_main(argv: list[str] | None = None, environ: dict | None = None) -> int:
     server = serve(app, port=port, host=bind, public_hosts=public_hosts)
     shown = f"https://{public_hosts[0]}/" if public_hosts else f"http://127.0.0.1:{server.server_address[1]}/"
     print(f"FrameShift manual GUI on {shown}  (store: {store.resolve()}; operator: {operator_id})", flush=True)
+    if not args.hosted:
+        print(
+            "Approvals here are yours only if " + MANUAL_ATTESTATION + ". "
+            "An agent running as you can read this page and answer it (ADR-0022).",
+            flush=True,
+        )
     if not args.hosted and not args.no_browser:
         webbrowser.open(shown)
     try:

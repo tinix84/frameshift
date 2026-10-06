@@ -1,4 +1,4 @@
-"""The manual GUI's HTTP boundary (ADR-0022, proposed).
+"""The manual GUI's HTTP boundary (ADR-0022).
 
 A peer of `frameshift.mcp`: it translates a protocol into application
 operations and grants no authority by itself. It imports `contracts` and
@@ -18,7 +18,7 @@ none of them is a substitute for ADR-0014's trust boundary:
   server never answers;
 - no model is connected, so no tool call can reach a route.
 
-Hosted (ADR-0022, hosted mode), it listens on all interfaces behind the
+Hosted (ADR-0023), it listens on all interfaces behind the
 platform's TLS proxy, accepts only the configured public host name, and every
 request - the page included - must also carry HTTP Basic credentials matching
 the deployment password. The launch token stays: a browser resends Basic

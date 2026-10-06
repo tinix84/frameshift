@@ -1,4 +1,4 @@
-# Container image for the manual GUI in hosted mode (ADR-0022).
+# Container image for the manual GUI in hosted mode (ADR-0023).
 # Standard library only: nothing is installed beyond the interpreter.
 FROM python:3.12-slim
 

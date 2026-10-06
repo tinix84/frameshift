@@ -265,6 +265,34 @@ class SealIntakeThroughTheGate(Fixture):
         self.assertEqual(self.co.state(self.sid)["phase"], "framing")
 
 
+class ApprovalsNameTheirInterface(Fixture):
+    """ADR-0022: an approval from the manual GUI is distinguishable in the log."""
+
+    def test_an_approval_records_the_local_manual_profile(self) -> None:
+        self.seal_intake()
+        recorded = [e for e in self.co.history(self.sid) if e["type"] == "approval.recorded"]
+        self.assertEqual(
+            [e["payload"]["profile_id"] for e in recorded],
+            ["approval-profile-frameshift-manual-gui-local-0.1.0"],
+        )
+        self.assertEqual(session_violations(self.co.state(self.sid)), [])
+
+    def test_local_and_hosted_runs_are_distinct_profiles(self) -> None:
+        with tempfile.TemporaryDirectory() as other:
+            hosted = manual_coordinator(
+                Path(other), OWNER, bind="0.0.0.0", public_hosts=("frameshift.example.org",)
+            )
+            self.assertNotEqual(hosted._profile["id"], self.co._profile["id"])
+            self.assertIn("-hosted-", hosted._profile["id"])
+
+    def test_an_approval_recorded_before_the_field_existed_still_validates(self) -> None:
+        self.seal_intake()
+        legacy = copy.deepcopy(self.co.state(self.sid))
+        for approval in legacy["approvals"]:
+            del approval["profile_id"]
+        self.assertEqual(session_violations(legacy), [])
+
+
 class TheShallowJourney(Fixture):
     """#89, as far as the current event vocabulary reaches: intake to solutions."""
 
@@ -312,7 +340,7 @@ class TheShallowJourney(Fixture):
 
 
 class TheGuiStaysAtTheBoundary(unittest.TestCase):
-    """ADR-0022 (proposed): the GUI imports contracts and orchestration.api only."""
+    """ADR-0022: the GUI imports contracts and orchestration.api only."""
 
     def test_gui_imports(self) -> None:
         allowed = {"frameshift.contracts", "frameshift.orchestration.api"}

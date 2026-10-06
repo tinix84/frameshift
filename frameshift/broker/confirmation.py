@@ -190,6 +190,9 @@ def bind_confirmation_response(
         "disposition": disposition,
         "actor": dict(actor),
         "session_revision": request["session_revision"],
+        # ADR-0022: which attested interface bound this disposition. An
+        # opaque profile id, so the canonical record names no client.
+        "profile_id": profile["id"],
         "created_at": confirmed_at,
     }
     invalid_approval = validate_against(approval, "approval.schema.json")

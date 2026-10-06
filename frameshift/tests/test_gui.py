@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for the manual GUI's HTTP boundary (ADR-0022, proposed).
+"""Tests for the manual GUI's HTTP boundary (ADR-0022, ADR-0023).
 
 A real server on an ephemeral loopback port, driven with the standard library's
 HTTP client. The coordinator underneath is the real one over a temporary store,
@@ -142,7 +142,7 @@ class GuiBoundary(unittest.TestCase):
 
 
 class HostedMode(unittest.TestCase):
-    """ADR-0022, hosted mode: a network bind is never unauthenticated."""
+    """ADR-0023: a network bind is never unauthenticated."""
 
     PASSWORD = "correct horse battery staple"
     PUBLIC = "frameshift-test.up.railway.app"
