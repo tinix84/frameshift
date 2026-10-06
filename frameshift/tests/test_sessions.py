@@ -101,12 +101,17 @@ class OpenASessionFromOneVerbatimRequest(Fixture):
             self.assertEqual(state[collection], [])
         self.assertEqual(state["graph"]["nodes"], [])
 
-    def test_the_only_schema_gap_is_the_unclassified_request(self) -> None:
-        """Spec gap, made visible: #226 omits the role the schema requires."""
-        self.assertEqual(
-            session_violations(self.co.state(self.sid)),
-            ["$.statements[0]: missing required property 'primary_role'"],
-        )
+    def test_the_opened_session_validates_against_the_session_schema(self) -> None:
+        """#226: an unclassified draft request is a valid statement."""
+        self.assertEqual(session_violations(self.co.state(self.sid)), [])
+
+    def test_a_statement_past_draft_still_needs_a_role(self) -> None:
+        state = self.co.state(self.sid)
+        state["statements"][0]["status"] = "approved"
+        violations = session_violations(state)
+        self.assertEqual(len(violations), 1)
+        self.assertIn("$.statements[0]", violations[0])
+        self.assertIn("primary_role", violations[0])
 
     def test_an_empty_request_opens_nothing(self) -> None:
         with self.assertRaises(CommandRefused):

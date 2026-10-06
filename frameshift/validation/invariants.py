@@ -118,6 +118,19 @@ def reference_violations(session: dict) -> list[str]:
             )
 
     violations.extend(graph_violations(session.get("graph", {})))
+    # #226: intake preserves a request before anyone has classified it, so a
+    # draft statement may lack a role. Past draft, a statement is a claim the
+    # session acts on, and an unclassified claim cannot be reasoned over.
+    for index, statement in enumerate(session.get("statements", [])):
+        if (
+            isinstance(statement, dict)
+            and statement.get("status") != "draft"
+            and "primary_role" not in statement
+        ):
+            violations.append(
+                f"{INVARIANT_VIOLATION}: $.statements[{index}] is {statement.get('status')!r} "
+                "without a primary_role; only a draft statement may be unclassified"
+            )
     return violations
 
 
