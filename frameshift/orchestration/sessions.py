@@ -32,7 +32,6 @@ ADR-0013's deliberate act, so those columns are absent here rather than faked.
 from __future__ import annotations
 
 import copy
-import re
 from typing import Callable
 
 from frameshift.contracts import errors
@@ -53,13 +52,6 @@ EMPTY_GRAPH = {"schema_version": "1.0.0", "nodes": [], "edges": []}
 # A set rather than a bare string constant: this is a proposal kind, not an
 # error code, and the no-bare-code guard rightly cannot tell the two apart.
 ADMITTED_KINDS = frozenset({"statement_classification"})
-
-# #226 preserves the request before it is classified, and the session schema
-# requires a role on every statement. The two disagree for exactly one
-# interval: between opening and the first classification. This is that
-# interval's one tolerated violation, and nothing else is tolerated.
-_UNCLASSIFIED = re.compile(r"^\$\.statements\[(\d+)\]: missing required property 'primary_role'$")
-
 
 class CommandRefused(Exception):
     """A command that changed nothing, with a published code and the reason."""
@@ -494,7 +486,7 @@ class SessionCoordinator:
         except (replay.ReplayRefused, KeyError) as exc:
             code = getattr(exc, "code", INVARIANT_VIOLATION)
             raise CommandRefused(code, getattr(exc, "detail", str(exc))) from None
-        violations = _tolerated(after, session_violations(after))
+        violations = session_violations(after)
         if violations:
             raise CommandRefused(SCHEMA_INVALID, "; ".join(violations))
         try:
@@ -586,19 +578,6 @@ def _as_events(session_id: str, history: list[dict], bodies: list[dict], revisio
             event["revision"] = revision
         events.append(event)
     return events
-
-
-def _tolerated(state: dict, violations: list[str]) -> list[str]:
-    """Drop only the unclassified-statement gap #226 creates; keep everything else."""
-    kept = []
-    for violation in violations:
-        match = _UNCLASSIFIED.match(violation)
-        if match:
-            statement = state["statements"][int(match.group(1))]
-            if statement.get("status") == "draft" and "primary_role" not in statement:
-                continue
-        kept.append(violation)
-    return kept
 
 
 def _next_id(prefix: str, items: list[dict]) -> str:

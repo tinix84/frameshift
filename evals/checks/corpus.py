@@ -41,6 +41,10 @@ def corpus_exemplar(case: dict, load) -> list[str]:
         errors.extend(f"intake violates session statement schema at {item}" for item in validate(intake, load_schema("session.v2.schema.json")["$defs"]["statement"], current="session.v2.schema.json"))
     if not isinstance(intake, dict) or not intake.get("id"):
         errors.append("intake missing statement id")
+    # The session schema lets a draft statement be unclassified (#226); a
+    # corpus intake is a labelled reference, so it still carries its role.
+    if isinstance(intake, dict) and "primary_role" not in intake:
+        errors.append("intake missing reference primary_role")
     if not isinstance(result, dict):
         errors.append("reference result must be an object")
     else:

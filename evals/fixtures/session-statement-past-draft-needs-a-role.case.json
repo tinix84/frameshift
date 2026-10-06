@@ -1,0 +1,36 @@
+{
+  "id": "session-statement-past-draft-needs-a-role",
+  "check": "session_invariants",
+  "artifact": "prompt-identity.checkpoint.v2.json",
+  "at": [
+    "state"
+  ],
+  "mutate": [
+    {
+      "path": [
+        "statements"
+      ],
+      "value": [
+        {
+          "id": "stmt_001",
+          "text": "Switch the pack to prismatic cells so we hit the cost target.",
+          "status": "approved",
+          "provenance": {
+            "kind": "observed",
+            "source_ids": [
+              "intake_001"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "outcome": "invalid",
+    "violations_naming": [
+      "$.statements[0]",
+      "invariant_violation",
+      "primary_role"
+    ]
+  }
+}
