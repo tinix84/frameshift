@@ -1,4 +1,9 @@
-"""Provider-neutral application operation for trusted confirmation (#205)."""
+"""Provider-neutral application operations (ADR-0015).
+
+Inbound boundaries - the MCP server and the manual GUI - import this module and
+nothing else of orchestration. It holds the trusted-confirmation workflow
+(#205) and re-exports the session coordinator (#6, #172).
+"""
 
 from __future__ import annotations
 
@@ -259,3 +264,15 @@ def _refused(session: dict, refusal) -> dict:
         "phase": session.get("phase"),
         "events": [],
     }
+
+
+# Re-exported last: `sessions` imports this module lazily, for the workflow.
+from .sessions import CommandRefused, SessionCoordinator, abstraction_required, gates_available  # noqa: E402
+
+__all__ = [
+    "CommandRefused",
+    "ConfirmationWorkflow",
+    "SessionCoordinator",
+    "abstraction_required",
+    "gates_available",
+]

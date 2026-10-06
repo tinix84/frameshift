@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FrameShift — manual</title>
+<style>
+:root {
+  --paper: #f2f4f6;
+  --sheet: #ffffff;
+  --ink: #1e2731;
+  --muted: #5b6875;
+  --rule: #cbd3db;
+  --steel: #2f5d86;
+  --steel-ink: #ffffff;
+  --signed: #1e7466;
+  --caution: #8a5d0c;
+  --caution-bg: #f6ebd3;
+  --refused: #a33a3a;
+  --refused-bg: #f7e1e1;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, "SF Mono", monospace;
+  --sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #161b21; --sheet: #1e252d; --ink: #e3e8ed; --muted: #98a4b0;
+    --rule: #33404c; --steel: #6f9cc4; --steel-ink: #10161c; --signed: #5bbfad;
+    --caution: #e2b55c; --caution-bg: #3a3020; --refused: #e08a8a; --refused-bg: #3d2424;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 var(--sans); }
+header.bar {
+  display: flex; gap: 1rem; align-items: baseline; flex-wrap: wrap;
+  padding: .75rem 1.25rem; border-bottom: 1px solid var(--rule); background: var(--sheet);
+}
+header.bar h1 { font-size: 1.15rem; margin: 0; letter-spacing: -.01em; }
+header.bar .mode { color: var(--muted); }
+header.bar .who { margin-left: auto; color: var(--muted); }
+main { display: grid; grid-template-columns: 15rem minmax(0, 1fr) 22rem; min-height: calc(100vh - 3.2rem); }
+@media (max-width: 1100px) {
+  main { grid-template-columns: minmax(0, 1fr); }
+  aside.sessions { border-right: 0; border-bottom: 1px solid var(--rule); }
+  aside.log { border-left: 0; border-top: 1px solid var(--rule); }
+  header.bar .who { margin-left: 0; }
+}
+fieldset, form, label, .card { min-width: 0; }
+input, select { max-width: 100%; }
+aside, section.work { padding: 1rem 1.25rem; }
+aside.sessions { border-right: 1px solid var(--rule); }
+aside.log { border-left: 1px solid var(--rule); background: var(--sheet); }
+h2 { font-size: 1rem; margin: 1.25rem 0 .5rem; }
+h2:first-child { margin-top: 0; }
+h3 { font-size: .95rem; margin: 1rem 0 .4rem; }
+p.hint { color: var(--muted); margin: .25rem 0 .75rem; max-width: 70ch; }
+ul.plain { list-style: none; padding: 0; margin: 0; }
+.session-link { display: block; width: 100%; text-align: left; padding: .45rem .5rem; border: 0; border-radius: 4px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.session-link[aria-current="true"] { background: var(--sheet); box-shadow: inset 3px 0 0 var(--steel); }
+.session-link small { display: block; color: var(--muted); }
+
+/* The phase rail: the one place this page spends its boldness. */
+.rail { display: flex; align-items: center; margin: .75rem 0 2rem; overflow-x: auto; padding: .25rem .25rem 1.4rem; }
+.rail .phase { flex: 0 0 auto; padding: .3rem .75rem; border: 1.5px solid var(--rule); border-radius: 999px; color: var(--muted); background: var(--sheet); white-space: nowrap; }
+.rail .phase.done { border-color: var(--signed); color: var(--signed); }
+.rail .phase.here { border-color: var(--steel); background: var(--steel); color: var(--steel-ink); font-weight: 600; }
+.rail .seal { position: relative; flex: 1 0 6.5rem; height: 2px; background: var(--rule); }
+.rail .seal i { position: absolute; left: 50%; top: 50%; width: 11px; height: 11px; transform: translate(-50%, -50%) rotate(45deg); border: 1.5px solid var(--rule); background: var(--paper); }
+.rail .seal span { position: absolute; top: 11px; left: 0; right: 0; text-align: center; font: 11px/1.3 var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rail .seal.signed { background: var(--signed); }
+.rail .seal.signed i { background: var(--signed); border-color: var(--signed); }
+.rail .seal.signed span { color: var(--signed); }
+
+.card { background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; padding: .9rem 1rem; margin-bottom: .75rem; }
+.verbatim { white-space: pre-wrap; font-size: 1.05rem; margin: 0 0 .5rem; padding-left: .75rem; border-left: 3px solid var(--rule); }
+.ids { font: 12px/1.4 var(--mono); color: var(--muted); }
+.role { display: inline-block; padding: 0 .45rem; border-radius: 3px; border: 1px solid var(--rule); font-size: .85rem; margin-right: .25rem; }
+.role.primary { border-color: var(--steel); color: var(--steel); font-weight: 600; }
+.notice { padding: .7rem .9rem; border-radius: 6px; margin: 0 0 1rem; max-width: 75ch; }
+.notice.caution { background: var(--caution-bg); color: var(--caution); }
+.notice.refused { background: var(--refused-bg); color: var(--refused); }
+.notice.ok { border: 1px solid var(--signed); color: var(--signed); }
+
+form.inline { display: flex; flex-wrap: wrap; gap: .5rem; align-items: flex-end; margin-top: .5rem; }
+label { display: flex; flex-direction: column; gap: .2rem; font-size: .85rem; color: var(--muted); }
+label.check { flex-direction: row; align-items: center; gap: .3rem; color: var(--ink); }
+input, select, textarea { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: .35rem .5rem; }
+textarea { min-height: 4.5rem; width: 100%; resize: vertical; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: .6rem; }
+fieldset { border: 1px solid var(--rule); border-radius: 4px; padding: .4rem .6rem; display: flex; flex-wrap: wrap; gap: .2rem .7rem; }
+legend { font-size: .85rem; color: var(--muted); padding: 0 .3rem; }
+button { font: inherit; border-radius: 4px; padding: .4rem .8rem; cursor: pointer; border: 1px solid var(--steel); background: var(--sheet); color: var(--steel); }
+button.primary { background: var(--steel); color: var(--steel-ink); }
+button.sign { background: var(--signed); border-color: var(--signed); color: var(--steel-ink); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+:focus-visible { outline: 2px solid var(--steel); outline-offset: 2px; }
+pre.json { white-space: pre-wrap; word-break: break-word; font: 12px/1.45 var(--mono); background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: .6rem; overflow: auto; max-height: 22rem; }
+ol.events { padding-left: 2.2rem; margin: 0; font-size: .85rem; }
+ol.events li { margin-bottom: .2rem; }
+ol.events .type { font-family: var(--mono); }
+ol.events .rev { color: var(--signed); font-family: var(--mono); }
+details > summary { cursor: pointer; color: var(--steel); margin: .5rem 0; }
+dialog { border: 1px solid var(--rule); border-radius: 8px; padding: 0; max-width: min(46rem, 94vw); background: var(--sheet); color: var(--ink); }
+dialog::backdrop { background: rgb(15 20 26 / .55); }
+dialog .head { padding: 1rem 1.25rem .5rem; }
+dialog .body { padding: 0 1.25rem; }
+dialog .foot { display: flex; gap: .5rem; justify-content: flex-end; padding: 1rem 1.25rem; border-top: 1px solid var(--rule); margin-top: 1rem; }
+dl.binding { display: grid; grid-template-columns: max-content 1fr; gap: .25rem .9rem; margin: 0 0 .75rem; }
+dl.binding dt { color: var(--muted); }
+dl.binding dd { margin: 0; font-family: var(--mono); font-size: .85rem; word-break: break-all; }
+.empty { color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) {
+  .flash { animation: flash 900ms ease-out; }
+  @keyframes flash { from { background: var(--caution-bg); } to { background: transparent; } }
+}
+</style>
+</head>
+<body>
+<header class="bar">
+  <h1>FrameShift</h1>
+  <span class="mode">Manual mode. You write every proposal yourself, and approving here attests that no agent or model runs under your account.</span>
+  <span class="who" id="who"></span>
+</header>
+<main>
+  <aside class="sessions">
+    <h2>Sessions</h2>
+    <ul class="plain" id="session-list"></ul>
+    <h2>Bring a request</h2>
+    <form id="open-form">
+      <label>Request, exactly as it arrived
+        <textarea name="request" required placeholder="We need a 5 kW DC/DC converter for the rack."></textarea>
+      </label>
+      <label>Title (optional)<input name="title" maxlength="300"></label>
+      <p><button class="primary" type="submit">Open session</button></p>
+    </form>
+  </aside>
+  <section class="work" id="work">
+    <p class="empty">Open a session from a request, or pick one on the left.</p>
+  </section>
+  <aside class="log">
+    <h2>History</h2>
+    <p class="hint">The event log is the session. Everything in the middle column is folded from it.</p>
+    <ol class="events" id="events"></ol>
+    <details><summary>Folded state (JSON)</summary><pre class="json" id="state-json"></pre></details>
+    <details id="record-details"><summary>Decision record</summary><pre class="json" id="record"></pre></details>
+  </aside>
+</main>
+
+<dialog id="confirm-dialog" aria-labelledby="confirm-title">
+  <div class="head"><h2 id="confirm-title">Confirm a gate</h2>
+    <p class="hint">This is the exact content your answer binds to. If anything changes before you answer, the approval is refused as stale.</p>
+  </div>
+  <div class="body">
+    <dl class="binding" id="confirm-binding"></dl>
+    <pre class="json" id="confirm-proposal"></pre>
+  </div>
+  <div class="foot">
+    <button type="button" id="confirm-decline">Decline</button>
+    <button type="button" class="sign" id="confirm-approve">Approve and seal</button>
+  </div>
+</dialog>
+
+<script>
+"use strict";
+const TOKEN = "__FRAMESHIFT_TOKEN__";
+const PHASES = ["intake", "framing", "causal", "solutions", "decision", "monitoring"];
+const GATE_BETWEEN = { intake: "intake_correction", framing: "frame_selection", causal: "evidence_sufficiency", solutions: "option_set_acceptance", decision: "decision_approval" };
+let META = null, CURRENT = null, VIEW = null, PENDING = null;
+
+const $ = (sel, root = document) => root.querySelector(sel);
+function el(tag, attrs = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") node.className = v;
+    else if (k.startsWith("on")) node.addEventListener(k.slice(2), v);
+    else if (v === true) node.setAttribute(k, "");
+    else if (v !== false && v != null) node.setAttribute(k, v);
+  }
+  for (const c of children.flat()) if (c != null) node.append(c.nodeType ? c : document.createTextNode(String(c)));
+  return node;
+}
+
+async function api(method, path, body) {
+  const res = await fetch(path, {
+    method,
+    headers: { "Content-Type": "application/json", "X-FrameShift-Token": TOKEN },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) { const e = new Error(data.detail || res.statusText); e.code = data.code; throw e; }
+  return data;
+}
+
+function notice(kind, text) {
+  const n = el("div", { class: `notice ${kind}`, role: kind === "refused" ? "alert" : "status" }, text);
+  const work = $("#work");
+  const old = $(".notice.transient", work);
+  if (old) old.remove();
+  n.classList.add("transient");
+  work.prepend(n);
+}
+function refused(err) { notice("refused", `Refused (${err.code || "error"}): ${err.message}`); }
+
+async function run(fn) {
+  try { const out = await fn(); if (out && out.state) adopt(out); else if (out && out.view) adopt(out.view); return out; }
+  catch (err) { refused(err); if (CURRENT) await load(CURRENT, true); return null; }
+}
+
+// ---------------------------------------------------------------- sessions
+async function refreshSessions() {
+  const { sessions } = await api("GET", "/api/sessions");
+  const list = $("#session-list");
+  list.replaceChildren(...(sessions.length ? sessions.map(s => el("li", {},
+    el("button", { class: "session-link", "aria-current": s.id === CURRENT ? "true" : "false", onclick: () => load(s.id) },
+      s.title, el("small", {}, `${s.phase}, revision ${s.revision}`)))) : [el("li", { class: "empty" }, "None yet.")]));
+}
+
+async function load(id, quiet = false) {
+  CURRENT = id;
+  const view = await api("GET", `/api/sessions/${id}`);
+  adopt(view, quiet);
+}
+
+function adopt(view, quiet = false) {
+  VIEW = view; CURRENT = view.state.id;
+  render();
+  refreshSessions();
+  if ($("#record-details").open) showRecord();
+}
+
+// ------------------------------------------------------------------ render
+function render() {
+  const { state, derived, history } = VIEW;
+  const work = $("#work");
+  const transient = $(".notice.transient", work);
+  work.replaceChildren();
+  if (transient) work.append(transient);
+  work.append(el("h2", {}, state.title), el("div", { class: "ids" }, `${state.id}, revision ${state.revision}, phase ${state.phase}`));
+  work.append(rail(state));
+  if (derived.abstraction_required) {
+    work.append(el("div", { class: "notice caution", role: "status" },
+      "The request reads as a proposed solution, and no outcome statement says what it is for. ",
+      "Add the outcome it serves before sealing intake."));
+  }
+  work.append(intakeSection(state, derived));
+  if (reached(state, "framing")) work.append(framingSection(state));
+  if (reached(state, "causal")) work.append(causalSection(state));
+  if (reached(state, "solutions")) work.append(el("h2", {}, "Options, criteria and the decision"),
+    el("p", { class: "hint" }, "Not available yet. The event log has no vocabulary for options, criteria or a signed decision, so this slice stops here rather than store them somewhere unreplayable."));
+  work.append(gateSection(state, derived));
+
+  $("#events").replaceChildren(...history.map(e => el("li", { value: e.sequence },
+    el("span", { class: "type" }, e.type), " ", "revision" in e ? el("span", { class: "rev" }, `r${e.revision}`) : "")));
+  $("#state-json").textContent = JSON.stringify(state, null, 2);
+}
+
+const reached = (state, phase) => PHASES.indexOf(state.phase) >= PHASES.indexOf(phase);
+
+function rail(state) {
+  const here = PHASES.indexOf(state.phase);
+  const node = el("nav", { class: "rail", "aria-label": "Phases and the gates between them" });
+  PHASES.forEach((phase, i) => {
+    node.append(el("span", { class: `phase ${i < here ? "done" : i === here ? "here" : ""}`, "aria-current": i === here ? "step" : false }, phase));
+    if (i < PHASES.length - 1) {
+      const gate = GATE_BETWEEN[phase];
+      const signed = i < here;
+      const appr = signed ? approvalFor(state, gate) : null;
+      const label = appr ? `signed ${appr.target_digest.slice(7, 15)}` : gate.replace(/_/g, " ");
+      node.append(el("span", { class: `seal ${signed ? "signed" : ""}`, title: appr ? `${gate}: ${appr.target_digest}` : gate },
+        el("i"), el("span", {}, label)));
+    }
+  });
+  return node;
+}
+
+function approvalFor(state, gate) {
+  // Approvals are recorded in order; the n-th advancing gate is the n-th approval.
+  const order = ["intake_correction", "frame_selection", "evidence_sufficiency", "option_set_acceptance", "decision_approval"];
+  return state.approvals[order.indexOf(gate)] || null;
+}
+
+function roleChips(st) {
+  if (!st.primary_role) return el("span", { class: "role" }, "unclassified");
+  return el("span", {}, el("span", { class: "role primary" }, st.primary_role), ...(st.secondary_roles || []).map(r => el("span", { class: "role" }, r)));
+}
+
+function roleSelect(name, value) {
+  return el("select", { name }, ...META.vocabulary.statement_roles.map(r => el("option", { value: r, selected: r === value }, r)));
+}
+function secondaryBoxes(selected = []) {
+  return el("fieldset", {}, el("legend", {}, "Secondary roles"),
+    ...META.vocabulary.statement_roles.map(r => el("label", { class: "check" }, el("input", { type: "checkbox", name: "secondary", value: r, checked: selected.includes(r) }), r)));
+}
+const checked = form => [...form.querySelectorAll('input[name="secondary"]:checked')].map(i => i.value);
+
+// ------------------------------------------------------------------ intake
+function intakeSection(state, derived) {
+  const live = state.phase === "intake";
+  const box = el("div", {}, el("h2", {}, "Bring a request"));
+  if (live) box.append(el("p", { class: "hint" }, "Classify what each statement is. A request that names a solution is still worth keeping word for word; the frame comes later."));
+  for (const st of state.statements) {
+    const card = el("div", { class: "card" }, el("p", { class: "verbatim" }, st.text), el("div", {}, roleChips(st), " ", el("span", { class: "ids" }, st.id)));
+    if (live) card.append(st.primary_role ? correctionForm(st) : classifyForm(st));
+    box.append(card);
+  }
+  if (live) box.append(addStatementForm());
+  return box;
+}
+
+function classifyForm(st) {
+  const preview = el("pre", { class: "json", hidden: true });
+  const admit = el("button", { class: "primary", type: "button", hidden: true }, "Admit this result");
+  let built = null;
+  const form = el("form", { class: "inline", onsubmit: async ev => {
+    ev.preventDefault();
+    const out = await run(() => api("POST", `/api/sessions/${CURRENT}/manual-result`, { classifications: [{ statement_id: st.id, primary_role: form.primary.value, secondary_roles: checked(form) }] }));
+    if (!out) return;
+    built = out.result; preview.textContent = JSON.stringify(built, null, 2); preview.hidden = false; admit.hidden = false;
+  } }, el("label", {}, "Primary role", roleSelect("primary", "proposal")), secondaryBoxes(), el("button", { type: "submit" }, "Build engine result"));
+  admit.addEventListener("click", async () => {
+    const out = await run(() => api("POST", `/api/sessions/${CURRENT}/engine-result`, { result: built }));
+    if (out) notice("ok", `Admitted ${out.committed} classification(s). Held: ${out.held_proposal_ids.join(", ") || "none"}.`);
+  });
+  return el("div", {}, el("p", { class: "hint" }, "You stand in for the framing engine: build its result, read it, then admit it."), form, preview, admit);
+}
+
+function correctionForm(st) {
+  const form = el("form", { class: "inline", onsubmit: ev => { ev.preventDefault();
+    run(() => api("POST", `/api/sessions/${CURRENT}/corrections`, { statement_id: st.id, primary_role: form.primary.value, secondary_roles: checked(form), expected_revision: VIEW.state.revision }));
+  } }, el("label", {}, "Primary role", roleSelect("primary", st.primary_role)), secondaryBoxes(st.secondary_roles || []), el("button", { type: "submit" }, "Correct classification"));
+  return el("details", {}, el("summary", {}, "Correct this classification"), el("p", { class: "hint" }, "A correction is recorded as a new classification. The wording never changes."), form);
+}
+
+function addStatementForm() {
+  const form = el("form", { onsubmit: ev => { ev.preventDefault();
+    run(() => api("POST", `/api/sessions/${CURRENT}/statements`, { text: form.text.value, primary_role: form.primary.value, expected_revision: VIEW.state.revision }));
+  } }, el("label", {}, "Statement", el("textarea", { name: "text", required: true, placeholder: "Usable rack efficiency meets the facility target at full load." })),
+    el("div", { class: "inline form" }, el("label", {}, "Role", roleSelect("primary", "outcome")), el("p", {}, el("button", { type: "submit" }, "Add statement"))));
+  return el("details", {}, el("summary", {}, "Add a statement of your own"), form);
+}
+
+// ----------------------------------------------------------------- framing
+function framingSection(state) {
+  const live = state.phase === "framing";
+  const box = el("div", {}, el("h2", {}, "Get reframed"));
+  if (live) box.append(el("p", { class: "hint" }, "Write candidate frames that name an outcome and leave the mechanism open. Make one the working frame, then seal it."));
+  for (const f of state.frames) {
+    const card = el("div", { class: "card" },
+      el("p", { class: "verbatim" }, f.question),
+      el("div", {}, `Outcome: ${f.outcome}`),
+      el("div", { class: "ids" }, `${f.id}, ${f.status}, ${f.abstraction_level} level, ${f.system_boundary} boundary, ${f.digest.slice(0, 19)}`));
+    for (const key of ["included", "excluded", "success_measures", "constraints", "assumptions", "open_questions"]) {
+      if ((f[key] || []).length) card.append(el("div", {}, el("span", { class: "ids" }, key.replace(/_/g, " ") + ": "), f[key].join("; ")));
+    }
+    if (live && f.status !== "working") card.append(el("p", {}, el("button", { type: "button", onclick: () =>
+      run(() => api("POST", `/api/sessions/${CURRENT}/frames/${f.id}/activate`, { expected_revision: VIEW.state.revision })) }, "Make working frame")));
+    box.append(card);
+  }
+  if (live) box.append(frameForm());
+  return box;
+}
+
+function frameForm() {
+  const v = META.vocabulary;
+  const area = (name, label) => el("label", {}, label, el("textarea", { name, placeholder: "One per line" }));
+  const form = el("form", { onsubmit: ev => { ev.preventDefault();
+    const frame = Object.fromEntries(new FormData(form).entries());
+    run(() => api("POST", `/api/sessions/${CURRENT}/frames`, { frame, expected_revision: VIEW.state.revision }));
+  } },
+    el("label", {}, "Question", el("input", { name: "question", required: true, placeholder: "How might we…" })),
+    el("label", {}, "Outcome", el("input", { name: "outcome", required: true })),
+    el("div", { class: "grid2" },
+      el("label", {}, "Abstraction level", el("select", { name: "abstraction_level" }, ...v.abstraction_levels.map(x => el("option", { value: x }, x)))),
+      el("label", {}, "System boundary", el("select", { name: "system_boundary" }, ...v.system_boundaries.map(x => el("option", { value: x }, x)))),
+      area("included", "Included"), area("excluded", "Excluded"), area("success_measures", "Success measures"),
+      area("constraints", "Constraints"), area("assumptions", "Assumptions"), area("open_questions", "Open questions")),
+    el("p", {}, el("button", { class: "primary", type: "submit" }, "Propose frame")));
+  return el("details", { open: VIEW.state.frames.length === 0 }, el("summary", {}, "Propose a candidate frame"), form);
+}
+
+// ------------------------------------------------------------------ causal
+function causalSection(state) {
+  const live = state.phase === "causal";
+  const box = el("div", {}, el("h2", {}, "Understand what causes it"));
+  if (live) box.append(el("p", { class: "hint" }, "Record a hypothesis and the observation that could challenge it. Both stay proposed; nothing here is established cause."));
+  const nodes = state.graph.nodes, edges = state.graph.edges;
+  if (!nodes.length && !live) box.append(el("p", { class: "empty" }, "No graph recorded."));
+  for (const n of nodes) box.append(el("div", { class: "card" }, el("strong", {}, n.label), el("div", { class: "ids" }, `${n.id}, ${n.type}, ${n.status}, confidence ${n.confidence}${n.extensions && n.extensions.collected === false ? ", not yet collected" : ""}`)));
+  for (const e of edges) box.append(el("div", { class: "ids" }, `${e.source} ${e.type.replace(/_/g, " ")} ${e.target} (${e.id})`));
+  if (live) {
+    const v = META.vocabulary;
+    const nform = el("form", { class: "inline", onsubmit: ev => { ev.preventDefault();
+      const node = { type: nform.type.value, label: nform.label.value, confidence: nform.confidence.value, source_ids: state.active_frame_id ? [state.active_frame_id] : [] };
+      if (nform.type.value === "evidence") { node.status = "draft"; node.extensions = { collected: false }; }
+      run(() => api("POST", `/api/sessions/${CURRENT}/nodes`, { node, expected_revision: VIEW.state.revision }));
+    } }, el("label", {}, "Kind", el("select", { name: "type" }, ...["hypothesis", "evidence", "factor", "outcome", "assumption"].map(x => el("option", { value: x }, x)))),
+      el("label", {}, "Label", el("input", { name: "label", required: true, size: 40 })),
+      el("label", {}, "Confidence", el("select", { name: "confidence" }, ...v.confidence.map(x => el("option", { value: x, selected: x === "low" }, x)))),
+      el("button", { type: "submit" }, "Add node"));
+    const ids = nodes.map(n => n.id);
+    const eform = el("form", { class: "inline", onsubmit: ev => { ev.preventDefault();
+      run(() => api("POST", `/api/sessions/${CURRENT}/edges`, { edge: { source: eform.source.value, target: eform.target.value, type: eform.type.value }, expected_revision: VIEW.state.revision }));
+    } }, el("label", {}, "From", el("select", { name: "source" }, ...ids.map(x => el("option", { value: x }, x)))),
+      el("label", {}, "Relation", el("select", { name: "type" }, ...v.edge_types.map(x => el("option", { value: x, selected: x === "tests" }, x)))),
+      el("label", {}, "To", el("select", { name: "target" }, ...ids.map(x => el("option", { value: x }, x)))),
+      el("button", { type: "submit", disabled: ids.length < 2 }, "Add relation"));
+    box.append(el("h3", {}, "Add to the graph"), nform, eform);
+  }
+  return box;
+}
+
+// ------------------------------------------------------------------- gates
+function gateSection(state, derived) {
+  const box = el("div", {});
+  // Past causal there is nothing yet that a gate could bind (see the note above).
+  if (reached(state, "solutions")) return box;
+  for (const g of derived.gates) {
+    const select = el("select", { name: "target" }, ...g.targets.map(t => el("option", { value: t }, t)));
+    box.append(el("h2", {}, `Seal ${state.phase}, move to ${g.to_phase}`),
+      el("p", { class: "hint" }, `Gate ${g.gate}. Needs a human with role ${g.authority.join(" or ")}. You are ${META.operator.role}.`),
+      el("form", { class: "inline", onsubmit: ev => { ev.preventDefault(); askConfirmation(g.gate, select.value); } },
+        el("label", {}, "What you are approving", select),
+        el("button", { class: "primary", type: "submit", disabled: !g.targets.length }, "Review and confirm")));
+    if (!g.targets.length) box.append(el("p", { class: "hint" }, "Nothing can be approved here yet."));
+  }
+  return box;
+}
+
+async function askConfirmation(gate, target) {
+  const out = await run(() => api("POST", `/api/sessions/${CURRENT}/gates`, { gate, target_id: target }));
+  if (!out) return;
+  PENDING = out.confirmation_request;
+  const r = PENDING;
+  $("#confirm-binding").replaceChildren(...[["Gate", r.gate], ["Target", r.target_id], ["Content digest", r.target_digest], ["Session revision", r.session_revision], ["Signing as", `${r.actor.id} (${r.actor.role})`], ["Request digest", r.request_digest]]
+    .flatMap(([k, v]) => [el("dt", {}, k), el("dd", {}, String(v))]));
+  $("#confirm-proposal").textContent = JSON.stringify(JSON.parse(r.proposal), null, 2);
+  $("#confirm-dialog").showModal();
+}
+
+async function answer(disposition) {
+  const r = PENDING; PENDING = null;
+  $("#confirm-dialog").close();
+  if (!r) return;
+  if (!disposition) { await api("DELETE", `/api/confirmations/${r.id}`); notice("caution", "Declined. Nothing was recorded."); return; }
+  const response = { request_id: r.id, request_digest: r.request_digest, status: "submitted", disposition, edited_proposal: null };
+  const out = await run(() => api("POST", `/api/confirmations/${r.id}`, { response }));
+  if (out) notice("ok", `Sealed. The session moved to ${out.phase}.`);
+}
+$("#confirm-approve").addEventListener("click", () => answer("approved"));
+$("#confirm-decline").addEventListener("click", () => answer(null));
+$("#confirm-dialog").addEventListener("cancel", () => answer(null));
+
+// ------------------------------------------------------------------ record
+async function showRecord() {
+  if (!CURRENT) return;
+  const { markdown } = await api("GET", `/api/sessions/${CURRENT}/record`);
+  $("#record").textContent = markdown;
+}
+$("#record-details").addEventListener("toggle", ev => { if (ev.target.open) showRecord(); });
+
+// -------------------------------------------------------------------- boot
+$("#open-form").addEventListener("submit", ev => {
+  ev.preventDefault();
+  const f = ev.target;
+  run(() => api("POST", "/api/sessions", { request: f.request.value, title: f.title.value })).then(out => { if (out) f.reset(); });
+});
+
+(async () => {
+  META = await api("GET", "/api/meta");
+  $("#who").textContent = `Signing as ${META.operator.id} (${META.operator.role})`;
+  await refreshSessions();
+})().catch(refused);
+</script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # ADR-0014: Trusted client confirmation for human approvals
 
-- Status: accepted
+- Status: accepted; superseded in part by ADR-0022 (a second approval interface under a manual-mode operator attestation; the native dialog remains the only interface whenever an agent may run)
 - Date: 2026-09-06
 - Deciders: repository owner, through the human-confirmation grilling session
 - Supersedes: none

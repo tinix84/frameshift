@@ -21,3 +21,5 @@ ADRs capture durable, cross-cutting decisions. Status values are `proposed`, `ac
 - [ADR-0019: Migrate frame axes into a linked session](0019-linked-session-frame-migration.md)
 - [ADR-0020: Reset frame authority when migrating axes](0020-reset-frame-authority-on-migration.md)
 - [ADR-0021: Intake corrections reclassify; nothing rewrites a statement](0021-intake-corrections-reclassify.md)
+- [ADR-0022: A local manual GUI as a second inbound boundary](0022-manual-gui-boundary.md)
+- [ADR-0023: Serve the manual GUI to one operator over the network](0023-hosted-manual-gui.md)

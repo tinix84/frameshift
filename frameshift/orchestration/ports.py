@@ -50,3 +50,11 @@ class EventLog(Protocol):
 
     def read(self, session_id: str) -> list[dict]:
         """Every event of the session in sequence order, or nothing if it has no history."""
+
+
+@runtime_checkable
+class SessionIndex(Protocol):
+    """Which sessions a store holds. Optional: a coordinator without one lists nothing."""
+
+    def session_ids(self) -> list[str]:
+        """The ids of every session with a history, in a stable order."""
