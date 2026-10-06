@@ -20,6 +20,7 @@ What is here, by issue:
 - #228 correct a classification, and derive whether abstraction is required;
 - #229 seal a phase through its existing gate, with the existing trusted
   confirmation, appending the gate's own events;
+- #239 seal framing only over two to five distinct candidate frames (ADR-0024);
 - #237 record a rung of the abstraction ladder, or re-record it (ADR-0024);
 - the shallow framing and causal steps the walking skeleton (#89) needs that
   the current event vocabulary already expresses: propose and activate a frame,
@@ -138,6 +139,7 @@ class SessionCoordinator:
                 "unclassified": [s["id"] for s in state["statements"] if "primary_role" not in s],
                 "gates": gates_available(state),
                 "ladder_order": ladder_order(state),
+                "frame_set": frame_set(state),
                 "pending_confirmations": [
                     request_id
                     for request_id, (owner, _, _) in self._pending.items()
@@ -449,6 +451,7 @@ class SessionCoordinator:
             raise CommandRefused(refusal.code, refusal.detail)
         if transitions.find_target(state, target_id) is None:
             raise CommandRefused(INVARIANT_VIOLATION, f"no such target {target_id}")
+        _require_frame_set(state, gate)
         # Imported here because `api` re-exports this coordinator.
         from .api import ConfirmationWorkflow
 
@@ -471,6 +474,7 @@ class SessionCoordinator:
             raise CommandRefused(errors.APPROVAL_STALE, "no such pending confirmation request")
         session_id, workflow, transition = entry
         state = self.state(session_id)
+        _require_frame_set(state, transition["gate"])
         workflow.replace_session(state)
         bound = workflow.complete(
             request_id,
@@ -558,6 +562,61 @@ def ladder_order(state: dict) -> list[str]:
     return [rung["id"] for rung in sorted(rungs, key=lambda rung: LADDER_RANK[rung["abstraction_level"]])]
 
 
+# ADR-0024: frame selection compares two to five live candidates.
+LIVE_FRAME_STATUSES = frozenset({"proposed", "working"})
+FRAME_SET_BOUNDS = (2, 5)
+
+
+def _frame_axes(frame: dict) -> tuple:
+    outcome = frame.get("outcome")
+    outcome = outcome.strip().casefold() if isinstance(outcome, str) else outcome
+    return (outcome, frame.get("abstraction_level"), frame.get("system_boundary"))
+
+
+def frame_set(state: dict) -> dict:
+    """#239: the live candidates, and which pairs fail to differ on any axis.
+
+    Derived, never recorded. Two frames are indistinct when they agree on
+    outcome (trimmed, case-folded), abstraction level, and system boundary.
+    """
+    live = [frame for frame in state.get("frames", []) if frame.get("status") in LIVE_FRAME_STATUSES]
+    pairs = [
+        [first["id"], second["id"]]
+        for index, first in enumerate(live)
+        for second in live[index + 1 :]
+        if _frame_axes(first) == _frame_axes(second)
+    ]
+    low, high = FRAME_SET_BOUNDS
+    return {
+        "live": [frame["id"] for frame in live],
+        "indistinct_pairs": pairs,
+        "selectable": low <= len(live) <= high and not pairs,
+    }
+
+
+def frame_set_refusal(state: dict) -> str | None:
+    """Why `frame_selection` may not be sealed on this state, or None (ADR-0024).
+
+    A precondition on the sealing command, not a replay invariant: a history
+    that passed the gate before this rule still folds.
+    """
+    report = frame_set(state)
+    count, (low, high) = len(report["live"]), FRAME_SET_BOUNDS
+    if count < low or count > high:
+        listed = ", ".join(report["live"]) or "none"
+        return (
+            f"frame selection compares {low} to {high} live candidate frames, "
+            f"and the session holds {count} ({listed})"
+        )
+    if report["indistinct_pairs"]:
+        named = "; ".join(f"{a} and {b}" for a, b in report["indistinct_pairs"])
+        return (
+            "candidate frames must differ in outcome, abstraction level, or system "
+            f"boundary, and these agree on all three: {named}"
+        )
+    return None
+
+
 def gates_available(state: dict) -> list[dict]:
     """The gates passable from the current phase, with the targets each could bind."""
     phase = state.get("phase")
@@ -626,6 +685,14 @@ def _as_events(session_id: str, history: list[dict], bodies: list[dict], revisio
             event["revision"] = revision
         events.append(event)
     return events
+
+
+def _require_frame_set(state: dict, gate: str) -> None:
+    if gate != "frame_selection":
+        return
+    refusal = frame_set_refusal(state)
+    if refusal is not None:
+        raise CommandRefused(INVARIANT_VIOLATION, refusal)
 
 
 def _next_id(prefix: str, items: list[dict]) -> str:

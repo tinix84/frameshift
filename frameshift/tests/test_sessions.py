@@ -262,6 +262,7 @@ class SealIntakeThroughTheGate(Fixture):
         facilitator = coordinator(self.store, {"id": "user_facilitator", "kind": "human", "role": "facilitator"})
         self.seal_intake()
         facilitator.propose_frame(self.sid, frame=_frame(), expected_revision=self.revision())
+        facilitator.propose_frame(self.sid, frame=_alternative(), expected_revision=self.revision())
         facilitator.activate_frame(self.sid, frame_id="frame_001", expected_revision=self.revision())
         request = facilitator.prepare_gate(self.sid, gate="frame_selection", target_id="frame_001")
         with self.assertRaises(CommandRefused) as refused:
@@ -384,6 +385,7 @@ class TheShallowJourney(Fixture):
     def test_request_to_solutions_folds_to_a_valid_session(self) -> None:
         self.seal_intake()
         self.co.propose_frame(self.sid, frame=_frame(), expected_revision=self.revision())
+        self.co.propose_frame(self.sid, frame=_alternative(), expected_revision=self.revision())
         self.co.activate_frame(self.sid, frame_id="frame_001", expected_revision=self.revision())
         working = self.co.state(self.sid)["frames"][0]
         self.assertEqual((working["status"], working["digest"]), ("working", content_digest(working)))
@@ -453,6 +455,83 @@ def _frame(question: str = "How might we reach the pack cost target without losi
         "constraints": "",
         "assumptions": "",
     }
+
+
+def _alternative() -> dict:
+    """A second candidate that differs from `_frame()` on boundary and level."""
+    return dict(
+        _frame("How might we lower the cost of a usable kWh across the pack's whole life?"),
+        abstraction_level="business",
+        system_boundary="lifecycle",
+    )
+
+
+class GateFrameSelection(Fixture):
+    """#239 (ADR-0024)."""
+
+    def framing(self, *frames: dict) -> None:
+        self.seal_intake()
+        for frame in frames:
+            self.co.propose_frame(self.sid, frame=frame, expected_revision=self.revision())
+        self.co.activate_frame(self.sid, frame_id="frame_001", expected_revision=self.revision())
+
+    def refused(self) -> CommandRefused:
+        with self.assertRaises(CommandRefused) as refused:
+            self.co.prepare_gate(self.sid, gate="frame_selection", target_id="frame_001")
+        self.assertEqual(refused.exception.code, "invariant_violation")
+        self.assertEqual(self.co.state(self.sid)["phase"], "framing")
+        return refused.exception
+
+    def test_one_candidate_is_refused(self) -> None:
+        self.framing(_frame())
+        self.assertIn("holds 1 (frame_001)", self.refused().detail)
+
+    def test_six_candidates_are_refused(self) -> None:
+        levels = ("component", "subsystem", "system", "product", "business", "business")
+        boundaries = ("component", "subsystem", "product", "operations", "portfolio", "business_model")
+        self.framing(*[dict(_frame(), abstraction_level=l, system_boundary=b) for l, b in zip(levels, boundaries)])
+        self.assertIn("holds 6", self.refused().detail)
+
+    def test_two_candidates_agreeing_on_all_three_axes_are_refused(self) -> None:
+        twin = dict(_frame("A different question, same frame."), outcome="  PACK COST per usable kWh meets the 2027 target. ")
+        self.framing(_frame(), twin)
+        detail = self.refused().detail
+        self.assertIn("frame_001 and frame_002", detail)
+        self.assertEqual(self.co.view(self.sid)["derived"]["frame_set"]["indistinct_pairs"], [["frame_001", "frame_002"]])
+
+    def test_differing_on_one_axis_is_enough(self) -> None:
+        for change in ({"outcome": "Range at end of life is kept."}, {"abstraction_level": "system"}, {"system_boundary": "operations"}):
+            with self.subTest(change=change):
+                self.tearDown(); self.setUp()
+                self.framing(_frame(), dict(_frame(), **change))
+                self.assertTrue(self.co.view(self.sid)["derived"]["frame_set"]["selectable"])
+                approve(self.co, self.co.prepare_gate(self.sid, gate="frame_selection", target_id="frame_001"))
+                self.assertEqual(self.co.state(self.sid)["phase"], "causal")
+
+    def test_rejected_and_superseded_frames_do_not_count(self) -> None:
+        self.framing(_frame(), _alternative())
+        state = self.co.state(self.sid)
+        state["frames"][1]["status"] = "rejected"
+        from frameshift.orchestration.sessions import frame_set
+
+        self.assertEqual(frame_set(state)["live"], ["frame_001"])
+        self.assertFalse(frame_set(state)["selectable"])
+
+    def test_a_frame_added_after_preparing_is_checked_again_on_confirm(self) -> None:
+        self.framing(_frame(), _alternative())
+        request = self.co.prepare_gate(self.sid, gate="frame_selection", target_id="frame_001")
+        self.co.propose_frame(self.sid, frame=_frame(), expected_revision=self.revision())
+        with self.assertRaises(CommandRefused) as refused:
+            approve(self.co, request)
+        self.assertIn("frame_001 and frame_003", refused.exception.detail)
+        self.assertEqual(self.co.state(self.sid)["phase"], "framing")
+
+    def test_the_reference_history_still_folds(self) -> None:
+        from frameshift.orchestration import replay
+
+        events = [json.loads(line) for line in (ROOT / "evals" / "fixtures" / "reference.events.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+        reference = json.loads((ROOT / "evals" / "fixtures" / "reference.checkpoint.json").read_text(encoding="utf-8"))
+        self.assertEqual(replay.fold(events), reference["state"])
 
 
 if __name__ == "__main__":
