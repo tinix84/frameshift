@@ -20,6 +20,7 @@ What is here, by issue:
 - #228 correct a classification, and derive whether abstraction is required;
 - #229 seal a phase through its existing gate, with the existing trusted
   confirmation, appending the gate's own events;
+- #238 keep an engine result's held proposals, and draft their adoption (ADR-0024);
 - #239 seal framing only over two to five distinct candidate frames (ADR-0024);
 - #237 record a rung of the abstraction ladder, or re-record it (ADR-0024);
 - the shallow framing and causal steps the walking skeleton (#89) needs that
@@ -88,6 +89,10 @@ class SessionCoordinator:
         # Pending confirmations live in memory only. A pending request is not
         # history: restarting the process forgets it, and the human asks again.
         self._pending: dict[str, tuple[str, object, dict]] = {}
+        # ADR-0024 (#238): the last engine result's held proposals per session,
+        # in memory on the same terms as pending confirmations. A restart
+        # forgets them; a human re-runs the engine or re-reads.
+        self._held: dict[str, dict] = {}
 
     # ----------------------------------------------------------------- reads
 
@@ -140,6 +145,7 @@ class SessionCoordinator:
                 "gates": gates_available(state),
                 "ladder_order": ladder_order(state),
                 "frame_set": frame_set(state),
+                "held": self._held_view(session_id, state),
                 "pending_confirmations": [
                     request_id
                     for request_id, (owner, _, _) in self._pending.items()
@@ -282,6 +288,13 @@ class SessionCoordinator:
             bodies.append(_classified(value["statement_id"], value.get("primary_role"), value.get("secondary_roles", [])))
         if bodies:
             self._commit_next(state, bodies)
+        # Held as of the state this admission leaves behind: its own commit is
+        # not news to it, and any later commit makes it stale.
+        self._held[session_id] = {
+            "execution_id": result["execution_id"],
+            "input_revision": self.state(session_id)["revision"],
+            "proposals": [copy.deepcopy(p) for p in result["proposals"] if p["kind"] not in ADMITTED_KINDS],
+        }
         return {
             "outcome": "admitted" if bodies else "held",
             "committed": len(bodies),
@@ -306,6 +319,72 @@ class SessionCoordinator:
         return self.view(session_id)
 
     # --------------------------------------------------------- framing (#7)
+
+    def _held_view(self, session_id: str, state: dict) -> dict:
+        held = self._held.get(session_id)
+        if held is None:
+            return {
+                "execution_id": None,
+                "stale": False,
+                "by_kind": {},
+                "note": "nothing held in this process: held proposals live in memory, "
+                "and a restart forgets them; re-run the engine or re-read",
+            }
+        by_kind: dict[str, list[dict]] = {}
+        for proposal in held["proposals"]:
+            by_kind.setdefault(proposal["kind"], []).append(copy.deepcopy(proposal))
+        return {
+            "execution_id": held["execution_id"],
+            "stale": held["input_revision"] != state["revision"],
+            "by_kind": by_kind,
+            "note": "held proposals are never committed as they stand; adopt one by "
+            "issuing the ordinary command with the draft, edited as you see fit",
+        }
+
+    def held_draft(self, session_id: str, *, proposal_id: str) -> dict:
+        """#238: a pre-filled, uncommitted draft of the command that adopts a proposal.
+
+        Nothing is written. The human edits the draft and issues the ordinary
+        command (`propose_frame`, or `record_rung` once per rung); that command
+        is the adoption, authored by the human, and the staleness rule stands.
+        """
+        held = self._held.get(session_id)
+        proposal = next((p for p in (held or {}).get("proposals", []) if p["id"] == proposal_id), None)
+        if proposal is None:
+            raise CommandRefused(INVARIANT_VIOLATION, f"no held proposal {proposal_id!r} for this session")
+        value = proposal.get("value") if isinstance(proposal.get("value"), dict) else {}
+        cited = {
+            "kind": "inferred",
+            "source_ids": list(proposal.get("provenance", {}).get("source_ids", [])),
+            "note": f"Adopted from held proposal {proposal_id}.",
+        }
+        if proposal["kind"] == "problem_frame":
+            return {
+                "kind": "problem_frame",
+                "command": "propose_frame",
+                "frame": {field: copy.deepcopy(value.get(field, "" if field in _FRAME_TEXT else [])) for field in _FRAME_FIELDS},
+            }
+        if proposal["kind"] == "abstraction_ladder":
+            levels = [level for level in value.get("levels", []) if level in LADDER_RANK]
+            top = max(levels, key=LADDER_RANK.__getitem__, default=None)
+            return {
+                "kind": "abstraction_ladder",
+                "command": "record_rung",
+                "rungs": [
+                    {
+                        "abstraction_level": level,
+                        "outcome": value.get("top_outcome", "") if level == top else "",
+                        "scope": "",
+                        "system_boundary": "",
+                        "success_measures": [],
+                        "assumptions": [],
+                        "loss": "",
+                        "provenance": copy.deepcopy(cited),
+                    }
+                    for level in sorted(levels, key=LADDER_RANK.__getitem__)
+                ],
+            }
+        raise CommandRefused(INVARIANT_VIOLATION, f"held proposals of kind {proposal['kind']!r} have no adoption path yet")
 
     def propose_frame(self, session_id: str, *, frame: dict, expected_revision: int) -> dict:
         """Add a candidate frame, proposed, with its content digest recorded."""
@@ -549,6 +628,12 @@ def abstraction_required(state: dict) -> bool:
     has_proposal = any(s.get("primary_role") == "proposal" for s in live)
     has_outcome = any(s.get("primary_role") == "outcome" for s in live)
     return has_proposal and not has_outcome
+
+
+# #238: the fields a held `problem_frame` value pre-fills; id, status and
+# digest are FrameShift's to assign.
+_FRAME_TEXT = ("question", "outcome", "abstraction_level", "system_boundary")
+_FRAME_FIELDS = _FRAME_TEXT + ("included", "excluded", "success_measures", "constraints", "assumptions", "open_questions")
 
 
 # ADR-0024: the ladder reads bottom to top by level rank, never by the order
