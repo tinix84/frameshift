@@ -108,6 +108,10 @@ dl.binding { display: grid; grid-template-columns: max-content 1fr; gap: .25rem 
 dl.binding dt { color: var(--muted); }
 dl.binding dd { margin: 0; font-family: var(--mono); font-size: .85rem; word-break: break-all; }
 .empty { color: var(--muted); }
+.card.rung { border-left: 3px solid var(--steel); }
+.card.rung .card.frame { margin: .6rem 0 0; background: var(--paper); }
+.loss { margin: .4rem 0; padding-left: .75rem; border-left: 3px solid var(--caution); }
+#rung-form .grid2 + label, #rung-form label + label { margin-top: .5rem; }
 @media (prefers-reduced-motion: no-preference) {
   .flash { animation: flash 900ms ease-out; }
   @keyframes flash { from { background: var(--caution-bg); } to { background: transparent; } }
@@ -242,7 +246,7 @@ function render() {
       "Add the outcome it serves before sealing intake."));
   }
   work.append(intakeSection(state, derived));
-  if (reached(state, "framing")) work.append(framingSection(state));
+  if (reached(state, "framing")) work.append(framingSection(state, derived));
   if (reached(state, "causal")) work.append(causalSection(state));
   if (reached(state, "solutions")) work.append(el("h2", {}, "Options, criteria and the decision"),
     el("p", { class: "hint" }, "Not available yet. The event log has no vocabulary for options, criteria or a signed decision, so this slice stops here rather than store them somewhere unreplayable."));
@@ -339,42 +343,170 @@ function addStatementForm() {
 }
 
 // ----------------------------------------------------------------- framing
-function framingSection(state) {
+// ADR-0024: the ladder is its own record, frames stand on its rungs, and the
+// engine's held proposals become drafts a person edits and submits.
+const FRAME_LISTS = ["included", "excluded", "success_measures", "constraints", "assumptions", "open_questions"];
+const FRAME_SET = { low: 2, high: 5 };
+const words = x => String(x).replace(/_/g, " ");
+
+function framingSection(state, derived) {
   const live = state.phase === "framing";
   const box = el("div", {}, el("h2", {}, "Get reframed"));
-  if (live) box.append(el("p", { class: "hint" }, "Write candidate frames that name an outcome and leave the mechanism open. Make one the working frame, then seal it."));
-  for (const f of state.frames) {
-    const card = el("div", { class: "card" },
-      el("p", { class: "verbatim" }, f.question),
-      el("div", {}, `Outcome: ${f.outcome}`),
-      el("div", { class: "ids" }, `${f.id}, ${f.status}, ${f.abstraction_level} level, ${f.system_boundary} boundary, ${f.digest.slice(0, 19)}`));
-    for (const key of ["included", "excluded", "success_measures", "constraints", "assumptions", "open_questions"]) {
-      if ((f[key] || []).length) card.append(el("div", {}, el("span", { class: "ids" }, key.replace(/_/g, " ") + ": "), f[key].join("; ")));
-    }
-    if (live && f.status !== "working") card.append(el("p", {}, el("button", { type: "button", onclick: () =>
-      run(() => api("POST", `/api/sessions/${CURRENT}/frames/${f.id}/activate`, { expected_revision: VIEW.state.revision })) }, "Make working frame")));
-    box.append(card);
-  }
-  if (live) box.append(frameForm());
+  if (live) box.append(el("p", { class: "hint" }, "Record the ladder first: where the problem lives at each level, and what drops out of view by moving there. Then write two to five candidate frames that differ in outcome, level, or boundary, make one the working frame, and seal it."));
+  if (live) box.append(heldBlock(derived.held));
+  box.append(ladderBlock(state, derived, live));
+  if (live) box.append(rungForm(), frameForm(state, derived), frameSetNotice(derived.frame_set));
   return box;
 }
 
-function frameForm() {
+function ladderBlock(state, derived, live) {
+  const box = el("div", {}, el("h3", {}, "Ladder, outcome at the top"));
+  const byId = Object.fromEntries((state.ladder || []).map(r => [r.id, r]));
+  const order = [...derived.ladder_order].reverse();
+  const onRung = new Set(order.map(id => byId[id].abstraction_level));
+  if (!order.length) box.append(el("p", { class: "empty" }, live
+    ? "No rungs yet. Start at the level the request names, then ask why until the outcome stops changing."
+    : "No ladder recorded."));
+  for (const id of order) {
+    const r = byId[id];
+    const card = el("div", { class: "card rung" },
+      el("div", {}, el("strong", {}, r.abstraction_level), " ", el("span", { class: "ids" }, `${r.id}, ${words(r.system_boundary)} boundary`)),
+      el("p", { class: "verbatim" }, r.outcome),
+      el("div", {}, el("span", { class: "ids" }, "scope: "), r.scope),
+      el("p", { class: "loss" }, el("span", { class: "ids" }, "drops out of view here: "), r.loss));
+    for (const key of ["success_measures", "assumptions"]) {
+      if ((r[key] || []).length) card.append(el("div", {}, el("span", { class: "ids" }, words(key) + ": "), r[key].join("; ")));
+    }
+    if (live) card.append(el("p", {}, el("button", { type: "button", onclick: () => fillRung(r, r.id) }, "Correct this rung")));
+    for (const f of state.frames.filter(f => f.abstraction_level === r.abstraction_level)) card.append(frameCard(f, live));
+    box.append(card);
+  }
+  const off = state.frames.filter(f => !onRung.has(f.abstraction_level));
+  if (off.length) {
+    box.append(el("h3", {}, order.length ? "Frames on no recorded rung" : "Candidate frames"));
+    for (const f of off) box.append(frameCard(f, live));
+  }
+  return box;
+}
+
+function frameCard(f, live) {
+  const card = el("div", { class: "card frame" },
+    el("p", { class: "verbatim" }, f.question),
+    el("div", {}, `Outcome: ${f.outcome}`),
+    el("div", { class: "ids" }, `${f.id}, ${f.status}, ${f.abstraction_level} level, ${words(f.system_boundary)} boundary, ${f.digest.slice(0, 19)}`));
+  for (const key of FRAME_LISTS) {
+    if ((f[key] || []).length) card.append(el("div", {}, el("span", { class: "ids" }, words(key) + ": "), f[key].join("; ")));
+  }
+  if (live && f.status !== "working") card.append(el("p", {}, el("button", { type: "button", onclick: () =>
+    run(() => api("POST", `/api/sessions/${CURRENT}/frames/${f.id}/activate`, { expected_revision: VIEW.state.revision })) }, "Make working frame")));
+  return card;
+}
+
+// Fill a form from a draft: arrays become one item per line.
+function fill(form, values) {
+  for (const [key, value] of Object.entries(values)) {
+    const field = form.elements.namedItem(key);
+    if (field) field.value = Array.isArray(value) ? value.join("\n") : (value ?? "");
+  }
+  const details = form.closest("details");
+  if (details) details.open = true;
+  form.scrollIntoView({ block: "start" });
+  const blank = [...form.querySelectorAll("[required]")].find(x => !x.value);
+  (blank || form.querySelector("input, select, textarea")).focus();
+}
+
+function fillRung(rung, rungId = "") {
+  const form = $("#rung-form");
+  fill(form, { ...rung, rung_id: rungId });
+  form.dataset.provenance = rung.provenance ? JSON.stringify(rung.provenance) : "";
+  $("#rung-submit").textContent = rungId ? `Re-record ${rungId}` : "Record rung";
+}
+
+function rungForm() {
   const v = META.vocabulary;
   const area = (name, label) => el("label", {}, label, el("textarea", { name, placeholder: "One per line" }));
-  const form = el("form", { onsubmit: ev => { ev.preventDefault();
+  const form = el("form", { id: "rung-form", onsubmit: ev => { ev.preventDefault();
+    const { rung_id, ...rung } = Object.fromEntries(new FormData(form).entries());
+    if (form.dataset.provenance) rung.provenance = JSON.parse(form.dataset.provenance);
+    run(() => api("POST", `/api/sessions/${CURRENT}/rungs`, { rung, rung_id, expected_revision: VIEW.state.revision }));
+  } },
+    el("input", { type: "hidden", name: "rung_id" }),
+    el("div", { class: "grid2" },
+      el("label", {}, "Level", el("select", { name: "abstraction_level" }, ...v.abstraction_levels.map(x => el("option", { value: x }, x)))),
+      el("label", {}, "System boundary", el("select", { name: "system_boundary" }, ...v.system_boundaries.map(x => el("option", { value: x }, words(x)))))),
+    el("label", {}, "Outcome served at this level", el("input", { name: "outcome", required: true })),
+    el("label", {}, "Scope", el("input", { name: "scope", required: true })),
+    el("label", {}, "What drops out of view by moving to this level", el("textarea", { name: "loss", required: true })),
+    el("div", { class: "grid2" }, area("success_measures", "Success measures"), area("assumptions", "Assumptions")),
+    el("p", {}, el("button", { class: "primary", type: "submit", id: "rung-submit" }, "Record rung")));
+  return el("details", { open: !(VIEW.state.ladder || []).length }, el("summary", {}, "Record a rung"), form);
+}
+
+function frameForm(state, derived) {
+  const v = META.vocabulary;
+  const live = derived.frame_set.live.length;
+  const area = (name, label) => el("label", {}, label, el("textarea", { name, placeholder: "One per line" }));
+  const form = el("form", { id: "frame-form", onsubmit: ev => { ev.preventDefault();
     const frame = Object.fromEntries(new FormData(form).entries());
+    // No command withdraws a frame yet, so warn before a sixth or a twin
+    // rather than let the session reach a set the gate will refuse.
+    const twin = state.frames.find(f => derived.frame_set.live.includes(f.id)
+      && f.outcome.trim().toLowerCase() === frame.outcome.trim().toLowerCase()
+      && f.abstraction_level === frame.abstraction_level && f.system_boundary === frame.system_boundary);
+    if (twin && !confirm(`${twin.id} already has this outcome, level, and boundary. Frame selection will refuse two such frames, and there is no way to withdraw one yet. Propose it anyway?`)) return;
     run(() => api("POST", `/api/sessions/${CURRENT}/frames`, { frame, expected_revision: VIEW.state.revision }));
   } },
     el("label", {}, "Question", el("input", { name: "question", required: true, placeholder: "How might we…" })),
     el("label", {}, "Outcome", el("input", { name: "outcome", required: true })),
     el("div", { class: "grid2" },
       el("label", {}, "Abstraction level", el("select", { name: "abstraction_level" }, ...v.abstraction_levels.map(x => el("option", { value: x }, x)))),
-      el("label", {}, "System boundary", el("select", { name: "system_boundary" }, ...v.system_boundaries.map(x => el("option", { value: x }, x)))),
+      el("label", {}, "System boundary", el("select", { name: "system_boundary" }, ...v.system_boundaries.map(x => el("option", { value: x }, words(x))))),
       area("included", "Included"), area("excluded", "Excluded"), area("success_measures", "Success measures"),
       area("constraints", "Constraints"), area("assumptions", "Assumptions"), area("open_questions", "Open questions")),
-    el("p", {}, el("button", { class: "primary", type: "submit" }, "Propose frame")));
-  return el("details", { open: VIEW.state.frames.length === 0 }, el("summary", {}, "Propose a candidate frame"), form);
+    el("p", {}, el("button", { class: "primary", type: "submit", disabled: live >= FRAME_SET.high,
+      title: live >= FRAME_SET.high ? `Selection compares at most ${FRAME_SET.high} candidates` : "" }, "Propose frame")));
+  return el("details", { open: state.frames.length === 0 }, el("summary", {}, "Propose a candidate frame"), form);
+}
+
+function frameSetNotice(fs) {
+  const n = fs.live.length;
+  if (fs.selectable) return el("div", { class: "notice ok", role: "status" }, `${n} distinct candidate frames. Frame selection can be sealed.`);
+  const lines = [];
+  if (n < FRAME_SET.low) lines.push(`Frame selection compares ${FRAME_SET.low} to ${FRAME_SET.high} candidate frames, and this session has ${n}. Propose ${FRAME_SET.low - n} more that differ in outcome, level, or boundary.`);
+  if (n > FRAME_SET.high) lines.push(`Frame selection compares at most ${FRAME_SET.high} candidate frames, and this session has ${n}.`);
+  for (const [a, b] of fs.indistinct_pairs) lines.push(`${a} and ${b} agree on outcome, level, and boundary, so they count as one frame.`);
+  return el("div", { class: "notice caution", role: "status" }, ...lines.map(l => el("div", {}, l)));
+}
+
+function heldBlock(held) {
+  const kinds = Object.entries(held.by_kind);
+  if (!kinds.length) return el("p", { class: "hint" }, "No engine proposals are waiting. They are kept in memory only, so restarting the server clears them.");
+  const box = el("div", {}, el("h3", {}, "Proposals from the engine"));
+  if (held.stale) box.append(el("div", { class: "notice caution" }, "These were formed before later changes to this session. Read each against the session as it is now; nothing is recorded until you submit a form."));
+  for (const [kind, proposals] of kinds) {
+    for (const p of proposals) {
+      const value = p.value || {};
+      const summary = kind === "problem_frame" ? (value.question || p.id)
+        : kind === "abstraction_ladder" ? `Levels ${(value.levels || []).join(", ")}; outcome at the top: ${value.top_outcome || "none given"}`
+        : words(kind);
+      const slot = el("div", {});
+      const usable = kind === "problem_frame" || kind === "abstraction_ladder";
+      slot.append(usable
+        ? el("button", { type: "button", onclick: () => useHeld(p.id, slot) }, kind === "problem_frame" ? "Use as frame draft" : "Use as rung drafts")
+        : el("span", { class: "empty" }, "No way to use this kind yet."));
+      box.append(el("div", { class: "card" }, el("div", {}, summary), el("div", { class: "ids" }, `${p.id}, ${words(kind)}`), slot));
+    }
+  }
+  return box;
+}
+
+async function useHeld(proposalId, slot) {
+  const out = await run(() => api("GET", `/api/sessions/${CURRENT}/held/${proposalId}`));
+  if (!out) return;
+  const { draft } = out;
+  if (draft.command === "propose_frame") { fill($("#frame-form"), draft.frame); return; }
+  slot.replaceChildren(el("p", { class: "hint" }, "Each draft fills the rung form. Add what drops out of view at that level, then record it."),
+    ...draft.rungs.map(r => el("button", { type: "button", onclick: () => fillRung(r) }, `Fill rung form: ${r.abstraction_level}`)), " ");
 }
 
 // ------------------------------------------------------------------ causal

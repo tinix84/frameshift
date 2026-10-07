@@ -141,6 +141,67 @@ class GuiBoundary(unittest.TestCase):
         self.assertEqual((status, body["code"]), (409, "approval_stale"))
 
 
+    # ------------------------------------------------------ framing (#240)
+
+    def framing(self, held: bool = True) -> str:
+        sid = self.open()
+        _, built = self.call("POST", f"/api/sessions/{sid}/manual-result",
+                             {"classifications": [{"statement_id": "stmt_001", "primary_role": "proposal"}]})
+        result = built["result"]
+        if held:
+            result["proposals"].append({
+                "id": "prop_frame_001", "kind": "problem_frame", "operation": "add",
+                "value": {"question": "How might we deliver 5 kW where it is needed?", "abstraction_level": "system"},
+                "provenance": {"kind": "inferred", "source_ids": ["stmt_001"]},
+            })
+        self.call("POST", f"/api/sessions/{sid}/engine-result", {"result": result})
+        _, prepared = self.call("POST", f"/api/sessions/{sid}/gates", {"gate": "intake_correction", "target_id": "stmt_001"})
+        request = prepared["confirmation_request"]
+        answer = {"request_id": request["id"], "request_digest": request["request_digest"],
+                  "status": "submitted", "disposition": "approved", "edited_proposal": None}
+        self.call("POST", f"/api/confirmations/{request['id']}", {"response": answer})
+        return sid
+
+    def revision(self, sid: str) -> int:
+        return self.call("GET", f"/api/sessions/{sid}")[1]["state"]["revision"]
+
+    def test_a_rung_is_recorded_and_re_recorded_over_http(self) -> None:
+        sid = self.framing(held=False)
+        rung = {"abstraction_level": "system", "outcome": "Power reaches the load.", "scope": "The converter in its rack.",
+                "system_boundary": "subsystem", "success_measures": "", "assumptions": "", "loss": "Part choice drops out of view."}
+        status, view = self.call("POST", f"/api/sessions/{sid}/rungs", {"rung": rung, "rung_id": "", "expected_revision": self.revision(sid)})
+        self.assertEqual((status, view["derived"]["ladder_order"]), (200, ["rung_001"]))
+        status, view = self.call("POST", f"/api/sessions/{sid}/rungs",
+                                 {"rung": dict(rung, loss="Topology choice drops out of view."), "rung_id": "rung_001", "expected_revision": self.revision(sid)})
+        self.assertEqual((status, view["state"]["ladder"][0]["loss"]), (200, "Topology choice drops out of view."))
+
+    def test_a_held_proposal_is_drafted_over_http_and_writes_nothing(self) -> None:
+        sid = self.framing()
+        before = self.revision(sid)
+        status, body = self.call("GET", f"/api/sessions/{sid}/held/prop_frame_001")
+        self.assertEqual((status, body["draft"]["command"]), (200, "propose_frame"))
+        self.assertEqual(body["draft"]["frame"]["question"], "How might we deliver 5 kW where it is needed?")
+        self.assertEqual(self.revision(sid), before)
+        self.assertEqual(self.call("GET", f"/api/sessions/{sid}/held/prop_absent")[1]["code"], "invariant_violation")
+
+    def test_a_refused_frame_selection_returns_its_reason(self) -> None:
+        sid = self.framing(held=False)
+        frame = {"question": "How might we deliver 5 kW?", "outcome": "Power reaches the load.",
+                 "abstraction_level": "system", "system_boundary": "subsystem"}
+        self.call("POST", f"/api/sessions/{sid}/frames", {"frame": frame, "expected_revision": self.revision(sid)})
+        _, view = self.call("GET", f"/api/sessions/{sid}")
+        self.assertFalse(view["derived"]["frame_set"]["selectable"])
+        status, body = self.call("POST", f"/api/sessions/{sid}/gates", {"gate": "frame_selection", "target_id": "frame_001"})
+        self.assertEqual(body["code"], "invariant_violation")
+        self.assertIn("holds 1", body["detail"])
+        self.assertGreaterEqual(status, 400)
+
+    def test_the_page_carries_the_framing_controls(self) -> None:
+        _, page = self.call("GET", "/", token=None)
+        for marker in ("rung-form", "frame-form", "/held/", "frameSetNotice", "drops out of view"):
+            self.assertIn(marker, page)
+
+
 class HostedMode(unittest.TestCase):
     """ADR-0023: a network bind is never unauthenticated."""
 
