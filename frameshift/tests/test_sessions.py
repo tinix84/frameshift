@@ -466,6 +466,98 @@ def _alternative() -> dict:
     )
 
 
+HELD = [
+    {
+        "id": "prop_ladder_001",
+        "kind": "abstraction_ladder",
+        "operation": "add",
+        "value": {"levels": ["business", "component", "product"], "top_outcome": "Improve contribution margin per pack."},
+        "provenance": {"kind": "inferred", "source_ids": ["stmt_001"]},
+    },
+    {
+        "id": "prop_frame_001",
+        "kind": "problem_frame",
+        "operation": "add",
+        "value": {"question": "How might we improve contribution margin per pack?", "abstraction_level": "business", "status": "proposed"},
+        "provenance": {"kind": "inferred", "source_ids": ["stmt_001"]},
+    },
+]
+
+
+class KeepAndAdoptHeldProposals(Fixture):
+    """#238 (ADR-0024)."""
+
+    def classify(self, role: str = "proposal", secondary=("need",)) -> dict:
+        result = self.co.manual_framing_result(
+            self.sid, [{"statement_id": "stmt_001", "primary_role": role, "secondary_roles": list(secondary)}]
+        )
+        result["proposals"].extend(copy.deepcopy(HELD))
+        return self.co.admit_result(self.sid, result)
+
+    def test_admission_commits_only_classifications_and_holds_the_rest(self) -> None:
+        before = len(self.co.history(self.sid))
+        outcome = self.classify()
+        self.assertEqual(outcome["held_proposal_ids"], ["prop_ladder_001", "prop_frame_001"])
+        self.assertEqual([e["type"] for e in self.co.history(self.sid)[before:]], ["statement.classified"])
+        held = self.co.view(self.sid)["derived"]["held"]
+        self.assertEqual(sorted(held["by_kind"]), ["abstraction_ladder", "problem_frame"])
+        self.assertFalse(held["stale"])
+
+    def test_a_later_commit_marks_the_held_result_stale_and_keeps_it(self) -> None:
+        self.seal_intake()
+        held = self.co.view(self.sid)["derived"]["held"]
+        self.assertTrue(held["stale"])
+        self.assertEqual(len(held["by_kind"]["problem_frame"]), 1)
+
+    def test_a_held_frame_is_adopted_through_propose_frame_after_editing(self) -> None:
+        self.seal_intake()
+        draft = self.co.held_draft(self.sid, proposal_id="prop_frame_001")
+        self.assertEqual(draft["command"], "propose_frame")
+        self.assertEqual(draft["frame"]["question"], "How might we improve contribution margin per pack?")
+        self.assertNotIn("status", draft["frame"])
+        before = len(self.co.history(self.sid))
+        with self.assertRaises(CommandRefused):
+            self.co.propose_frame(self.sid, frame=draft["frame"], expected_revision=self.revision())
+        self.assertEqual(len(self.co.history(self.sid)), before)
+        edited = dict(draft["frame"], outcome="Contribution margin per pack rises.", system_boundary="business_model")
+        self.co.propose_frame(self.sid, frame=edited, expected_revision=self.revision())
+        frame = self.co.state(self.sid)["frames"][0]
+        self.assertEqual((frame["status"], frame["abstraction_level"]), ("proposed", "business"))
+
+    def test_a_held_ladder_drafts_one_rung_per_level_in_order(self) -> None:
+        self.seal_intake()
+        draft = self.co.held_draft(self.sid, proposal_id="prop_ladder_001")
+        self.assertEqual(draft["command"], "record_rung")
+        self.assertEqual([r["abstraction_level"] for r in draft["rungs"]], ["component", "product", "business"])
+        self.assertEqual([r["outcome"] for r in draft["rungs"]], ["", "", "Improve contribution margin per pack."])
+        top = dict(draft["rungs"][2], scope="The business the pack serves.", system_boundary="business_model", loss="Pack engineering detail drops out of view.")
+        self.co.record_rung(self.sid, rung=top, expected_revision=self.revision())
+        rung = self.co.state(self.sid)["ladder"][0]
+        self.assertEqual(rung["provenance"]["source_ids"], ["stmt_001"])
+        self.assertIn("prop_ladder_001", rung["provenance"]["note"])
+        self.assertEqual(session_violations(self.co.state(self.sid)), [])
+
+    def test_drafting_writes_nothing(self) -> None:
+        self.seal_intake()
+        before = self.co.history(self.sid)
+        self.co.held_draft(self.sid, proposal_id="prop_frame_001")
+        self.co.held_draft(self.sid, proposal_id="prop_ladder_001")
+        self.assertEqual(self.co.history(self.sid), before)
+
+    def test_an_unknown_proposal_is_refused(self) -> None:
+        self.classify()
+        with self.assertRaises(CommandRefused):
+            self.co.held_draft(self.sid, proposal_id="prop_absent")
+
+    def test_a_restarted_coordinator_holds_nothing_and_says_so(self) -> None:
+        self.classify()
+        held = coordinator(self.store).view(self.sid)["derived"]["held"]
+        self.assertEqual(held["by_kind"], {})
+        self.assertIn("restart", held["note"])
+        with self.assertRaises(CommandRefused):
+            coordinator(self.store).held_draft(self.sid, proposal_id="prop_frame_001")
+
+
 class GateFrameSelection(Fixture):
     """#239 (ADR-0024)."""
 
