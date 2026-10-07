@@ -69,6 +69,8 @@ ROUTES = [
     ("POST", rf"^/api/sessions/{SESSION}/corrections$", "correct"),
     ("POST", rf"^/api/sessions/{SESSION}/frames$", "propose_frame"),
     ("POST", rf"^/api/sessions/{SESSION}/frames/(?P<fid>[A-Za-z0-9._:-]+)/activate$", "activate_frame"),
+    ("POST", rf"^/api/sessions/{SESSION}/rungs$", "record_rung"),
+    ("GET", rf"^/api/sessions/{SESSION}/held/(?P<pid>[A-Za-z0-9._:-]+)$", "held_draft"),
     ("POST", rf"^/api/sessions/{SESSION}/nodes$", "add_node"),
     ("POST", rf"^/api/sessions/{SESSION}/edges$", "add_edge"),
     ("POST", rf"^/api/sessions/{SESSION}/gates$", "prepare_gate"),
@@ -148,6 +150,17 @@ class ManualApp:
 
     def activate_frame(self, body, sid, fid):
         return self.coordinator.activate_frame(sid, frame_id=fid, expected_revision=body.get("expected_revision"))
+
+    def record_rung(self, body, sid):
+        return self.coordinator.record_rung(
+            sid,
+            rung=body.get("rung", {}),
+            rung_id=body.get("rung_id") or None,
+            expected_revision=body.get("expected_revision"),
+        )
+
+    def held_draft(self, body, sid, pid):
+        return {"draft": self.coordinator.held_draft(sid, proposal_id=pid)}
 
     def add_node(self, body, sid):
         return self.coordinator.add_node(sid, node=body.get("node", {}), expected_revision=body.get("expected_revision"))
