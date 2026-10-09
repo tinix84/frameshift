@@ -377,26 +377,37 @@ class SessionCoordinator:
             top = max(levels, key=LADDER_RANK.__getitem__, default=None)
             top_outcome = value.get("top_outcome") if isinstance(value.get("top_outcome"), str) else ""
             # One rung per level: a level already on the ladder is drafted as a
-            # re-recording of that rung, never as a second rung beside it.
-            recorded = {rung.get("abstraction_level"): rung["id"] for rung in self.state(session_id).get("ladder", [])}
-            return {
-                "kind": "abstraction_ladder",
-                "command": "record_rung",
-                "rungs": [
-                    {
-                        "rung_id": recorded.get(level),
-                        "abstraction_level": level,
-                        "outcome": top_outcome if level == top else "",
-                        "scope": "",
-                        "system_boundary": "",
-                        "success_measures": [],
-                        "assumptions": [],
-                        "loss": "",
-                        "provenance": copy.deepcopy(cited),
-                    }
-                    for level in sorted(levels, key=LADDER_RANK.__getitem__)
-                ],
-            }
+            # re-recording of that rung, never as a second rung beside it, and
+            # from that rung's content, since a re-recording replaces it whole.
+            recorded = {rung.get("abstraction_level"): rung for rung in self.state(session_id).get("ladder", [])}
+            rungs = []
+            for level in sorted(levels, key=LADDER_RANK.__getitem__):
+                outcome = top_outcome if level == top else ""
+                existing = recorded.get(level)
+                if existing is None:
+                    rungs.append(
+                        {
+                            "rung_id": None,
+                            "abstraction_level": level,
+                            "outcome": outcome,
+                            "scope": "",
+                            "system_boundary": "",
+                            "success_measures": [],
+                            "assumptions": [],
+                            "loss": "",
+                            "provenance": copy.deepcopy(cited),
+                        }
+                    )
+                    continue
+                draft = {key: copy.deepcopy(item) for key, item in existing.items() if key != "id"}
+                draft["rung_id"] = existing["id"]
+                if outcome:
+                    # The proposal contributes only the top outcome; the rung
+                    # cites the proposal only when it takes that contribution.
+                    draft["outcome"] = outcome
+                    draft["provenance"] = copy.deepcopy(cited)
+                rungs.append(draft)
+            return {"kind": "abstraction_ladder", "command": "record_rung", "rungs": rungs}
         raise CommandRefused(INVARIANT_VIOLATION, f"held proposals of kind {proposal['kind']!r} have no adoption path yet")
 
     def propose_frame(self, session_id: str, *, frame: dict, expected_revision: int) -> dict:
