@@ -9,15 +9,23 @@ gate. Between stages a person seals the gate in the manual GUI on the same
 store, so every approval in the log is theirs (ADR-0002, ADR-0022).
 
     python scripts/simulate_espresso.py intake  --store .frameshift/espresso
-    python -m frameshift.bootstrap gui --store .frameshift/espresso   # seal intake
+    python -m frameshift.bootstrap gui --store .frameshift/espresso   # seal intake (same --store:
+                                                                      # the GUI's default store differs)
     python scripts/simulate_espresso.py framing --store .frameshift/espresso
     python -m frameshift.bootstrap gui --store .frameshift/espresso   # seal frame selection
     python scripts/simulate_espresso.py causal  --store .frameshift/espresso
     python scripts/simulate_espresso.py compare --store .frameshift/espresso
 
 `compare` can run after any stage. It reports, item by item, what the
-application reproduced and what it could not represent, which is the point of
-the exercise: the gaps are the application's, not the case's.
+application reproduced, what it could not represent, and anything it holds
+that the reference does not; the gaps are the application's, not the case's
+(epic #253). A stage runs once per store: the id map is saved after every item,
+so an interrupted stage is refused rather than repeated.
+
+The script speaks only as the reasoner. It never prepares or answers a gate,
+and it offers every node and edge as `draft` or `proposed`: a status that
+records a decision (rejected, superseded, approved) is the person's to make,
+so the reference's decided statuses show up as differences (#254).
 """
 
 from __future__ import annotations
@@ -69,6 +77,24 @@ def _revision(co, sid: str) -> int:
     return co.state(sid)["revision"]
 
 
+# A reasoner offers; only a person decides (AGENTS.md, #254).
+REASONER_STATUSES = ("draft", "proposed")
+
+
+def _offered(status: str) -> str:
+    return status if status in REASONER_STATUSES else "proposed"
+
+
+def _once(sim: Simulation, stage: str, reference_ids: list[str]) -> None:
+    """Refuse a stage that already ran, wholly or in part, on this store."""
+    done = [item for item in reference_ids if item in sim.ids]
+    if done:
+        raise SystemExit(
+            f"the {stage} stage already ran on this store ({len(done)} of {len(reference_ids)} items added); "
+            "start again from a fresh --store"
+        )
+
+
 def _new_ids(before: list[dict], after: list[dict]) -> list[str]:
     known = {item["id"] for item in before}
     return [item["id"] for item in after if item["id"] not in known]
@@ -85,6 +111,7 @@ def stage_intake(co, sim: Simulation, ref: dict) -> list[str]:
     sid = co.open_session(title=TITLE, request=first["text"])["state"]["id"]
     sim.session_id = sid
     sim.ids[first["id"]] = co.state(sid)["statements"][0]["id"]
+    sim.save()
     # The request arrives unclassified; classifying it is a manual engine result.
     result = co.manual_framing_result(
         sid, [{"statement_id": sim.ids[first["id"]], "primary_role": first["primary_role"], "secondary_roles": []}]
@@ -97,6 +124,7 @@ def stage_intake(co, sim: Simulation, ref: dict) -> list[str]:
         )
         (new,) = _new_ids(before, co.state(sid)["statements"])
         sim.ids[statement["id"]] = new
+        sim.save()
     sim.save()
     return [
         f"Session {sid} holds {len(statements)} statements and is in intake.",
@@ -106,6 +134,7 @@ def stage_intake(co, sim: Simulation, ref: dict) -> list[str]:
 
 def stage_framing(co, sim: Simulation, ref: dict) -> list[str]:
     sid = _require(co, sim, "framing")
+    _once(sim, "framing", [rung["id"] for rung in ref["ladder"]] + [frame["id"] for frame in ref["frames"]])
     for rung in ref["ladder"]:
         before = co.state(sid).get("ladder", [])
         fields = {key: value for key, value in rung.items() if key != "id"}
@@ -113,6 +142,7 @@ def stage_framing(co, sim: Simulation, ref: dict) -> list[str]:
         co.record_rung(sid, rung=fields, expected_revision=_revision(co, sid))
         (new,) = _new_ids(before, co.state(sid)["ladder"])
         sim.ids[rung["id"]] = new
+        sim.save()
     working = None
     for frame in ref["frames"]:
         before = co.state(sid)["frames"]
@@ -120,6 +150,7 @@ def stage_framing(co, sim: Simulation, ref: dict) -> list[str]:
         co.propose_frame(sid, frame=fields, expected_revision=_revision(co, sid))
         (new,) = _new_ids(before, co.state(sid)["frames"])
         sim.ids[frame["id"]] = new
+        sim.save()
         if frame["status"] == "working":
             working = new
     co.activate_frame(sid, frame_id=working, expected_revision=_revision(co, sid))
@@ -132,6 +163,7 @@ def stage_framing(co, sim: Simulation, ref: dict) -> list[str]:
 
 def stage_causal(co, sim: Simulation, ref: dict) -> list[str]:
     sid = _require(co, sim, "causal")
+    _once(sim, "causal", [node["id"] for node in ref["graph"]["nodes"]] + [edge["id"] for edge in ref["graph"]["edges"]])
     refused: list[str] = []
     graph = ref["graph"]
     for node in graph["nodes"]:
@@ -139,7 +171,7 @@ def stage_causal(co, sim: Simulation, ref: dict) -> list[str]:
         fields = {
             "type": node["type"],
             "label": node["label"],
-            "status": node["status"],
+            "status": _offered(node["status"]),
             "confidence": node["confidence"],
             "source_ids": sim.mapped(node["provenance"]["source_ids"]),
         }
@@ -153,6 +185,7 @@ def stage_causal(co, sim: Simulation, ref: dict) -> list[str]:
             continue
         (new,) = _new_ids(before, co.state(sid)["graph"]["nodes"])
         sim.ids[node["id"]] = new
+        sim.save()
     for edge in graph["edges"]:
         if edge["source"] not in sim.ids or edge["target"] not in sim.ids:
             refused.append(f"edge {edge['id']}: an end was not added")
@@ -171,6 +204,7 @@ def stage_causal(co, sim: Simulation, ref: dict) -> list[str]:
             continue
         (new,) = _new_ids(before, co.state(sid)["graph"]["edges"])
         sim.ids[edge["id"]] = new
+        sim.save()
     sim.save()
     added = co.state(sid)["graph"]
     lines = [f"Added {len(added['nodes'])} nodes and {len(added['edges'])} edges."]
@@ -226,8 +260,17 @@ def compare(state: dict, ref: dict, sim: Simulation) -> dict:
                                           "provenance"]),
         "edges": (ref["graph"]["edges"], ["type", "status", "confidence", "extensions", "provenance"]),
     }
-    report: dict = {"sections": {}}
+    held = {
+        "statements": state.get("statements", []),
+        "ladder": state.get("ladder", []),
+        "frames": state.get("frames", []),
+        "nodes": state["graph"]["nodes"],
+        "edges": state["graph"]["edges"],
+    }
+    report: dict = {"sections": {}, "extra": {}}
     for name, (items, fields) in sections.items():
+        mapped = {sim.ids.get(item["id"]) for item in items}
+        report["extra"][name] = [item["id"] for item in held[name] if item["id"] not in mapped]
         rows = []
         for item in items:
             mine = by_id.get(sim.ids.get(item["id"], ""))
@@ -262,11 +305,12 @@ def _short(value) -> str:
 
 def render(report: dict) -> str:
     lines = ["# Espresso simulation against the reference", ""]
-    lines += ["| Section | Reference | Identical | Differs | Missing |", "|---|---|---|---|---|"]
+    lines += ["| Section | Reference | Identical | Differs | Missing | Extra |", "|---|---|---|---|---|---|"]
     for name, rows in report["sections"].items():
         identical = sum(1 for row in rows if not row["differences"])
         missing = sum(1 for row in rows if row["differences"] == ["missing"])
-        lines.append(f"| {name} | {len(rows)} | {identical} | {len(rows) - identical - missing} | {missing} |")
+        extra = len(report["extra"][name])
+        lines.append(f"| {name} | {len(rows)} | {identical} | {len(rows) - identical - missing} | {missing} | {extra} |")
     lines += ["", "## Differences by field", "", "| Section | Field | Items differing |", "|---|---|---|"]
     for name, rows in report["sections"].items():
         counts: dict[str, int] = {}
@@ -280,6 +324,9 @@ def render(report: dict) -> str:
     lines += ["", "## Session", ""]
     for key, pair in report["session"].items():
         lines.append(f"- **{key}**: reference `{pair['reference']}`, application `{pair['application']}`")
+    for name, extra in report["extra"].items():
+        if extra:
+            lines.append(f"- **extra {name}** (in the application, not in the reference): " + ", ".join(f"`{i}`" for i in extra))
     lines += ["", "## Differences by item", ""]
     for name, rows in report["sections"].items():
         for row in rows:
@@ -295,10 +342,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("stage", choices=["intake", "framing", "causal", "compare"])
     parser.add_argument("--store", type=Path, default=Path(".frameshift") / "espresso")
-    parser.add_argument("--operator", default="user_local", help="the actor id the GUI will also use")
     args = parser.parse_args(argv)
 
-    co = manual_coordinator(args.store, {"id": args.operator, "kind": "human", "role": "decision_owner"})
+    # The stages record no actor (they approve nothing), but a coordinator needs one.
+    co = manual_coordinator(args.store, {"id": "user_local", "kind": "human", "role": "decision_owner"})
     sim = Simulation(args.store)
     ref = reference()
     if args.stage == "compare":
