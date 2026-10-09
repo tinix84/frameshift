@@ -102,16 +102,10 @@ def profile_differences(recorded: dict, available: dict) -> dict:
     return {"reported": reported, "refused": refused}
 
 
-def _application_agrees(
-    checkpoint: dict, adapter_profile: dict, reference: dict, recorded_mutated: bool, restore
-) -> list[str]:
-    """The application's restore plan carries the reference's verdict (#125)."""
+def _restored_inputs(checkpoint: dict, recorded_mutated: bool) -> tuple[dict, dict[str, bytes]]:
+    """The checkpoint both restore paths see, and its artifacts, read once."""
     from .checkpoint import read_artifact
 
-    if restore is None:
-        from frameshift.persistence import restore as application_restore
-
-        restore = application_restore
     if recorded_mutated:
         # The recorded profile is inside the checkpoint digest, so a case that
         # mutates it describes a checkpoint honestly taken under that profile:
@@ -119,25 +113,51 @@ def _application_agrees(
         from frameshift.persistence import encode
 
         checkpoint = encode(checkpoint)
-
     payloads = {item["id"]: read_artifact(item["uri"]) for item in checkpoint.get("artifacts", [])}
-    plan = restore(checkpoint, payloads, capability_profile=adapter_profile)
-    errors: list[str] = []
+    return checkpoint, payloads
 
+
+def _application_agrees(
+    checkpoint: dict, payloads: dict[str, bytes], adapter_profile: dict, reference: dict, restore
+) -> list[str]:
+    """The application's restore plan carries the reference's verdict (#125)."""
+    if restore is None:
+        from frameshift.persistence import restore as application_restore
+
+        restore = application_restore
+    plan = restore(checkpoint, payloads, capability_profile=adapter_profile)
+    return _agreement("application", plan, reference)
+
+
+def _orchestration_agrees(
+    checkpoint: dict, payloads: dict[str, bytes], adapter_profile: dict, reference: dict
+) -> list[str]:
+    """A restore driven through orchestration carries the same verdict (#217)."""
+    from frameshift.bootstrap import restore_checkpoint
+
+    plan = restore_checkpoint(checkpoint, payloads, capability_profile=adapter_profile)
+    errors = _agreement("orchestration", plan, reference)
+    if reference["refused"] and plan.get("reasoning_allowed"):
+        errors.append("the orchestration restore allows reasoning after a capability refusal")
+    return errors
+
+
+def _agreement(path: str, plan: dict, reference: dict) -> list[str]:
+    errors: list[str] = []
     expected = "refused" if reference["refused"] else "verified"
     if plan["outcome"] != expected:
         errors.append(
-            f"the application restore is {plan['outcome']}, the reference comparison says {expected}: "
+            f"the {path} restore is {plan['outcome']}, the reference comparison says {expected}: "
             f"{plan.get('violations')}"
         )
     if plan.get("capability_differences") != reference["reported"]:
         errors.append(
-            f"the application reports {plan.get('capability_differences')}, "
+            f"the {path} restore reports {plan.get('capability_differences')}, "
             f"the reference reports {reference['reported']}"
         )
     if reference["refused"] and plan.get("violations") != reference["refused"]:
         errors.append(
-            f"the application refuses with {plan.get('violations')}, the reference with {reference['refused']}"
+            f"the {path} restore refuses with {plan.get('violations')}, the reference with {reference['refused']}"
         )
     return errors
 
@@ -177,7 +197,9 @@ def capability_compatibility(case: dict, load, restore=None) -> list[str]:
             f"{result['refused'] or result['reported'] or 'no difference'}"
         )
 
-    errors.extend(_application_agrees(checkpoint, adapter_profile, result, bool(case.get("mutate_recorded")), restore))
+    restored, payloads = _restored_inputs(checkpoint, bool(case.get("mutate_recorded")))
+    errors.extend(_application_agrees(restored, payloads, adapter_profile, result, restore))
+    errors.extend(_orchestration_agrees(restored, payloads, adapter_profile, result))
 
     for fragment in expect.get("reported_naming", []):
         if not any(fragment in item for item in result["reported"]):

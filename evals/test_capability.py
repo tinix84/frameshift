@@ -183,6 +183,28 @@ class CaseWiringTests(unittest.TestCase):
                         f"a restore that ignores the profile must fail the case, got {errors}",
                     )
 
+    def test_an_orchestration_that_drops_the_comparison_fails_the_cases(self) -> None:
+        """#217: the orchestration-level path is checked, compatible and refused."""
+        from frameshift.orchestration import restore as orchestration
+
+        original = orchestration.plan_restore
+
+        def forgetful(checkpoint, persistence_plan, *args, **kwargs):
+            plan = original(checkpoint, dict(persistence_plan, outcome="verified", violations=[]), *args, **kwargs)
+            plan["capability_differences"] = []
+            return plan
+
+        orchestration.plan_restore = forgetful
+        try:
+            for name in self.CASES:
+                with self.subTest(case=name):
+                    case = run.load(f"evals/fixtures/{name}.case.json")
+                    errors = capability.capability_compatibility(case, lambda relative: run.load(relative, run.FIXTURES))
+                    if case["expect"]["outcome"] == "refused" or case["expect"].get("reported_naming"):
+                        self.assertTrue(any("orchestration" in item for item in errors), errors)
+        finally:
+            orchestration.plan_restore = original
+
     def test_a_checkpoint_without_a_recorded_profile_is_reported(self) -> None:
         case = run.load("evals/fixtures/capability-restore-into-the-recorded-adapter.case.json")
 

@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from frameshift.contracts import errors
+from frameshift.validation import validate_against
 
 from . import canonical, compatibility
 
@@ -129,6 +130,7 @@ def restore(
         "outcome": "refused" if violations else "verified",
         "violations": violations,
         "capability_differences": [],
+        "capability_comparison_declined": False,
         "executed_capabilities": list(journal.executed_capabilities),
         "committed_proposal_ids": list(journal.committed_proposal_ids),
         "pending_proposal_ids": [],
@@ -139,12 +141,22 @@ def restore(
 
     recorded = checkpoint.get("capability_profile")
     if isinstance(recorded, dict):
-        if capability_profile is None:
+        malformed = (
+            validate_against(capability_profile, "capability-manifest.schema.json")
+            if capability_profile is not None
+            else []
+        )
+        if capability_profile is None or malformed:
             # Declining to compare is itself a difference. Staying silent here
-            # made the guard opt-in, so #125's own reproduction still passed.
+            # made the guard opt-in, so #125's own reproduction still passed;
+            # an empty or malformed offer is no comparison either (#217).
+            offered = "no offered profile was given" if capability_profile is None else (
+                "the offered profile is not a capability manifest: " + "; ".join(malformed[:3])
+            )
+            plan["capability_comparison_declined"] = True
             plan["capability_differences"] = [
                 f"profile not compared: the checkpoint records "
-                f"{recorded.get('profile_id', 'a profile')!r} and no offered profile was given"
+                f"{recorded.get('profile_id', 'a profile')!r} and {offered}"
             ]
         else:
             differences = compatibility.capability_differences(recorded, capability_profile)
