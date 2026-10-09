@@ -317,7 +317,7 @@ class IntegrityTests(unittest.TestCase):
         self.assertEqual(plan["executed_capabilities"], ["code.execute.sandboxed"])
 
         original = checkpoint.plan_restore
-        checkpoint.plan_restore = lambda cp, artifacts: wrong_restore(cp, artifacts)
+        checkpoint.plan_restore = lambda cp, artifacts, **_: wrong_restore(cp, artifacts)
         try:
             errors = run.evaluate(run.load("evals/fixtures/checkpoint-restore-is-not-an-action.case.json"))
         finally:
@@ -337,12 +337,31 @@ class IntegrityTests(unittest.TestCase):
             return application_restore(cp, artifacts, journal)
 
         original = checkpoint.plan_restore
-        checkpoint.plan_restore = lambda cp, artifacts: wrong_restore(cp, artifacts)
+        checkpoint.plan_restore = lambda cp, artifacts, **_: wrong_restore(cp, artifacts)
         try:
             errors = run.evaluate(run.load("evals/fixtures/checkpoint-restore-is-not-an-action.case.json"))
         finally:
             checkpoint.plan_restore = original
         self.assertTrue(any("committed a proposal" in item for item in errors), errors)
+
+    def test_an_integrity_case_offers_the_recorded_adapter_profile(self) -> None:
+        """#217: the reference side exercises the capability comparison too."""
+        from frameshift.persistence import restore as application_restore
+
+        seen = {}
+
+        def blind_restore(cp, artifacts, **kwargs):
+            seen["profile"] = kwargs.get("capability_profile")
+            return application_restore(cp, artifacts)  # the profile is dropped
+
+        original = checkpoint.plan_restore
+        checkpoint.plan_restore = lambda cp, artifacts, **kwargs: original(cp, artifacts, restore=blind_restore, **kwargs)
+        try:
+            errors = run.evaluate(run.load("evals/fixtures/checkpoint-restore-is-not-an-action.case.json"))
+        finally:
+            checkpoint.plan_restore = original
+        self.assertEqual(seen["profile"]["adapter"]["id"], "frameshift.generic")
+        self.assertTrue(any("profile not compared" in item for item in errors), errors)
 
     def test_the_correct_restore_still_passes_the_same_case(self) -> None:
         self.assertEqual(

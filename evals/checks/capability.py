@@ -142,6 +142,33 @@ def _application_agrees(
     return errors
 
 
+def _orchestration_agrees(
+    checkpoint: dict, adapter_profile: dict, reference: dict, recorded_mutated: bool
+) -> list[str]:
+    """A restore driven through orchestration carries the same verdict (#217)."""
+    from frameshift.bootstrap import restore_checkpoint
+    from .checkpoint import read_artifact
+
+    if recorded_mutated:
+        from frameshift.persistence import encode
+
+        checkpoint = encode(checkpoint)
+    payloads = {item["id"]: read_artifact(item["uri"]) for item in checkpoint.get("artifacts", [])}
+    plan = restore_checkpoint(checkpoint, payloads, capability_profile=adapter_profile)
+    errors: list[str] = []
+    expected = "refused" if reference["refused"] else "verified"
+    if plan["outcome"] != expected:
+        errors.append(f"the orchestration restore is {plan['outcome']}, the reference comparison says {expected}")
+    if plan.get("capability_differences") != reference["reported"]:
+        errors.append(
+            f"the orchestration restore reports {plan.get('capability_differences')}, "
+            f"the reference reports {reference['reported']}"
+        )
+    if reference["refused"] and plan.get("reasoning_allowed"):
+        errors.append("the orchestration restore allows reasoning after a capability refusal")
+    return errors
+
+
 def _apply(document: dict, mutations: list[dict]) -> None:
     for mutation in mutations:
         container: object = document
@@ -178,6 +205,7 @@ def capability_compatibility(case: dict, load, restore=None) -> list[str]:
         )
 
     errors.extend(_application_agrees(checkpoint, adapter_profile, result, bool(case.get("mutate_recorded")), restore))
+    errors.extend(_orchestration_agrees(checkpoint, adapter_profile, result, bool(case.get("mutate_recorded"))))
 
     for fragment in expect.get("reported_naming", []):
         if not any(fragment in item for item in result["reported"]):

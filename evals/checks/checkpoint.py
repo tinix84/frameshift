@@ -171,7 +171,11 @@ def verify(checkpoint: dict, artifact_bytes: dict[str, bytes]) -> list[str]:
 
 
 def plan_restore(
-    checkpoint: dict, artifact_bytes: dict[str, bytes], restore=None
+    checkpoint: dict,
+    artifact_bytes: dict[str, bytes],
+    restore=None,
+    *,
+    capability_profile: dict | None = None,
 ) -> dict:
     """Restoring is not an action, measured against the application's restore path.
 
@@ -184,12 +188,31 @@ def plan_restore(
 
     `restore` is injectable so a test can hand in a deliberately wrong
     implementation and watch the guard fire.
+
+    `capability_profile` is the restoring adapter's offered profile (#217). Left
+    out, the application reports the recorded profile as not compared.
     """
     if restore is None:
         from frameshift.persistence import restore as application_restore
 
         restore = application_restore
-    return restore(checkpoint, artifact_bytes)
+    if capability_profile is None:
+        return restore(checkpoint, artifact_bytes)
+    return restore(checkpoint, artifact_bytes, capability_profile=capability_profile)
+
+
+def offered_profile(checkpoint: dict, adapter: str | None = None) -> dict | None:
+    """The profile an adapter offers on restore: the case's adapter, else the recorded one's."""
+    if adapter is not None:
+        with (ROOT / adapter).open("r", encoding="utf-8") as handle:
+            return json.load(handle)
+    recorded = checkpoint.get("capability_profile")
+    adapter_id = recorded.get("adapter", {}).get("id") if isinstance(recorded, dict) else None
+    for manifest in sorted((ROOT / "adapters").glob("*/capabilities.json")):
+        profile = json.loads(manifest.read_text(encoding="utf-8"))
+        if adapter_id is not None and profile.get("adapter", {}).get("id") == adapter_id:
+            return profile
+    return None
 
 
 def _nested(levels: int) -> object:
@@ -253,6 +276,9 @@ def checkpoint_integrity(case: dict, load) -> list[str]:
     expect = case["expect"]
     errors: list[str] = []
     override: dict[str, bytes] = {}
+    # Resolved before any mutation: the adapter restoring is a fact about the
+    # runtime, not about the bytes a case corrupts.
+    offered = offered_profile(checkpoint, case.get("adapter"))
 
     mutation = case.get("mutate")
     if mutation is not None:
@@ -271,7 +297,7 @@ def checkpoint_integrity(case: dict, load) -> list[str]:
         reference["id"]: override.get(reference["id"]) or read_artifact(reference["uri"])
         for reference in checkpoint.get("artifacts", [])
     }
-    plan = plan_restore(checkpoint, payloads)
+    plan = plan_restore(checkpoint, payloads, capability_profile=offered)
 
     if plan["outcome"] != expect["outcome"]:
         errors.append(f"restore outcome is {plan['outcome']}, case expects {expect['outcome']}")
@@ -286,5 +312,10 @@ def checkpoint_integrity(case: dict, load) -> list[str]:
     for key in ("pending_proposal_ids", "required_checkpoints"):
         if key in expect and plan[key] != expect[key]:
             errors.append(f"{key} is {plan[key]}, case expects {expect[key]}")
+    if plan.get("capability_differences", []) != expect.get("capability_differences", []):
+        errors.append(
+            f"capability_differences are {plan.get('capability_differences')}, "
+            f"case expects {expect.get('capability_differences', [])}"
+        )
 
     return errors
