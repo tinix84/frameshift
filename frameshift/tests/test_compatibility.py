@@ -136,6 +136,47 @@ class CompatibilityTests(unittest.TestCase):
         self.assertEqual(plan["outcome"], "verified")
         self.assertTrue(plan["reasoning_allowed"], plan["contract_differences"])
 
+    def test_an_empty_or_partial_offered_profile_may_not_reason(self) -> None:
+        """Independent review of #249: `{}` must not stand in for a comparison."""
+        from frameshift.bootstrap import published_identities
+
+        value = prompt_identity_checkpoint()
+        for offered in ({}, {"adapter": {"id": "frameshift.generic", "version": "0.1.0"}}):
+            with self.subTest(offered=offered):
+                plan = restore_checkpoint(
+                    value,
+                    {},
+                    installed_prompts=installed(),
+                    published_prompts=published_identities(ROOT / "prompts" / "releases"),
+                    prompt_change_confirmations=prompt_change_confirmations(value),
+                    capability_profile=offered,
+                )
+                self.assertFalse(plan["reasoning_allowed"])
+                self.assertTrue(plan["capability_comparison_declined"])
+
+    def test_orchestration_fails_closed_on_a_plan_that_does_not_say_it_compared(self) -> None:
+        """Independent review of #249: a missing field is not a comparison."""
+        from frameshift.orchestration.restore import plan_restore
+
+        value = prompt_identity_checkpoint()
+        hand_built = {"outcome": "verified", "violations": [], "capability_differences": []}
+        plan = plan_restore(
+            value,
+            hand_built,
+            [],
+            published_registry_supplied=True,
+            prompt_change_confirmations=prompt_change_confirmations(value),
+        )
+        self.assertFalse(plan["reasoning_allowed"])
+        explicit = plan_restore(
+            value,
+            dict(hand_built, capability_comparison_declined=False),
+            [],
+            published_registry_supplied=True,
+            prompt_change_confirmations=prompt_change_confirmations(value),
+        )
+        self.assertTrue(explicit["reasoning_allowed"], explicit)
+
     def test_a_restore_offering_no_capability_profile_may_not_reason(self) -> None:
         """#217: declining to compare profiles is not passing the comparison."""
         from frameshift.bootstrap import published_identities

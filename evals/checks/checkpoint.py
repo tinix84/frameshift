@@ -202,7 +202,12 @@ def plan_restore(
 
 
 def offered_profile(checkpoint: dict, adapter: str | None = None) -> dict | None:
-    """The profile an adapter offers on restore: the case's adapter, else the recorded one's."""
+    """The profile an adapter offers on restore: the case's adapter, else the recorded one's.
+
+    Evals only: choosing the manifest by the id the checkpoint itself records
+    restores into the recorded adapter. A real restore takes the profile from
+    the runtime it runs in, never from the checkpoint's claim.
+    """
     if adapter is not None:
         with (ROOT / adapter).open("r", encoding="utf-8") as handle:
             return json.load(handle)

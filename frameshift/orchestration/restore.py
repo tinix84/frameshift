@@ -32,8 +32,10 @@ def plan_restore(
         plan["contract_differences"].append(
             "the published prompt registry was not supplied, so new reasoning is blocked"
         )
-    if plan.get("capability_comparison_declined"):
-        # Declining to compare is not passing the comparison (#125, #217).
+    declined = plan.get("capability_comparison_declined")
+    if declined or (isinstance(checkpoint.get("capability_profile"), dict) and declined is not False):
+        # Declining to compare is not passing the comparison (#125, #217), and
+        # a plan that does not say it compared is read as one that did not.
         plan["contract_differences"].append(
             "the restoring adapter's capability profile was not offered, so new reasoning is blocked"
         )

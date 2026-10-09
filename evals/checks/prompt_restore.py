@@ -69,7 +69,10 @@ def prompt_restore(case: dict, load) -> list[str]:
     checkpoint = load(case["artifact"])
     # The adapter the checkpoint was recorded under offers its profile (#217);
     # a restore offering none may not reason.
-    offered = offered_profile(checkpoint)
+    try:
+        offered = offered_profile(checkpoint)
+    except LookupError as missing:
+        return [str(missing)]
     synthetic_manifest = None
     synthetic_publication = None
     mutation = case.get("mutation")
