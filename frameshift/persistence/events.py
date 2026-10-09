@@ -7,10 +7,27 @@ event lands at, its id, its session, and which event of a commit carries the
 revision. It refuses, before writing a byte, anything that would make the file
 stop being a history: a body that names a sequence other than the next one, a
 revision that does not follow the last committed one, a body for another
-session, or an empty commit. The admitted commit is then one buffered append;
-a write torn part-way through is not prevented here, but the next read refuses
-the file, because a truncated last line is not JSON and a missing one breaks
-the sequence.
+session, or an empty commit.
+
+ADR-0015 asks for more than a check: two commits based on one revision must
+not both land, and a commit is visible whole or not at all. Both are earned
+here rather than assumed of a file append (#172):
+
+- A commit holds an exclusive operating-system lock on the session's sidecar
+  `.lock` file while it reads the history, checks the revision and writes. A
+  second writer at the same revision waits, then reads the advanced history
+  and is refused with `revision_conflict`. The lock dies with its process, so
+  a crash cannot leave a stale one.
+- The new history (the old bytes, unchanged, then the commit) is written to a
+  `.pending` file, flushed to disk, and moved over the history with
+  `os.replace`, which is atomic on one volume. An interruption before the move
+  leaves the previous history intact and the next commit overwrites the
+  orphan; nothing ever reads half a commit. Line-level detection could not do
+  this: the creation commit carries its revision on its first event, so a
+  torn creation commit would read back as a whole one.
+
+A file torn by an older writer is still refused on read: a truncated last line
+is not JSON and a missing one breaks the sequence.
 
 This module makes no policy judgement. Whether a transition may happen, whether
 an approval binds, whether a proposal is stale — those are orchestration's
@@ -26,8 +43,10 @@ advances by exactly one per commit, whatever the commit contains.
 
 from __future__ import annotations
 
+import contextlib
 import copy
 import json
+import os
 import re
 from pathlib import Path
 
@@ -75,11 +94,16 @@ class JsonlEventLog:
         return found
 
     def read(self, session_id: str) -> list[dict]:
+        return self._load(session_id)[1]
+
+    def _load(self, session_id: str) -> tuple[bytes, list[dict]]:
+        """The history's bytes as stored, and the events they hold."""
         path = self.path(session_id)
         if not path.exists():
-            return []
+            return b"", []
+        stored = path.read_bytes()
         history: list[dict] = []
-        raw = path.read_bytes().decode("utf-8")
+        raw = stored.decode("utf-8")
         for number, line in enumerate(raw.split("\n"), start=1):
             if line == "":
                 continue
@@ -91,7 +115,7 @@ class JsonlEventLog:
                 raise EventLogRefused(SCHEMA_INVALID, f"line {number} is not one JSON event")
             history.append(event)
         _refuse_unless_a_history(history, session_id)
-        return history
+        return stored, history
 
     def append(self, session_id: str, bodies: list[dict], *, revision: int) -> list[dict]:
         if not bodies:
@@ -102,7 +126,17 @@ class JsonlEventLog:
             if not isinstance(body, dict) or not isinstance(body.get("type"), str) or not isinstance(body.get("payload"), dict):
                 raise EventLogRefused(SCHEMA_INVALID, f"body {index} must carry a string type and an object payload")
 
-        history = self.read(session_id)
+        path = self.path(session_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with _exclusive(path.with_name(path.name + ".lock")):
+            stored, history = self._load(session_id)
+            written = self._admit(session_id, history, bodies, revision)
+            encoded = "".join(encode_line(event) for event in written).encode("utf-8")
+            _replace_atomically(path, stored + encoded)
+        return written
+
+    def _admit(self, session_id: str, history: list[dict], bodies: list[dict], revision: int) -> list[dict]:
+        """The events this commit would write, or a refusal; nothing is written here."""
         next_sequence = len(history) + 1
         fresh = not history
 
@@ -143,13 +177,54 @@ class JsonlEventLog:
             if offset == carrier:
                 event["revision"] = revision
             written.append(event)
-
-        path = self.path(session_id)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        encoded = "".join(encode_line(event) for event in written).encode("utf-8")
-        with path.open("ab") as handle:
-            handle.write(encoded)
         return written
+
+
+@contextlib.contextmanager
+def _exclusive(lock_path: Path):
+    """Hold an exclusive lock on `lock_path` for one commit; released if the process dies."""
+    handle = open(lock_path, "a+b")
+    try:
+        try:
+            if os.name == "nt":
+                import msvcrt
+
+                # Locks from the current position; retries for about ten seconds, then raises.
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_LOCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        except OSError as exc:
+            raise EventLogRefused(REVISION_CONFLICT, f"another commit holds the history: {exc}") from None
+        try:
+            yield
+        finally:
+            if os.name == "nt":
+                import msvcrt
+
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+    finally:
+        handle.close()
+
+
+def _replace_atomically(path: Path, content: bytes) -> None:
+    """Make `content` the history in one step: whole, or not at all."""
+    pending = path.with_name(path.name + ".pending")
+    with pending.open("wb") as handle:
+        handle.write(content)
+        handle.flush()
+        os.fsync(handle.fileno())
+    try:
+        os.replace(pending, path)
+    except OSError as exc:
+        raise EventLogRefused(INVARIANT_VIOLATION, f"the commit could not replace the history: {exc}") from None
 
 
 def _last_revision(history: list[dict]) -> int:

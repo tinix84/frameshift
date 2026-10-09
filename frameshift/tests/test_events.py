@@ -263,6 +263,91 @@ class TheFileIsOneEventPerLine(LogTestCase):
         self.assertEqual(events.encode_line(reference), reference_first + "\n")
 
 
+class CommitsAreAtomicAndRevisionBound(LogTestCase):
+    """ADR-0015, earned rather than assumed of a file append (#172)."""
+
+    def test_two_commits_at_one_revision_land_at_most_once(self) -> None:
+        import threading
+        import time
+
+        class SlowReader(events.JsonlEventLog):
+            # Widens the window between reading the history and writing the
+            # commit, so two writers both see revision 0 unless a lock orders them.
+            def _load(self, session_id):
+                loaded = super()._load(session_id)
+                time.sleep(0.2)
+                return loaded
+
+        self.log.append(SESSION, [created(), added()], revision=0)
+        writers = [SlowReader(self.root) for _ in range(4)]
+        outcomes: list[str] = []
+        start = threading.Barrier(len(writers))
+
+        def commit(log) -> None:
+            start.wait()
+            try:
+                log.append(SESSION, [classified()], revision=1)
+                outcomes.append("committed")
+            except ports.EventLogRefused as refused:
+                outcomes.append(refused.code)
+
+        threads = [threading.Thread(target=commit, args=(log,)) for log in writers]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        self.assertEqual(sorted(outcomes), ["committed"] + [errors.REVISION_CONFLICT] * 3)
+        history = self.log.read(SESSION)
+        self.assertEqual([event["sequence"] for event in history], [1, 2, 3])
+        self.assertEqual(history[-1]["revision"], 1)
+
+    def test_an_interrupted_commit_leaves_the_previous_history_whole(self) -> None:
+        self.log.append(SESSION, [created(), added()], revision=0)
+        before = self.path().read_bytes()
+
+        original = events.os.replace
+
+        def crash(*_args, **_kwargs):
+            raise OSError("power lost before the commit became visible")
+
+        events.os.replace = crash
+        try:
+            with self.assertRaises(ports.EventLogRefused):
+                self.log.append(SESSION, [classified()], revision=1)
+        finally:
+            events.os.replace = original
+
+        # Restart: the history is exactly what it was, and nothing of the
+        # interrupted commit is visible, even though its bytes reached disk.
+        self.assertEqual(self.path().read_bytes(), before)
+        restarted = events.JsonlEventLog(self.root)
+        self.assertEqual(len(restarted.read(SESSION)), 2)
+        self.assertEqual(restarted.session_ids(), [SESSION])
+        # The same commit, retried after the restart, lands once and whole.
+        restarted.append(SESSION, [classified()], revision=1)
+        self.assertEqual([e["sequence"] for e in restarted.read(SESSION)], [1, 2, 3])
+
+    def test_an_interrupted_creation_commit_leaves_no_session(self) -> None:
+        """The creation commit carries its revision first, so only a whole-file swap protects it."""
+        original = events.os.replace
+        events.os.replace = lambda *_a, **_k: (_ for _ in ()).throw(OSError("interrupted"))
+        try:
+            with self.assertRaises(ports.EventLogRefused):
+                self.log.append(SESSION, [created(), added()], revision=0)
+        finally:
+            events.os.replace = original
+        self.assertEqual(self.log.read(SESSION), [])
+        self.assertEqual(self.log.session_ids(), [])
+
+    def test_a_refused_commit_writes_nothing(self) -> None:
+        self.log.append(SESSION, [created(), added()], revision=0)
+        before = self.path().read_bytes()
+        with self.assertRaises(ports.EventLogRefused):
+            self.log.append(SESSION, [classified()], revision=5)
+        self.assertEqual(self.path().read_bytes(), before)
+
+
 class TheStoreStaysBelowOrchestration(unittest.TestCase):
     """ADR-0015: persistence may import orchestration.ports and nothing else of orchestration."""
 
