@@ -1,0 +1,2331 @@
+{
+  "schema_version": "2.0.0",
+  "id": "sess_espresso_taste_001",
+  "workspace_id": "ws_corpus",
+  "title": "Espresso taste complaint",
+  "status": "active",
+  "phase": "causal",
+  "revision": 9,
+  "active_frame_id": "frame_espresso_repeatability",
+  "statements": [
+    {
+      "id": "stmt_espresso_001",
+      "text": "My espresso is not like an Italian espresso.",
+      "primary_role": "observation",
+      "status": "proposed",
+      "provenance": {
+        "kind": "observed",
+        "source_ids": [
+          "intake_espresso_t0001"
+        ],
+        "note": "Complaint as it arrived."
+      }
+    },
+    {
+      "id": "stmt_espresso_002",
+      "text": "There is one Italian espresso specification to compare against.",
+      "primary_role": "assumption",
+      "status": "proposed",
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [
+          "stmt_espresso_001"
+        ],
+        "note": "Hidden reference carried by the intake wording."
+      }
+    },
+    {
+      "id": "stmt_espresso_003",
+      "text": "Shots taste sour on some occasions, bitter and harsh on others, and flat with no crema.",
+      "primary_role": "observation",
+      "status": "proposed",
+      "provenance": {
+        "kind": "observed",
+        "source_ids": [],
+        "note": "What IS."
+      }
+    },
+    {
+      "id": "stmt_espresso_004",
+      "text": "Which taste appears varies randomly from shot to shot.",
+      "primary_role": "observation",
+      "status": "proposed",
+      "provenance": {
+        "kind": "observed",
+        "source_ids": [],
+        "note": "Extent IS."
+      }
+    },
+    {
+      "id": "stmt_espresso_005",
+      "text": "Sourness and bitterness occur in different shots, never in the same sip.",
+      "primary_role": "observation",
+      "status": "proposed",
+      "provenance": {
+        "kind": "observed",
+        "source_ids": [],
+        "note": "What IS NOT: no mixed sour-and-bitter cup."
+      }
+    },
+    {
+      "id": "stmt_espresso_006",
+      "text": "The same coffee also tasted bad when brewed at a bar.",
+      "primary_role": "observation",
+      "status": "superseded",
+      "provenance": {
+        "kind": "observed",
+        "source_ids": [],
+        "note": "First answer; contradicted by stmt_espresso_007 and kept, never deleted."
+      }
+    },
+    {
+      "id": "stmt_espresso_007",
+      "text": "The same pre-ground bag, brewed by a barista at a bar, tasted fine.",
+      "primary_role": "observation",
+      "status": "proposed",
+      "provenance": {
+        "kind": "observed",
+        "source_ids": [],
+        "note": "Where IS NOT, after the contradiction was resolved with the person."
+      }
+    },
+    {
+      "id": "stmt_espresso_008",
+      "text": "The coffee is supermarket pre-ground and carries no roast date.",
+      "primary_role": "observation",
+      "status": "proposed",
+      "provenance": {
+        "kind": "observed",
+        "source_ids": [],
+        "note": "When: needs more data; age cannot be established."
+      }
+    },
+    {
+      "id": "stmt_espresso_009",
+      "text": "The home machine is a compact thermoblock pump machine used with a pressurized single-hole basket.",
+      "primary_role": "observation",
+      "status": "proposed",
+      "provenance": {
+        "kind": "observed",
+        "source_ids": []
+      }
+    },
+    {
+      "id": "stmt_espresso_010",
+      "text": "The machine has not been descaled for a long time, possibly never.",
+      "primary_role": "observation",
+      "status": "proposed",
+      "provenance": {
+        "kind": "observed",
+        "source_ids": [],
+        "note": "Change near the deviation."
+      }
+    },
+    {
+      "id": "stmt_espresso_011",
+      "text": "What are the shot time, the quantity in the cup and their spread over several shots?",
+      "primary_role": "question",
+      "status": "proposed",
+      "provenance": {
+        "kind": "observed",
+        "source_ids": [],
+        "note": "Extent: needs more data."
+      }
+    },
+    {
+      "id": "stmt_espresso_012",
+      "text": "The drinker consistently enjoys the cup, judged against a reference they declare.",
+      "primary_role": "outcome",
+      "status": "proposed",
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [
+          "stmt_espresso_001"
+        ]
+      }
+    }
+  ],
+  "ladder": [
+    {
+      "id": "rung_espresso_component",
+      "abstraction_level": "component",
+      "outcome": "The machine brews within its own specification.",
+      "scope": "Pump, thermoblock, basket and portafilter.",
+      "system_boundary": "component",
+      "success_measures": [
+        "brew temperature stability",
+        "flow through the basket"
+      ],
+      "assumptions": [
+        "the coffee is fit for espresso"
+      ],
+      "loss": "Coffee, water, routine and the drinker's reference are out of view.",
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [
+          "stmt_espresso_001"
+        ]
+      }
+    },
+    {
+      "id": "rung_espresso_subsystem",
+      "abstraction_level": "subsystem",
+      "outcome": "Extraction is repeatable from shot to shot.",
+      "scope": "Coffee bed, water path, pressure and temperature during one shot.",
+      "system_boundary": "subsystem",
+      "success_measures": [
+        "spread of shot time",
+        "spread of cup quantity",
+        "crema present and persistent"
+      ],
+      "assumptions": [
+        "the reference cup is taken as given"
+      ],
+      "loss": "Purchasing, maintenance and the experienced cup are treated as fixed inputs.",
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [
+          "stmt_espresso_001"
+        ]
+      }
+    },
+    {
+      "id": "rung_espresso_system",
+      "abstraction_level": "system",
+      "outcome": "The home routine, from buying coffee to descaling, delivers the reference cup.",
+      "scope": "Purchase, storage, preparation, brewing, water and maintenance at home.",
+      "system_boundary": "operations",
+      "success_measures": [
+        "share of shots judged acceptable",
+        "maintenance interval kept"
+      ],
+      "assumptions": [
+        "the drinker can change the routine"
+      ],
+      "loss": "Single-shot physics becomes one lever among several; measures become slower to observe.",
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [
+          "stmt_espresso_001"
+        ]
+      }
+    },
+    {
+      "id": "rung_espresso_product",
+      "abstraction_level": "product",
+      "outcome": "The drinker consistently enjoys the cup against a declared reference.",
+      "scope": "The cup as experienced: taste, crema, temperature, context and expectation.",
+      "system_boundary": "product",
+      "success_measures": [
+        "drinker rating against the declared reference"
+      ],
+      "assumptions": [
+        "the reference can be declared"
+      ],
+      "loss": "Measures become partly sensory and the causes are far from the measure.",
+      "provenance": {
+        "kind": "inferred",
+        "source_ids": [
+          "stmt_espresso_001",
+          "stmt_espresso_012"
+        ]
+      }
+    }
+  ],
+  "frames": [
+    {
+      "id": "frame_espresso_reference",
+      "question": "Which espresso reference is the drinker comparing against, and by how much does the cup deviate from it?",
+      "outcome": "A declared reference and a measured deviation from it.",
+      "abstraction_level": "product",
+      "system_boundary": "product",
+      "included": [
+        "reference parameter set",
+        "sensory description"
+      ],
+      "excluded": [
+        "machine internals"
+      ],
+      "success_measures": [
+        "deviation per measure against the reference"
+      ],
+      "constraints": [
+        "home budget"
+      ],
+      "assumptions": [
+        "one reference can be chosen"
+      ],
+      "open_questions": [
+        "INEI or Comitato parameters, or the drinker's own bar?"
+      ],
+      "status": "proposed",
+      "digest": "sha256:fb899521fc462862460a1069cb86eded416ee3f89d53fb537b22d49116b0d467"
+    },
+    {
+      "id": "frame_espresso_supply",
+      "question": "Is the coffee as bought fit for espresso?",
+      "outcome": "Coffee whose age and grind suit espresso.",
+      "abstraction_level": "system",
+      "system_boundary": "supply_chain",
+      "included": [
+        "bean origin and roast",
+        "age and packaging",
+        "pre-ground versus whole bean"
+      ],
+      "excluded": [
+        "machine",
+        "water"
+      ],
+      "success_measures": [
+        "crema present with fresh coffee"
+      ],
+      "constraints": [
+        "supermarket purchase"
+      ],
+      "assumptions": [
+        "the bar result implicates the coffee"
+      ],
+      "open_questions": [
+        "Rejected after stmt_espresso_007: the same bag brewed fine at a bar."
+      ],
+      "status": "rejected",
+      "digest": "sha256:49ffa7b94c64424a749218b02a1aeda640bc11e12cd46dc9b4ffc5022141d989"
+    },
+    {
+      "id": "frame_espresso_repeatability",
+      "question": "Why does extraction on the home machine vary from shot to shot?",
+      "outcome": "Repeatable extraction on the home machine.",
+      "abstraction_level": "subsystem",
+      "system_boundary": "subsystem",
+      "included": [
+        "temperature",
+        "pressure and flow",
+        "basket",
+        "scale in the water path",
+        "dose and tamp"
+      ],
+      "excluded": [
+        "coffee purchase",
+        "drinker reference"
+      ],
+      "success_measures": [
+        "spread of shot time",
+        "spread of cup quantity",
+        "crema present"
+      ],
+      "constraints": [
+        "no new machine"
+      ],
+      "assumptions": [
+        "the coffee can brew a good shot, per stmt_espresso_007"
+      ],
+      "open_questions": [
+        "Shot time and quantity spread are not yet measured (stmt_espresso_011)."
+      ],
+      "status": "working",
+      "digest": "sha256:656e7c84541d5d2284e36b744188a8bee099f8fe78c652153df1a31dd33e1c19"
+    },
+    {
+      "id": "frame_espresso_routine",
+      "question": "Does the home routine, including water and maintenance, keep the machine inside its operating range?",
+      "outcome": "A routine that keeps the machine in range.",
+      "abstraction_level": "system",
+      "system_boundary": "operations",
+      "included": [
+        "descaling interval",
+        "water hardness",
+        "warm-up",
+        "coffee storage"
+      ],
+      "excluded": [
+        "machine replacement"
+      ],
+      "success_measures": [
+        "maintenance interval kept",
+        "share of acceptable shots"
+      ],
+      "constraints": [
+        "home water supply"
+      ],
+      "assumptions": [
+        "maintenance is under the drinker's control"
+      ],
+      "open_questions": [],
+      "status": "proposed",
+      "digest": "sha256:39153f88c2892f1669cc7da07f75cf2b83a08bca07a2dbd9622699a110005ebc"
+    }
+  ],
+  "graph": {
+    "schema_version": "1.0.0",
+    "nodes": [
+      {
+        "id": "node_outcome_enjoyed_cup",
+        "type": "outcome",
+        "label": "Consistently enjoyed cup against a declared reference",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "stmt_espresso_012"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#perception"
+          ],
+          "layer": "analysed",
+          "branch": "outcome"
+        }
+      },
+      {
+        "id": "node_knot_sour",
+        "type": "observation",
+        "label": "Some shots sour",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "stmt_espresso_003"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#taste"
+          ],
+          "layer": "analysed",
+          "branch": "symptom"
+        }
+      },
+      {
+        "id": "node_knot_bitter",
+        "type": "observation",
+        "label": "Some shots bitter and harsh",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "stmt_espresso_003"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#taste"
+          ],
+          "layer": "analysed",
+          "branch": "symptom"
+        }
+      },
+      {
+        "id": "node_knot_no_crema",
+        "type": "observation",
+        "label": "Flat cup with no crema",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "stmt_espresso_003"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#crema"
+          ],
+          "layer": "analysed",
+          "branch": "symptom"
+        }
+      },
+      {
+        "id": "node_knot_random",
+        "type": "observation",
+        "label": "Taste varies randomly shot to shot",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "stmt_espresso_004",
+            "stmt_espresso_005"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#consistency"
+          ],
+          "layer": "analysed",
+          "branch": "symptom"
+        }
+      },
+      {
+        "id": "node_obs_bar_bad",
+        "type": "observation",
+        "label": "Same coffee bad at the bar",
+        "status": "superseded",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "stmt_espresso_006"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#where"
+          ],
+          "layer": "analysed",
+          "branch": "symptom"
+        }
+      },
+      {
+        "id": "node_obs_bar_ok",
+        "type": "observation",
+        "label": "Same pre-ground bag fine at the bar",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "stmt_espresso_007"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#where"
+          ],
+          "layer": "analysed",
+          "branch": "symptom"
+        }
+      },
+      {
+        "id": "node_obs_pressurized",
+        "type": "observation",
+        "label": "Pressurized single-hole basket in use",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "stmt_espresso_009"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#basket",
+            "#pressure"
+          ],
+          "layer": "analysed",
+          "branch": "machine"
+        }
+      },
+      {
+        "id": "node_obs_not_descaled",
+        "type": "observation",
+        "label": "Machine not descaled for a long time",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "stmt_espresso_010"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#scale",
+            "#water"
+          ],
+          "layer": "analysed",
+          "branch": "maintenance"
+        }
+      },
+      {
+        "id": "node_obs_preground",
+        "type": "observation",
+        "label": "Supermarket pre-ground, no roast date",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "stmt_espresso_008"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#freshness",
+            "#grind"
+          ],
+          "layer": "analysed",
+          "branch": "coffee"
+        }
+      },
+      {
+        "id": "node_factor_grind",
+        "type": "factor",
+        "label": "Grind size and spread",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "stmt_espresso_008"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#grind"
+          ],
+          "layer": "analysed",
+          "branch": "coffee"
+        }
+      },
+      {
+        "id": "node_factor_freshness",
+        "type": "factor",
+        "label": "Coffee age since roast and grinding",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "stmt_espresso_008"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#freshness"
+          ],
+          "layer": "analysed",
+          "branch": "coffee"
+        }
+      },
+      {
+        "id": "node_factor_temperature",
+        "type": "factor",
+        "label": "Brew water temperature",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "stmt_espresso_009"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#temperature"
+          ],
+          "layer": "analysed",
+          "branch": "machine"
+        }
+      },
+      {
+        "id": "node_factor_pressure_flow",
+        "type": "factor",
+        "label": "Pump pressure and flow",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "stmt_espresso_009"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#pressure",
+            "#flow"
+          ],
+          "layer": "analysed",
+          "branch": "machine"
+        }
+      },
+      {
+        "id": "node_factor_basket",
+        "type": "factor",
+        "label": "Basket type",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "stmt_espresso_009"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#basket"
+          ],
+          "layer": "analysed",
+          "branch": "machine"
+        }
+      },
+      {
+        "id": "node_factor_dose_tamp",
+        "type": "factor",
+        "label": "Dose, distribution and tamp",
+        "status": "proposed",
+        "confidence": "low",
+        "provenance": {
+          "kind": "assumed",
+          "source_ids": [
+            "stmt_espresso_001"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#puck"
+          ],
+          "layer": "analysed",
+          "branch": "preparation"
+        }
+      },
+      {
+        "id": "node_factor_water",
+        "type": "factor",
+        "label": "Water hardness and alkalinity",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_sca_water"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#water"
+          ],
+          "layer": "analysed",
+          "branch": "water"
+        }
+      },
+      {
+        "id": "node_factor_scale",
+        "type": "factor",
+        "label": "Limescale in the water path",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "stmt_espresso_010"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#scale",
+            "#water",
+            "#temperature",
+            "#flow"
+          ],
+          "layer": "analysed",
+          "branch": "maintenance"
+        }
+      },
+      {
+        "id": "node_assumption_reference",
+        "type": "assumption",
+        "label": "One Italian espresso specification exists",
+        "status": "proposed",
+        "confidence": "low",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "stmt_espresso_002",
+            "art_cic_disciplinare_2018",
+            "art_inei_parameters"
+          ]
+        },
+        "description": "Published Italian parameter sets differ (for example 88 versus 90-96 degrees C), so the reference must be declared.",
+        "extensions": {
+          "tags": [
+            "#reference"
+          ],
+          "layer": "analysed",
+          "branch": "perception"
+        }
+      },
+      {
+        "id": "node_mech_load_line",
+        "type": "mechanism",
+        "label": "Operating point of pump against coffee-bed resistance",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_factor_grind",
+            "node_factor_pressure_flow"
+          ]
+        },
+        "description": "Flow is set where the pump's pressure-flow curve meets the bed's resistance; the same grind lands elsewhere on another machine.",
+        "extensions": {
+          "tags": [
+            "#grind",
+            "#pressure",
+            "#flow"
+          ],
+          "layer": "analysed",
+          "branch": "cross-link"
+        }
+      },
+      {
+        "id": "node_mech_pressurized_foam",
+        "type": "mechanism",
+        "label": "Pressurized basket forms foam whatever the grind",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_pressurized_basket"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#basket",
+            "#crema"
+          ],
+          "layer": "analysed",
+          "branch": "cross-link"
+        }
+      },
+      {
+        "id": "node_mech_co2_crema",
+        "type": "mechanism",
+        "label": "Dissolved CO2 and oils form crema; CO2 declines with age",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_crema_co2"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#freshness",
+            "#crema"
+          ],
+          "layer": "analysed",
+          "branch": "cross-link"
+        }
+      },
+      {
+        "id": "node_mech_scale_insulation",
+        "type": "mechanism",
+        "label": "Scale insulates the heater and narrows the water path",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_scale_thermoblock"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#scale",
+            "#temperature",
+            "#flow"
+          ],
+          "layer": "analysed",
+          "branch": "cross-link"
+        }
+      },
+      {
+        "id": "node_mech_thermoblock_mass",
+        "type": "mechanism",
+        "label": "Low thermal mass gives poorer shot-to-shot temperature stability",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_thermoblock_glossary"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#temperature"
+          ],
+          "layer": "analysed",
+          "branch": "cross-link"
+        }
+      },
+      {
+        "id": "node_mech_channeling",
+        "type": "mechanism",
+        "label": "Uneven flow over- and under-extracts parts of one bed",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_cameron_2020",
+            "art_channeling_signature"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#puck",
+            "#grind"
+          ],
+          "layer": "analysed",
+          "branch": "cross-link"
+        }
+      },
+      {
+        "id": "node_hyp_scale",
+        "type": "hypothesis",
+        "label": "H6: scale makes temperature and flow erratic",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "stmt_espresso_010",
+            "stmt_espresso_007"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#scale"
+          ],
+          "layer": "analysed",
+          "branch": "maintenance"
+        }
+      },
+      {
+        "id": "node_hyp_temp_drift",
+        "type": "hypothesis",
+        "label": "H4a: thermoblock temperature drifts between shots",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "stmt_espresso_009",
+            "stmt_espresso_005"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#temperature"
+          ],
+          "layer": "analysed",
+          "branch": "machine"
+        }
+      },
+      {
+        "id": "node_hyp_interaction",
+        "type": "hypothesis",
+        "label": "Coffee and machine interact: pre-ground works on the bar machine only",
+        "status": "proposed",
+        "confidence": "low",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "stmt_espresso_007",
+            "stmt_espresso_008"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#grind",
+            "#pressure"
+          ],
+          "layer": "analysed",
+          "branch": "cross-link"
+        }
+      },
+      {
+        "id": "node_hyp_channeling",
+        "type": "hypothesis",
+        "label": "H2: channeling in the coffee bed",
+        "status": "proposed",
+        "confidence": "low",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "stmt_espresso_005",
+            "stmt_espresso_009"
+          ]
+        },
+        "description": "Demoted: sour and bitter never share a sip, and a pressurized basket resists channeling.",
+        "extensions": {
+          "tags": [
+            "#puck"
+          ],
+          "layer": "analysed",
+          "branch": "preparation"
+        }
+      },
+      {
+        "id": "node_hyp_stale_preground",
+        "type": "hypothesis",
+        "label": "H1': stale pre-ground coffee is the sole cause",
+        "status": "proposed",
+        "confidence": "low",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "stmt_espresso_008",
+            "stmt_espresso_007"
+          ]
+        },
+        "description": "Cannot explain why the same bag brewed fine at the bar.",
+        "extensions": {
+          "tags": [
+            "#freshness"
+          ],
+          "layer": "analysed",
+          "branch": "coffee"
+        }
+      },
+      {
+        "id": "node_hyp_brand",
+        "type": "hypothesis",
+        "label": "H1: the coffee brand or bean quality",
+        "status": "rejected",
+        "confidence": "low",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "stmt_espresso_006"
+          ]
+        },
+        "description": "Raised on the superseded bar answer; rejected once the same bag brewed fine.",
+        "extensions": {
+          "tags": [
+            "#bean"
+          ],
+          "layer": "analysed",
+          "branch": "coffee"
+        }
+      },
+      {
+        "id": "node_ev_pressurized_basket",
+        "type": "evidence",
+        "label": "Pressurized baskets add back-pressure and prevent channeling",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_pressurized_basket"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#basket"
+          ],
+          "layer": "analysed",
+          "branch": "evidence"
+        }
+      },
+      {
+        "id": "node_ev_channeling_signature",
+        "type": "evidence",
+        "label": "Sour and bitter in one sip is the channeling signature",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_channeling_signature"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#puck"
+          ],
+          "layer": "analysed",
+          "branch": "evidence"
+        }
+      },
+      {
+        "id": "node_ev_scale_effects",
+        "type": "evidence",
+        "label": "Scale lowers brew temperature, reduces flow and affects pressure",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_scale_thermoblock"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#scale"
+          ],
+          "layer": "analysed",
+          "branch": "evidence"
+        }
+      },
+      {
+        "id": "node_ev_fine_grind_variance",
+        "type": "evidence",
+        "label": "Very fine grinds give inhomogeneous flow and poor reproducibility",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_cameron_2020"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#grind"
+          ],
+          "layer": "analysed",
+          "branch": "evidence"
+        }
+      },
+      {
+        "id": "node_int_descale_ab",
+        "type": "intervention",
+        "label": "Log shots, descale, log shots again",
+        "status": "draft",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_hyp_scale"
+          ]
+        },
+        "description": "Separates H6 from H4a: a stable post-descale spread with crema supports H6.",
+        "extensions": {
+          "tags": [
+            "#scale"
+          ],
+          "layer": "expansion",
+          "branch": "evidence-plan"
+        }
+      },
+      {
+        "id": "node_int_measure_spread",
+        "type": "intervention",
+        "label": "Weigh cup quantity and time five shots",
+        "status": "draft",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "stmt_espresso_011"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#consistency"
+          ],
+          "layer": "expansion",
+          "branch": "evidence-plan"
+        }
+      },
+      {
+        "id": "node_int_check_basket_hole",
+        "type": "intervention",
+        "label": "Inspect the basket exit hole for blockage",
+        "status": "draft",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_mech_pressurized_foam"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#basket"
+          ],
+          "layer": "expansion",
+          "branch": "evidence-plan"
+        }
+      },
+      {
+        "id": "node_int_warmup",
+        "type": "intervention",
+        "label": "Run a blank shot and preheat the cup before brewing",
+        "status": "draft",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_hyp_temp_drift"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#temperature"
+          ],
+          "layer": "expansion",
+          "branch": "evidence-plan"
+        }
+      },
+      {
+        "id": "node_risk_unrecoverable",
+        "type": "risk",
+        "label": "Scale in a thermoblock may not be fully removable",
+        "status": "draft",
+        "confidence": "low",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_thermoblock_glossary"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#scale"
+          ],
+          "layer": "expansion",
+          "branch": "maintenance"
+        }
+      },
+      {
+        "id": "node_factor_cup_temperature",
+        "type": "factor",
+        "label": "Cup temperature and time before drinking",
+        "status": "draft",
+        "confidence": "unknown",
+        "provenance": {
+          "kind": "assumed",
+          "source_ids": [
+            "stmt_espresso_012"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#perception"
+          ],
+          "layer": "expansion",
+          "branch": "perception"
+        }
+      },
+      {
+        "id": "node_factor_context",
+        "type": "factor",
+        "label": "Setting and atmosphere where the cup is drunk",
+        "status": "draft",
+        "confidence": "unknown",
+        "provenance": {
+          "kind": "assumed",
+          "source_ids": [
+            "stmt_espresso_012"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#perception"
+          ],
+          "layer": "expansion",
+          "branch": "perception"
+        }
+      },
+      {
+        "id": "node_hyp_reference_mismatch",
+        "type": "hypothesis",
+        "label": "The remembered reference differs from any home-achievable cup",
+        "status": "draft",
+        "confidence": "unknown",
+        "provenance": {
+          "kind": "assumed",
+          "source_ids": [
+            "stmt_espresso_002"
+          ]
+        },
+        "extensions": {
+          "tags": [
+            "#reference",
+            "#perception"
+          ],
+          "layer": "expansion",
+          "branch": "perception"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "edge_001_worsens",
+        "source": "node_knot_sour",
+        "target": "node_outcome_enjoyed_cup",
+        "type": "worsens",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "stmt_espresso_003"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_002_worsens",
+        "source": "node_knot_bitter",
+        "target": "node_outcome_enjoyed_cup",
+        "type": "worsens",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "stmt_espresso_003"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_003_worsens",
+        "source": "node_knot_no_crema",
+        "target": "node_outcome_enjoyed_cup",
+        "type": "worsens",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "stmt_espresso_003"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_004_worsens",
+        "source": "node_knot_random",
+        "target": "node_outcome_enjoyed_cup",
+        "type": "worsens",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "stmt_espresso_003"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_005_constrains",
+        "source": "node_assumption_reference",
+        "target": "node_outcome_enjoyed_cup",
+        "type": "constrains",
+        "status": "proposed",
+        "confidence": "low",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_assumption_reference"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_006_contradicts",
+        "source": "node_obs_bar_ok",
+        "target": "node_obs_bar_bad",
+        "type": "contradicts",
+        "status": "proposed",
+        "confidence": "high",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "stmt_espresso_007"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_007_contradicts",
+        "source": "node_obs_bar_ok",
+        "target": "node_hyp_brand",
+        "type": "contradicts",
+        "status": "proposed",
+        "confidence": "high",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "stmt_espresso_007"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_008_contradicts",
+        "source": "node_obs_bar_ok",
+        "target": "node_hyp_stale_preground",
+        "type": "contradicts",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "stmt_espresso_007"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_009_supports",
+        "source": "node_obs_bar_ok",
+        "target": "node_hyp_interaction",
+        "type": "supports",
+        "status": "proposed",
+        "confidence": "low",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "stmt_espresso_007"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_010_derived_from",
+        "source": "node_obs_preground",
+        "target": "node_factor_freshness",
+        "type": "derived_from",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "stmt_espresso_008"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_011_derived_from",
+        "source": "node_obs_preground",
+        "target": "node_factor_grind",
+        "type": "derived_from",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "stmt_espresso_008"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_012_derived_from",
+        "source": "node_obs_not_descaled",
+        "target": "node_factor_scale",
+        "type": "derived_from",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "stmt_espresso_010"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_013_derived_from",
+        "source": "node_obs_pressurized",
+        "target": "node_factor_basket",
+        "type": "derived_from",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "stmt_espresso_009"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_014_contributes_to",
+        "source": "node_factor_grind",
+        "target": "node_mech_load_line",
+        "type": "contributes_to",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_factor_grind"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_015_contributes_to",
+        "source": "node_factor_pressure_flow",
+        "target": "node_mech_load_line",
+        "type": "contributes_to",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_factor_pressure_flow"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_016_constrains",
+        "source": "node_factor_basket",
+        "target": "node_mech_load_line",
+        "type": "constrains",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_factor_basket"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_017_enables",
+        "source": "node_factor_basket",
+        "target": "node_mech_pressurized_foam",
+        "type": "enables",
+        "status": "proposed",
+        "confidence": "high",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_pressurized_basket"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_018_contributes_to",
+        "source": "node_factor_freshness",
+        "target": "node_mech_co2_crema",
+        "type": "contributes_to",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_crema_co2"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_019_contributes_to",
+        "source": "node_factor_water",
+        "target": "node_factor_scale",
+        "type": "contributes_to",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_sca_water"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_020_enables",
+        "source": "node_factor_scale",
+        "target": "node_mech_scale_insulation",
+        "type": "enables",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_scale_thermoblock"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_021_worsens",
+        "source": "node_mech_scale_insulation",
+        "target": "node_factor_temperature",
+        "type": "worsens",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_scale_thermoblock"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_022_worsens",
+        "source": "node_mech_scale_insulation",
+        "target": "node_factor_pressure_flow",
+        "type": "worsens",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_scale_thermoblock"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_023_worsens",
+        "source": "node_mech_thermoblock_mass",
+        "target": "node_factor_temperature",
+        "type": "worsens",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_thermoblock_glossary"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_024_contributes_to",
+        "source": "node_factor_dose_tamp",
+        "target": "node_mech_channeling",
+        "type": "contributes_to",
+        "status": "proposed",
+        "confidence": "low",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_factor_dose_tamp"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_025_contributes_to",
+        "source": "node_factor_grind",
+        "target": "node_mech_channeling",
+        "type": "contributes_to",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_cameron_2020"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_026_mitigates",
+        "source": "node_mech_pressurized_foam",
+        "target": "node_mech_channeling",
+        "type": "mitigates",
+        "status": "proposed",
+        "confidence": "high",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_pressurized_basket"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_027_contributes_to",
+        "source": "node_hyp_scale",
+        "target": "node_knot_random",
+        "type": "contributes_to",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_hyp_scale"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_028_contributes_to",
+        "source": "node_hyp_scale",
+        "target": "node_knot_no_crema",
+        "type": "contributes_to",
+        "status": "proposed",
+        "confidence": "low",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_hyp_scale"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_029_contributes_to",
+        "source": "node_hyp_temp_drift",
+        "target": "node_knot_sour",
+        "type": "contributes_to",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_hyp_temp_drift"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_030_contributes_to",
+        "source": "node_hyp_temp_drift",
+        "target": "node_knot_bitter",
+        "type": "contributes_to",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_hyp_temp_drift"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_031_contributes_to",
+        "source": "node_hyp_temp_drift",
+        "target": "node_knot_random",
+        "type": "contributes_to",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_hyp_temp_drift"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_032_contributes_to",
+        "source": "node_hyp_channeling",
+        "target": "node_knot_random",
+        "type": "contributes_to",
+        "status": "proposed",
+        "confidence": "low",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_hyp_channeling"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_033_contributes_to",
+        "source": "node_hyp_stale_preground",
+        "target": "node_knot_no_crema",
+        "type": "contributes_to",
+        "status": "proposed",
+        "confidence": "low",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_hyp_stale_preground"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_034_contributes_to",
+        "source": "node_hyp_interaction",
+        "target": "node_knot_random",
+        "type": "contributes_to",
+        "status": "proposed",
+        "confidence": "low",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_hyp_interaction"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_035_supports",
+        "source": "node_mech_scale_insulation",
+        "target": "node_hyp_scale",
+        "type": "supports",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_scale_thermoblock"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_036_supports",
+        "source": "node_mech_thermoblock_mass",
+        "target": "node_hyp_temp_drift",
+        "type": "supports",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_thermoblock_glossary"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_037_supports",
+        "source": "node_mech_load_line",
+        "target": "node_hyp_interaction",
+        "type": "supports",
+        "status": "proposed",
+        "confidence": "low",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_mech_load_line"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_038_supports",
+        "source": "node_mech_co2_crema",
+        "target": "node_hyp_stale_preground",
+        "type": "supports",
+        "status": "proposed",
+        "confidence": "low",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_crema_co2"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_039_contradicts",
+        "source": "node_ev_pressurized_basket",
+        "target": "node_hyp_channeling",
+        "type": "contradicts",
+        "status": "proposed",
+        "confidence": "high",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_pressurized_basket"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_040_contradicts",
+        "source": "node_ev_channeling_signature",
+        "target": "node_hyp_channeling",
+        "type": "contradicts",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_channeling_signature",
+            "stmt_espresso_005"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_041_supports",
+        "source": "node_ev_scale_effects",
+        "target": "node_hyp_scale",
+        "type": "supports",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_scale_thermoblock"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_042_supports",
+        "source": "node_ev_fine_grind_variance",
+        "target": "node_mech_channeling",
+        "type": "supports",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "art_cameron_2020"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_043_contradicts",
+        "source": "node_obs_pressurized",
+        "target": "node_knot_no_crema",
+        "type": "contradicts",
+        "status": "proposed",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "sourced",
+          "source_ids": [
+            "stmt_espresso_009",
+            "art_pressurized_basket"
+          ]
+        },
+        "extensions": {
+          "layer": "analysed"
+        }
+      },
+      {
+        "id": "edge_044_tests",
+        "source": "node_int_descale_ab",
+        "target": "node_hyp_scale",
+        "type": "tests",
+        "status": "draft",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_int_descale_ab"
+          ]
+        },
+        "extensions": {
+          "layer": "expansion"
+        }
+      },
+      {
+        "id": "edge_045_tests",
+        "source": "node_int_descale_ab",
+        "target": "node_hyp_temp_drift",
+        "type": "tests",
+        "status": "draft",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_int_descale_ab"
+          ]
+        },
+        "extensions": {
+          "layer": "expansion"
+        }
+      },
+      {
+        "id": "edge_046_tests",
+        "source": "node_int_measure_spread",
+        "target": "node_knot_random",
+        "type": "tests",
+        "status": "draft",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_int_measure_spread"
+          ]
+        },
+        "extensions": {
+          "layer": "expansion"
+        }
+      },
+      {
+        "id": "edge_047_tests",
+        "source": "node_int_check_basket_hole",
+        "target": "node_mech_pressurized_foam",
+        "type": "tests",
+        "status": "draft",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_int_check_basket_hole"
+          ]
+        },
+        "extensions": {
+          "layer": "expansion"
+        }
+      },
+      {
+        "id": "edge_048_tests",
+        "source": "node_int_warmup",
+        "target": "node_hyp_temp_drift",
+        "type": "tests",
+        "status": "draft",
+        "confidence": "medium",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_int_warmup"
+          ]
+        },
+        "extensions": {
+          "layer": "expansion"
+        }
+      },
+      {
+        "id": "edge_049_constrains",
+        "source": "node_risk_unrecoverable",
+        "target": "node_int_descale_ab",
+        "type": "constrains",
+        "status": "draft",
+        "confidence": "low",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_risk_unrecoverable"
+          ]
+        },
+        "extensions": {
+          "layer": "expansion"
+        }
+      },
+      {
+        "id": "edge_050_contributes_to",
+        "source": "node_factor_cup_temperature",
+        "target": "node_outcome_enjoyed_cup",
+        "type": "contributes_to",
+        "status": "draft",
+        "confidence": "unknown",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_factor_cup_temperature"
+          ]
+        },
+        "extensions": {
+          "layer": "expansion"
+        }
+      },
+      {
+        "id": "edge_051_contributes_to",
+        "source": "node_factor_context",
+        "target": "node_outcome_enjoyed_cup",
+        "type": "contributes_to",
+        "status": "draft",
+        "confidence": "unknown",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_factor_context"
+          ]
+        },
+        "extensions": {
+          "layer": "expansion"
+        }
+      },
+      {
+        "id": "edge_052_derived_from",
+        "source": "node_hyp_reference_mismatch",
+        "target": "node_assumption_reference",
+        "type": "derived_from",
+        "status": "draft",
+        "confidence": "unknown",
+        "provenance": {
+          "kind": "inferred",
+          "source_ids": [
+            "node_hyp_reference_mismatch"
+          ]
+        },
+        "extensions": {
+          "layer": "expansion"
+        }
+      }
+    ]
+  },
+  "options": [],
+  "criteria": [],
+  "approvals": [
+    {
+      "id": "appr_espresso_frame",
+      "target_id": "frame_espresso_repeatability",
+      "target_digest": "sha256:656e7c84541d5d2284e36b744188a8bee099f8fe78c652153df1a31dd33e1c19",
+      "disposition": "approved",
+      "actor": {
+        "id": "human_corpus_author",
+        "kind": "human",
+        "role": "owner"
+      },
+      "session_revision": 8,
+      "rationale": "Same bag brewed fine at a bar, so the home extraction is where the deviation lives.",
+      "created_at": "2026-10-09T12:00:00Z"
+    }
+  ],
+  "extensions": {
+    "corpus": {
+      "exemplar": "espresso-taste-complaint",
+      "synthetic": true
+    },
+    "citations": {
+      "art_kt_pa_guide": "https://kepner-tregoe.com/app/uploads/2024/07/PA-Application-Guide_22July2024.pdf",
+      "art_cic_disciplinare_2018": "https://www.ilcaffeespressoitaliano.com/wp-content/uploads/Disciplinare-Caffè-Espresso-Italiano-Tradizionale-2018.pdf",
+      "art_inei_parameters": "https://www.philips.com.au/c-m-ho/coffee/coffee-101/faq/espresso.amp",
+      "art_cameron_2020": "https://doi.org/10.1016/j.matt.2019.12.019",
+      "art_sca_water": "https://coffeebi.com/2018/07/30/coffee-quality-how-much-counts-water/",
+      "art_crema_co2": "https://www.goodfood.com.au/drinks/clues-in-the-crema-what-can-it-tell-you-about-your-coffee-20131101-2wssc",
+      "art_channeling_signature": "https://www.seattlecoffeegear.com/blogs/learning-center/why-is-my-espresso-channeling",
+      "art_pressurized_basket": "https://tomsguide.com/home/coffee-makers/pressurized-coffee-baskets-how-do-they-work-and-when-should-you-use-them",
+      "art_scale_thermoblock": "https://outin.com/blogs/news/how-to-descale-espresso-machine",
+      "art_thermoblock_glossary": "https://know.coffeeparts.com.au/glossary/thermoblock"
+    },
+    "symptom_specification": {
+      "status": "provisional",
+      "note": "No canonical field holds a symptom specification yet; this extension is the worked example for the proposed issue. Each spec names one object and one deviation.",
+      "method_source_ids": [
+        "art_kt_pa_guide"
+      ],
+      "specifications": [
+        {
+          "id": "spec_espresso_d1",
+          "object": "shots from the home machine",
+          "deviation": "taste alternates between sour and bitter without a pattern",
+          "knot_node_id": "node_knot_random",
+          "reference": {
+            "measure": "shot time",
+            "expected": "20-27 s",
+            "source_ids": [
+              "art_cic_disciplinare_2018"
+            ]
+          },
+          "actual": {
+            "value": "unmeasured",
+            "source_ids": [
+              "stmt_espresso_011"
+            ]
+          },
+          "rows": [
+            {
+              "dimension": "what",
+              "is": [
+                "stmt_espresso_003",
+                "stmt_espresso_004"
+              ],
+              "is_not": [
+                "stmt_espresso_005"
+              ],
+              "distinction": "Shot-to-shot drift rather than uneven flow inside one shot."
+            },
+            {
+              "dimension": "where",
+              "is": [
+                "stmt_espresso_009"
+              ],
+              "is_not": [
+                "stmt_espresso_007"
+              ],
+              "distinction": "Same bag, different machine, water and operator."
+            },
+            {
+              "dimension": "when",
+              "is": [
+                "stmt_espresso_010"
+              ],
+              "is_not": [],
+              "distinction": "Needs more data: first versus later shots not yet compared.",
+              "needs_more_data": true
+            },
+            {
+              "dimension": "extent",
+              "is": [
+                "stmt_espresso_004"
+              ],
+              "is_not": [],
+              "distinction": "Needs more data: spread of shot time and cup quantity.",
+              "needs_more_data": true
+            }
+          ]
+        },
+        {
+          "id": "spec_espresso_d2",
+          "object": "shots from the home machine",
+          "deviation": "no crema although a pressurized basket is used",
+          "knot_node_id": "node_knot_no_crema",
+          "reference": {
+            "measure": "crema persistence",
+            "expected": "complete cover for at least 120 s",
+            "source_ids": [
+              "art_cic_disciplinare_2018"
+            ]
+          },
+          "actual": {
+            "value": "absent",
+            "source_ids": [
+              "stmt_espresso_003"
+            ]
+          },
+          "rows": [
+            {
+              "dimension": "what",
+              "is": [
+                "stmt_espresso_003"
+              ],
+              "is_not": [],
+              "distinction": "A pressurized basket forms foam whatever the grind, so missing crema points upstream of the coffee bed."
+            },
+            {
+              "dimension": "where",
+              "is": [
+                "stmt_espresso_009"
+              ],
+              "is_not": [
+                "stmt_espresso_007"
+              ],
+              "distinction": "The bar brewed the same bag with acceptable results."
+            },
+            {
+              "dimension": "when",
+              "is": [
+                "stmt_espresso_008",
+                "stmt_espresso_010"
+              ],
+              "is_not": [],
+              "distinction": "Coffee age unknown; descaling overdue.",
+              "needs_more_data": true
+            }
+          ]
+        }
+      ]
+    },
+    "views": {
+      "bowtie": {
+        "above": "ladder and frames",
+        "knots": [
+          "node_knot_sour",
+          "node_knot_bitter",
+          "node_knot_no_crema",
+          "node_knot_random"
+        ],
+        "below": "graph"
+      },
+      "layers": {
+        "analysed": "what the conversation established",
+        "expansion": "draft nodes proposed for further analysis"
+      },
+      "tags": [
+        "#grind",
+        "#freshness",
+        "#bean",
+        "#puck",
+        "#basket",
+        "#pressure",
+        "#flow",
+        "#temperature",
+        "#water",
+        "#scale",
+        "#crema",
+        "#taste",
+        "#consistency",
+        "#where",
+        "#reference",
+        "#perception"
+      ]
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "id": "stmt_espresso_001",
+  "text": "My espresso is not like an Italian espresso.",
+  "primary_role": "observation",
+  "status": "draft",
+  "provenance": {"kind": "observed", "source_ids": [], "note": "Synthetic complaint as it arrived."}
+}

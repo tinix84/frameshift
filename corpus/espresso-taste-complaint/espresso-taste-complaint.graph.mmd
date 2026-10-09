@@ -1,0 +1,137 @@
+%% Derived view of espresso-taste-complaint.session.json (ADR-0003). Edit the JSON, not this file.
+flowchart BT
+  subgraph ABOVE["Above the knot: ladder and frames"]
+    rung_espresso_component(["component / component: The machine brews within its own specification."])
+    rung_espresso_subsystem(["subsystem / subsystem: Extraction is repeatable from shot to shot."])
+    rung_espresso_system(["system / operations: The home routine, from buying coffee to descaling, delivers the reference cup."])
+    rung_espresso_product(["product / product: The drinker consistently enjoys the cup against a declared reference."])
+    rung_espresso_component -->|why| rung_espresso_subsystem
+    rung_espresso_subsystem -->|why| rung_espresso_system
+    rung_espresso_system -->|why| rung_espresso_product
+    frame_espresso_reference{{"proposed: Which espresso reference is the drinker comparing against, and by how much does the cup deviate from it?"}}
+    frame_espresso_supply{{"rejected: Is the coffee as bought fit for espresso?"}}
+    frame_espresso_repeatability{{"working: Why does extraction on the home machine vary from shot to shot?"}}
+    frame_espresso_routine{{"proposed: Does the home routine, including water and maintenance, keep the machine inside its operating range?"}}
+  end
+  subgraph outcome["outcome"]
+    outcome_enjoyed_cup["outcome: Consistently enjoyed cup against a declared reference"]
+  end
+  subgraph symptom["symptom"]
+    knot_sour["observation: Some shots sour"]
+    knot_bitter["observation: Some shots bitter and harsh"]
+    knot_no_crema["observation: Flat cup with no crema"]
+    knot_random["observation: Taste varies randomly shot to shot"]
+    obs_bar_bad["observation: Same coffee bad at the bar"]
+    obs_bar_ok["observation: Same pre-ground bag fine at the bar"]
+  end
+  subgraph machine["machine"]
+    obs_pressurized["observation: Pressurized single-hole basket in use"]
+    factor_temperature["factor: Brew water temperature"]
+    factor_pressure_flow["factor: Pump pressure and flow"]
+    factor_basket["factor: Basket type"]
+    hyp_temp_drift["hypothesis: H4a: thermoblock temperature drifts between shots"]
+  end
+  subgraph maintenance["maintenance"]
+    obs_not_descaled["observation: Machine not descaled for a long time"]
+    factor_scale["factor: Limescale in the water path"]
+    hyp_scale["hypothesis: H6: scale makes temperature and flow erratic"]
+    risk_unrecoverable["risk: Scale in a thermoblock may not be fully removable"]
+  end
+  subgraph coffee["coffee"]
+    obs_preground["observation: Supermarket pre-ground, no roast date"]
+    factor_grind["factor: Grind size and spread"]
+    factor_freshness["factor: Coffee age since roast and grinding"]
+    hyp_stale_preground["hypothesis: H1': stale pre-ground coffee is the sole cause"]
+    hyp_brand["hypothesis: H1: the coffee brand or bean quality"]
+  end
+  subgraph preparation["preparation"]
+    factor_dose_tamp["factor: Dose, distribution and tamp"]
+    hyp_channeling["hypothesis: H2: channeling in the coffee bed"]
+  end
+  subgraph water["water"]
+    factor_water["factor: Water hardness and alkalinity"]
+  end
+  subgraph perception["perception"]
+    assumption_reference["assumption: One Italian espresso specification exists"]
+    factor_cup_temperature["factor: Cup temperature and time before drinking"]
+    factor_context["factor: Setting and atmosphere where the cup is drunk"]
+    hyp_reference_mismatch["hypothesis: The remembered reference differs from any home-achievable cup"]
+  end
+  subgraph cross_link["cross-link"]
+    mech_load_line["mechanism: Operating point of pump against coffee-bed resistance"]
+    mech_pressurized_foam["mechanism: Pressurized basket forms foam whatever the grind"]
+    mech_co2_crema["mechanism: Dissolved CO2 and oils form crema; CO2 declines with age"]
+    mech_scale_insulation["mechanism: Scale insulates the heater and narrows the water path"]
+    mech_thermoblock_mass["mechanism: Low thermal mass gives poorer shot-to-shot temperature stability"]
+    mech_channeling["mechanism: Uneven flow over- and under-extracts parts of one bed"]
+    hyp_interaction["hypothesis: Coffee and machine interact: pre-ground works on the bar machine only"]
+  end
+  subgraph evidence["evidence"]
+    ev_pressurized_basket["evidence: Pressurized baskets add back-pressure and prevent channeling"]
+    ev_channeling_signature["evidence: Sour and bitter in one sip is the channeling signature"]
+    ev_scale_effects["evidence: Scale lowers brew temperature, reduces flow and affects pressure"]
+    ev_fine_grind_variance["evidence: Very fine grinds give inhomogeneous flow and poor reproducibility"]
+  end
+  subgraph evidence_plan["evidence-plan"]
+    int_descale_ab["intervention: Log shots, descale, log shots again"]
+    int_measure_spread["intervention: Weigh cup quantity and time five shots"]
+    int_check_basket_hole["intervention: Inspect the basket exit hole for blockage"]
+    int_warmup["intervention: Run a blank shot and preheat the cup before brewing"]
+  end
+  knot_sour -->|worsens| outcome_enjoyed_cup
+  knot_bitter -->|worsens| outcome_enjoyed_cup
+  knot_no_crema -->|worsens| outcome_enjoyed_cup
+  knot_random -->|worsens| outcome_enjoyed_cup
+  assumption_reference -->|constrains| outcome_enjoyed_cup
+  obs_bar_ok -->|contradicts| obs_bar_bad
+  obs_bar_ok -->|contradicts| hyp_brand
+  obs_bar_ok -->|contradicts| hyp_stale_preground
+  obs_bar_ok -->|supports| hyp_interaction
+  obs_preground -->|derived_from| factor_freshness
+  obs_preground -->|derived_from| factor_grind
+  obs_not_descaled -->|derived_from| factor_scale
+  obs_pressurized -->|derived_from| factor_basket
+  factor_grind -->|contributes_to| mech_load_line
+  factor_pressure_flow -->|contributes_to| mech_load_line
+  factor_basket -->|constrains| mech_load_line
+  factor_basket -->|enables| mech_pressurized_foam
+  factor_freshness -->|contributes_to| mech_co2_crema
+  factor_water -->|contributes_to| factor_scale
+  factor_scale -->|enables| mech_scale_insulation
+  mech_scale_insulation -->|worsens| factor_temperature
+  mech_scale_insulation -->|worsens| factor_pressure_flow
+  mech_thermoblock_mass -->|worsens| factor_temperature
+  factor_dose_tamp -->|contributes_to| mech_channeling
+  factor_grind -->|contributes_to| mech_channeling
+  mech_pressurized_foam -->|mitigates| mech_channeling
+  hyp_scale -->|contributes_to| knot_random
+  hyp_scale -->|contributes_to| knot_no_crema
+  hyp_temp_drift -->|contributes_to| knot_sour
+  hyp_temp_drift -->|contributes_to| knot_bitter
+  hyp_temp_drift -->|contributes_to| knot_random
+  hyp_channeling -->|contributes_to| knot_random
+  hyp_stale_preground -->|contributes_to| knot_no_crema
+  hyp_interaction -->|contributes_to| knot_random
+  mech_scale_insulation -->|supports| hyp_scale
+  mech_thermoblock_mass -->|supports| hyp_temp_drift
+  mech_load_line -->|supports| hyp_interaction
+  mech_co2_crema -->|supports| hyp_stale_preground
+  ev_pressurized_basket -->|contradicts| hyp_channeling
+  ev_channeling_signature -->|contradicts| hyp_channeling
+  ev_scale_effects -->|supports| hyp_scale
+  ev_fine_grind_variance -->|supports| mech_channeling
+  obs_pressurized -->|contradicts| knot_no_crema
+  int_descale_ab -.->|tests| hyp_scale
+  int_descale_ab -.->|tests| hyp_temp_drift
+  int_measure_spread -.->|tests| knot_random
+  int_check_basket_hole -.->|tests| mech_pressurized_foam
+  int_warmup -.->|tests| hyp_temp_drift
+  risk_unrecoverable -.->|constrains| int_descale_ab
+  factor_cup_temperature -.->|contributes_to| outcome_enjoyed_cup
+  factor_context -.->|contributes_to| outcome_enjoyed_cup
+  hyp_reference_mismatch -.->|derived_from| assumption_reference
+  outcome_enjoyed_cup --- rung_espresso_product
+  classDef expansion stroke-dasharray: 4 4
+  classDef retired fill:#eee,stroke:#999,color:#777
+  class int_descale_ab,int_measure_spread,int_check_basket_hole,int_warmup,risk_unrecoverable,factor_cup_temperature,factor_context,hyp_reference_mismatch expansion
+  class obs_bar_bad,hyp_brand,frame_espresso_supply retired
