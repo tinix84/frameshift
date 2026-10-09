@@ -21,3 +21,7 @@ the intake, citation, reference result, and harness expectations.
 - [`bracket-weight-mandate`](bracket-weight-mandate/) - negative boundary case:
   the supplier stays within the named component boundary and records the
   customer-owned higher frame as out of scope.
+- [`espresso-taste-complaint`](espresso-taste-complaint/) - symptom
+  specification case: a vague taste complaint is split into deviations with
+  IS / IS NOT before branching causes; includes a full version-2 session with a
+  bowtie graph, a recorded contradiction, and an expansion layer.

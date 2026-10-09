@@ -1,0 +1,72 @@
+{
+  "schema_version": "1.0.0",
+  "execution_id": "exec_espresso_taste_001",
+  "engine": "problem_framing",
+  "input_revision": 1,
+  "status": "partial",
+  "proposals": [
+    {
+      "id": "prop_espresso_classify_001",
+      "kind": "statement_classification",
+      "operation": "add",
+      "value": {"statement_id": "stmt_espresso_001", "primary_role": "observation", "secondary_roles": ["assumption"]},
+      "provenance": {"kind": "inferred", "source_ids": ["stmt_espresso_001"], "note": "The intake reports a perceived deviation and silently assumes a single reference cup."}
+    },
+    {
+      "id": "prop_espresso_ladder_001",
+      "kind": "abstraction_ladder",
+      "operation": "add",
+      "value": {"levels": ["component", "subsystem", "system", "product"], "top_outcome": "The drinker consistently enjoys the cup, judged against a reference they declare."},
+      "provenance": {"kind": "inferred", "source_ids": ["stmt_espresso_001"], "note": "Machine, extraction, home routine and experienced cup are offered as rungs; the human chooses the level."}
+    },
+    {
+      "id": "prop_espresso_frame_reference",
+      "kind": "problem_frame",
+      "operation": "add",
+      "value": {"question": "Which espresso reference is the drinker comparing against, and by how much does the cup deviate from it?", "abstraction_level": "product", "system_boundary": "product", "status": "proposed"},
+      "provenance": {"kind": "inferred", "source_ids": ["stmt_espresso_001"]}
+    },
+    {
+      "id": "prop_espresso_frame_repeatability",
+      "kind": "problem_frame",
+      "operation": "add",
+      "value": {"question": "Why does extraction on the home machine vary from shot to shot?", "abstraction_level": "subsystem", "system_boundary": "subsystem", "status": "proposed"},
+      "provenance": {"kind": "inferred", "source_ids": ["stmt_espresso_001"]}
+    },
+    {
+      "id": "prop_espresso_frame_supply",
+      "kind": "problem_frame",
+      "operation": "add",
+      "value": {"question": "Is the coffee as bought fit for espresso?", "abstraction_level": "system", "system_boundary": "supply_chain", "status": "proposed"},
+      "provenance": {"kind": "inferred", "source_ids": ["stmt_espresso_001"]}
+    },
+    {
+      "id": "prop_espresso_frame_routine",
+      "kind": "problem_frame",
+      "operation": "add",
+      "value": {"question": "Does the home routine, including water and maintenance, keep the machine inside its operating range?", "abstraction_level": "system", "system_boundary": "operations", "status": "proposed"},
+      "provenance": {"kind": "inferred", "source_ids": ["stmt_espresso_001"]}
+    }
+  ],
+  "rationale_summaries": [
+    "The complaint bundles several deviations (taste, crema, consistency) into one sentence, so no single cause can be tested against it.",
+    "The phrase 'Italian espresso' names a reference that is not one specification; published Italian parameter sets differ on temperature, time and dose.",
+    "The frame cannot be chosen until the symptom is specified as IS and IS NOT across what, where, when and extent, because those contrasts decide which branch is worth analysing."
+  ],
+  "uncertainties": [
+    {"id": "unc_espresso_reference", "summary": "Which reference the drinker means is unknown; candidate parameter sets disagree.", "source_ids": ["stmt_espresso_001", "art_cic_disciplinare_2018", "art_inei_parameters"]},
+    {"id": "unc_espresso_bundle", "summary": "It is unknown whether one deviation or several are being reported, and whether they share a cause.", "source_ids": ["stmt_espresso_001"]}
+  ],
+  "conflicts": [],
+  "missing_information": [
+    {"id": "miss_espresso_what", "summary": "What deviates: taste (sour, bitter, flat), crema, strength or consistency, and in which shots it does not.", "source_ids": ["stmt_espresso_001"]},
+    {"id": "miss_espresso_where", "summary": "Where it occurs: the same coffee on other equipment, or other coffee on the same equipment.", "source_ids": ["stmt_espresso_001"]},
+    {"id": "miss_espresso_when", "summary": "When it occurs: first shot versus later shots, coffee age, and changes such as a new bag or missed maintenance.", "source_ids": ["stmt_espresso_001"]},
+    {"id": "miss_espresso_extent", "summary": "Extent: every shot or some, and the measured shot time, cup quantity and crema persistence against the declared reference.", "source_ids": ["stmt_espresso_001"]}
+  ],
+  "requested_capabilities": [],
+  "required_checkpoints": ["intake_correction", "frame_selection"],
+  "warnings": [
+    "No machine, coffee or maintenance intervention is proposed; the symptom must be specified before causal analysis begins."
+  ]
+}

@@ -89,6 +89,7 @@ Where the twin lives is the harness's decision, not this file's.
 | `headphones-for-everyone` | A purchase request with an absent meeting-scheduling owner |
 | `tunnel-lights` | A reminder mechanism whose repeated prompts obscure the active fault signal |
 | `bracket-weight-mandate` | A component mandate whose higher outcome belongs to the customer |
+| `espresso-taste-complaint` | A vague taste complaint that bundles several deviations and a hidden reference |
 
 ## How this connects to the tracker
 
