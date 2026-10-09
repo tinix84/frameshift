@@ -17,12 +17,16 @@ here rather than assumed of a file append (#172):
   `.lock` file while it reads the history, checks the revision and writes. A
   second writer at the same revision waits, then reads the advanced history
   and is refused with `revision_conflict`. The lock dies with its process, so
-  a crash cannot leave a stale one.
+  a crash cannot leave a stale one. `read` takes the same lock: on Windows a
+  history held open by a reader cannot be replaced, so an unlocked read would
+  make a concurrent commit fail.
 - The new history (the old bytes, unchanged, then the commit) is written to a
-  `.pending` file, flushed to disk, and moved over the history with
-  `os.replace`, which is atomic on one volume. An interruption before the move
-  leaves the previous history intact and the next commit overwrites the
-  orphan; nothing ever reads half a commit. Line-level detection could not do
+  `.pending` file, its bytes flushed to disk, and moved over the history with
+  `os.replace` (and the directory entry flushed where the platform allows). An
+  interruption before the move leaves the previous history intact and the
+  next commit overwrites the orphan; nothing ever reads half a commit. A
+  refused commit leaves the history untouched; it may leave the empty
+  `.lock` file, which no reader mistakes for a history. Line-level detection could not do
   this: the creation commit carries its revision on its first event, so a
   torn creation commit would read back as a whole one.
 
@@ -94,7 +98,11 @@ class JsonlEventLog:
         return found
 
     def read(self, session_id: str) -> list[dict]:
-        return self._load(session_id)[1]
+        path = self.path(session_id)
+        if not path.exists():
+            return []
+        with _exclusive(path.with_name(path.name + ".lock")):
+            return self._load(session_id)[1]
 
     def _load(self, session_id: str) -> tuple[bytes, list[dict]]:
         """The history's bytes as stored, and the events they hold."""
@@ -197,19 +205,23 @@ def _exclusive(lock_path: Path):
 
                 fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
         except OSError as exc:
-            raise EventLogRefused(REVISION_CONFLICT, f"another commit holds the history: {exc}") from None
+            # Not a revision conflict: nothing is known about the revision yet.
+            raise EventLogRefused(INVARIANT_VIOLATION, f"the history's lock could not be taken: {exc}") from None
         try:
             yield
         finally:
-            if os.name == "nt":
-                import msvcrt
+            # Closing the handle releases the lock too; a failed explicit
+            # release must not turn a landed commit into a reported failure.
+            with contextlib.suppress(OSError):
+                if os.name == "nt":
+                    import msvcrt
 
-                handle.seek(0)
-                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
-            else:
-                import fcntl
+                    handle.seek(0)
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+                else:
+                    import fcntl
 
-                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
     finally:
         handle.close()
 
@@ -225,6 +237,14 @@ def _replace_atomically(path: Path, content: bytes) -> None:
         os.replace(pending, path)
     except OSError as exc:
         raise EventLogRefused(INVARIANT_VIOLATION, f"the commit could not replace the history: {exc}") from None
+    if os.name != "nt":
+        # Durability of the rename itself; Windows offers no directory handle.
+        with contextlib.suppress(OSError):
+            directory = os.open(path.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
 
 
 def _last_revision(history: list[dict]) -> int:

@@ -340,6 +340,34 @@ class CommitsAreAtomicAndRevisionBound(LogTestCase):
         self.assertEqual(self.log.read(SESSION), [])
         self.assertEqual(self.log.session_ids(), [])
 
+    def test_a_read_and_a_commit_do_not_overlap(self) -> None:
+        """Review of #250: on Windows a history open for reading cannot be replaced."""
+        import threading
+        import time
+
+        self.log.append(SESSION, [created(), added()], revision=0)
+        reading = threading.Event()
+        order: list[str] = []
+
+        class SlowReader(events.JsonlEventLog):
+            def _load(self, session_id):
+                loaded = super()._load(session_id)
+                if threading.current_thread().name == "reader":
+                    reading.set()
+                    time.sleep(0.3)
+                    order.append("read done")
+                return loaded
+
+        log = SlowReader(self.root)
+        reader = threading.Thread(target=lambda: log.read(SESSION), name="reader")
+        reader.start()
+        reading.wait()
+        log.append(SESSION, [classified()], revision=1)
+        order.append("commit done")
+        reader.join()
+        self.assertEqual(order, ["read done", "commit done"])
+        self.assertEqual(len(self.log.read(SESSION)), 3)
+
     def test_a_refused_commit_writes_nothing(self) -> None:
         self.log.append(SESSION, [created(), added()], revision=0)
         before = self.path().read_bytes()
