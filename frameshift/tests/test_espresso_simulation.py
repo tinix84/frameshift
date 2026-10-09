@@ -173,6 +173,17 @@ class StagesResumeAndRunInOrder(unittest.TestCase):
         simulation.stage_framing(self.co, simulation.Simulation(self.store), self.ref)
         self.assertEqual(len(self.co.history(self.sim.session_id)), before, "a finished stage adds nothing")
 
+    def test_a_look_alike_the_person_added_is_not_adopted(self) -> None:
+        """Re-check of #252: same question, different content, is the person's frame, not the script's."""
+        self.to_framing()
+        frame = {k: v for k, v in self.ref["frames"][0].items() if k not in {"id", "status", "digest"}}
+        frame["outcome"] = "The person's own outcome."
+        self.co.propose_frame(self.sim.session_id, frame=frame, expected_revision=self.co.state(self.sim.session_id)["revision"])
+        lines = simulation.stage_framing(self.co, self.sim, self.ref)
+        self.assertNotIn("adopted", lines[0])
+        report = simulation.compare(self.co.state(self.sim.session_id), self.ref, self.sim)
+        self.assertEqual(report["extra"]["frames"], ["frame_001"])
+
     def test_an_item_committed_before_the_map_was_saved_is_adopted_not_repeated(self) -> None:
         self.to_framing()
         rung = dict(self.ref["ladder"][0])

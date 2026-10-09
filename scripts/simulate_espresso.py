@@ -111,6 +111,19 @@ def _place(sim: Simulation, reference_id: str, held, matches, add) -> str:
     return "added"
 
 
+def _same(fields: dict):
+    """Adopt only an exact match of what the script would write, never a person's look-alike."""
+    def matches(held: dict) -> bool:
+        for key, value in fields.items():
+            if key == "source_ids":
+                if held.get("provenance", {}).get("source_ids") != value:
+                    return False
+            elif held.get(key) != value:
+                return False
+        return True
+    return matches
+
+
 def _tally(outcomes: list[str]) -> str:
     return ", ".join(f"{outcomes.count(kind)} {kind}" for kind in ("added", "adopted", "kept") if kind in outcomes)
 
@@ -161,7 +174,7 @@ def stage_framing(co, sim: Simulation, ref: dict) -> list[str]:
         outcomes.append(_place(
             sim, rung["id"],
             lambda: co.state(sid).get("ladder", []),
-            lambda held, rung=rung: held["abstraction_level"] == rung["abstraction_level"],
+            _same(fields),
             lambda fields=fields: co.record_rung(sid, rung=fields, expected_revision=_revision(co, sid)),
         ))
     for frame in ref["frames"]:
@@ -169,11 +182,12 @@ def stage_framing(co, sim: Simulation, ref: dict) -> list[str]:
         outcomes.append(_place(
             sim, frame["id"],
             lambda: co.state(sid)["frames"],
-            lambda held, frame=frame: held["question"] == frame["question"],
+            _same(fields),
             lambda fields=fields: co.propose_frame(sid, frame=fields, expected_revision=_revision(co, sid)),
         ))
     working = sim.ids[ref["active_frame_id"]]
-    if co.state(sid).get("active_frame_id") != working:
+    # Activate only if nothing is active: a frame the person activated in the GUI stands.
+    if co.state(sid).get("active_frame_id") is None:
         co.activate_frame(sid, frame_id=working, expected_revision=_revision(co, sid))
     return [
         f"Ladder and frames: {_tally(outcomes)}; {working} is the working frame.",
@@ -201,7 +215,7 @@ def stage_causal(co, sim: Simulation, ref: dict) -> list[str]:
             outcomes.append(_place(
                 sim, node["id"],
                 lambda: co.state(sid)["graph"]["nodes"],
-                lambda held, node=node: (held["type"], held["label"]) == (node["type"], node["label"]),
+                _same(fields),
                 lambda fields=fields: co.add_node(sid, node=fields, expected_revision=_revision(co, sid)),
             ))
         except CommandRefused as refusal:
@@ -220,8 +234,7 @@ def stage_causal(co, sim: Simulation, ref: dict) -> list[str]:
             outcomes.append(_place(
                 sim, edge["id"],
                 lambda: co.state(sid)["graph"]["edges"],
-                lambda held, fields=fields: (held["source"], held["target"], held["type"])
-                == (fields["source"], fields["target"], fields["type"]),
+                _same(fields),
                 lambda fields=fields: co.add_edge(sid, edge=fields, expected_revision=_revision(co, sid)),
             ))
         except CommandRefused as refusal:
