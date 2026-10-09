@@ -76,6 +76,13 @@ class ConfirmationMcpServer:
                 errors.UNSUPPORTED_CONFIGURATION,
                 "live MCP client identity does not match the attested approval profile",
             )
+        if not profile.get("validated"):
+            # Refuse before the dialog: a dialog that cannot approve invites a
+            # human answer that will be discarded.
+            return _pending(
+                errors.UNSUPPORTED_CONFIGURATION,
+                "approval profile has not passed actual-client validation",
+            )
         request = self._workflow.pending(arguments["request_id"])
         if request is None:
             return _pending(errors.APPROVAL_STALE, "no such pending confirmation request")
@@ -180,7 +187,8 @@ def run_stdio(server: ConfirmationMcpServer, input_stream: TextIO, output_stream
             if not line:
                 return {"action": "cancel", "content": None}
             incoming = json.loads(line)
-            if incoming.get("id") == request_id:
+            # JSON-RPC ids are per direction: a client request may reuse this id.
+            if incoming.get("id") == request_id and "method" not in incoming:
                 if "error" in incoming:
                     return {"action": "cancel", "content": None}
                 return incoming.get("result", {"action": "cancel", "content": None})

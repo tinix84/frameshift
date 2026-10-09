@@ -47,16 +47,33 @@ def validated_approval_profile(
     mcp_configuration: dict,
 ) -> dict:
     """Apply the supported native-client configuration policy to a loaded profile."""
-    required_flags = {"--restricted", "--strict-mcp-config", "--tools="}
     valid = (
         current == baseline
         and current.get("config_digest") == _canonical_digest(configuration)
         and configuration.get("client_id") == current.get("client_id")
         and configuration.get("client_version") == current.get("client_version")
-        and required_flags <= set(configuration.get("launch_flags", []))
+        and _supported_launch_flags(configuration.get("launch_flags"))
+        and configuration.get("approval_relevant_managed_configuration") == []
         and configuration.get("mcp_config_digest") == _canonical_digest(mcp_configuration)
     )
     return dict(current, validated=bool(current.get("validated") and valid))
+
+
+# The launch is an allowlist, not a minimum. Claude Code 2.1.295 still runs a
+# hook passed through --settings under --restricted, and plugins can carry
+# hooks; an Elicitation hook answers the dialog with no human present.
+_REQUIRED_LAUNCH_FLAGS = ("--restricted", "--strict-mcp-config", "--tools=")
+
+
+def _supported_launch_flags(flags) -> bool:
+    if not isinstance(flags, list) or not all(isinstance(flag, str) for flag in flags):
+        return False
+    rest = list(flags)
+    for flag in _REQUIRED_LAUNCH_FLAGS:
+        if rest.count(flag) != 1:
+            return False
+        rest.remove(flag)
+    return len(rest) == 1 and rest[0].startswith("--mcp-config=") and len(rest[0]) > len("--mcp-config=")
 
 
 @dataclass(frozen=True)

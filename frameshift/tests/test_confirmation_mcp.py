@@ -14,7 +14,11 @@ sys.path.insert(0, str(ROOT))
 
 from frameshift.mcp.confirmation_server import ConfirmationMcpServer, run_stdio  # noqa: E402
 from frameshift.orchestration.api import ConfirmationWorkflow  # noqa: E402
-from frameshift.broker.confirmation import approval_configuration_refusal  # noqa: E402
+from frameshift.broker.confirmation import (  # noqa: E402
+    approval_configuration_refusal,
+    validated_approval_profile,
+)
+from frameshift.broker.port import request_digest  # noqa: E402
 
 
 def load_session() -> dict:
@@ -204,6 +208,99 @@ class ConfirmationMcpTests(unittest.TestCase):
         output = [json.loads(line) for line in output_stream.getvalue().splitlines()]
         tool_response = next(message for message in output if message.get("id") == 11)
         self.assertFalse(tool_response["result"]["isError"])
+
+    def test_an_unvalidated_profile_is_refused_before_any_dialog(self) -> None:
+        server, request = self.server()
+        server._profile_loader = lambda: dict(PROFILE, validated=False)
+        dialogs = []
+        result = server.call_tool("frameshift_confirm", {"request_id": request["id"]}, dialogs.append)
+        self.assertEqual((result["outcome"], result["code"], dialogs), ("pending", "unsupported_configuration", []))
+
+    def test_a_client_request_reusing_the_elicitation_id_is_not_its_answer(self) -> None:
+        # Claude Code 2.1.295 numbers its own requests from 0, so its id 1
+        # can collide with the server's first elicitation id.
+        server, request = self.server()
+        messages = [
+            {
+                "jsonrpc": "2.0",
+                "id": 10,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-11-25",
+                    "capabilities": {"elicitation": {"form": {}}},
+                    "clientInfo": {"name": "claude-code", "version": "2.1.265"},
+                },
+            },
+            {
+                "jsonrpc": "2.0",
+                "id": 11,
+                "method": "tools/call",
+                "params": {"name": "frameshift_confirm", "arguments": {"request_id": request["id"]}},
+            },
+            {"jsonrpc": "2.0", "id": 1, "method": "ping"},
+            {"jsonrpc": "2.0", "id": 1, "result": {"action": "decline"}},
+        ]
+        output_stream = io.StringIO()
+        run_stdio(server, io.StringIO("".join(json.dumps(m) + "\n" for m in messages)), output_stream)
+        output = [json.loads(line) for line in output_stream.getvalue().splitlines()]
+        tool_response = next(message for message in output if message.get("id") == 11)
+        self.assertIn("declined", tool_response["result"]["content"][0]["text"])
+
+
+MCP_CONFIGURATION = {"mcpServers": {"frameshift-confirmation": {"type": "stdio", "command": "python"}}}
+
+
+def _profile_for(configuration: dict) -> dict:
+    return dict(PROFILE, config_digest=request_digest(configuration))
+
+
+def _configuration(**changes) -> dict:
+    configuration = {
+        "schema_version": "1.0.0",
+        "client_id": "claude-code",
+        "client_version": "2.1.265",
+        "launch_flags": ["--restricted", "--strict-mcp-config", "--mcp-config=/operator/claude-code.mcp.json", "--tools="],
+        "settings_behavior": "restricted mode ignores user, project, and local settings",
+        "approval_relevant_managed_configuration": [],
+        "mcp_server": "frameshift-confirmation",
+        "mcp_config_digest": request_digest(MCP_CONFIGURATION),
+    }
+    configuration.update(changes)
+    return configuration
+
+
+class ApprovalConfigurationPolicyTests(unittest.TestCase):
+    """Only a launch that leaves no hook able to answer the dialog validates."""
+
+    def validated(self, configuration: dict) -> bool:
+        profile = _profile_for(configuration)
+        return validated_approval_profile(profile, dict(profile), configuration, MCP_CONFIGURATION)["validated"]
+
+    def test_the_supported_launch_validates(self) -> None:
+        self.assertTrue(self.validated(_configuration()))
+
+    def test_a_launch_that_can_load_a_hook_is_refused(self) -> None:
+        # Observed with Claude Code 2.1.295: under --restricted, an Elicitation
+        # hook passed through --settings accepted the dialog as approved.
+        base = _configuration()["launch_flags"]
+        for extra in ("--settings=/tmp/hooks.json", "--plugin-dir=/tmp/plugin", "--print", "--bare"):
+            with self.subTest(extra=extra):
+                self.assertFalse(self.validated(_configuration(launch_flags=base + [extra])))
+
+    def test_a_launch_missing_a_required_flag_is_refused(self) -> None:
+        base = _configuration()["launch_flags"]
+        for missing in base:
+            with self.subTest(missing=missing):
+                self.assertFalse(self.validated(_configuration(launch_flags=[f for f in base if f != missing])))
+
+    def test_a_launch_with_a_second_mcp_configuration_is_refused(self) -> None:
+        flags = _configuration()["launch_flags"] + ["--mcp-config=/tmp/other.mcp.json"]
+        self.assertFalse(self.validated(_configuration(launch_flags=flags)))
+
+    def test_managed_configuration_relevant_to_approval_is_refused(self) -> None:
+        managed = ["managed-settings.json defines an Elicitation hook"]
+        self.assertFalse(self.validated(_configuration(approval_relevant_managed_configuration=managed)))
+        self.assertFalse(self.validated({k: v for k, v in _configuration().items() if k != "approval_relevant_managed_configuration"}))
 
 
 if __name__ == "__main__":
