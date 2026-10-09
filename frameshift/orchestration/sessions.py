@@ -289,12 +289,14 @@ class SessionCoordinator:
         if bodies:
             self._commit_next(state, bodies)
         # Held as of the state this admission leaves behind: its own commit is
-        # not news to it, and any later commit makes it stale.
-        self._held[session_id] = {
-            "execution_id": result["execution_id"],
-            "input_revision": self.state(session_id)["revision"],
-            "proposals": [copy.deepcopy(p) for p in result["proposals"] if p["kind"] not in ADMITTED_KINDS],
-        }
+        # not news to it, and any later commit makes it stale. A result that
+        # holds nothing (a manual classification) leaves an earlier one held.
+        if held:
+            self._held[session_id] = {
+                "execution_id": result["execution_id"],
+                "input_revision": state["revision"] + (1 if bodies else 0),
+                "proposals": [copy.deepcopy(p) for p in result["proposals"] if p["kind"] not in ADMITTED_KINDS],
+            }
         return {
             "outcome": "admitted" if bodies else "held",
             "committed": len(bodies),
@@ -345,7 +347,8 @@ class SessionCoordinator:
         """#238: a pre-filled, uncommitted draft of the command that adopts a proposal.
 
         Nothing is written. The human edits the draft and issues the ordinary
-        command (`propose_frame`, or `record_rung` once per rung); that command
+        command (`propose_frame`, or `record_rung` once per rung, passing the
+        rung's `rung_id` when the ladder already holds that level); that command
         is the adoption, authored by the human, and the staleness rule stands.
         """
         held = self._held.get(session_id)
@@ -353,9 +356,13 @@ class SessionCoordinator:
         if proposal is None:
             raise CommandRefused(INVARIANT_VIOLATION, f"no held proposal {proposal_id!r} for this session")
         value = proposal.get("value") if isinstance(proposal.get("value"), dict) else {}
+        # The engine's value is free-form under the result schema: keep what
+        # can stand as written, and carry the provenance kind it declared.
+        provenance = proposal.get("provenance") if isinstance(proposal.get("provenance"), dict) else {}
+        declared = provenance.get("kind")
         cited = {
-            "kind": "inferred",
-            "source_ids": list(proposal.get("provenance", {}).get("source_ids", [])),
+            "kind": declared if declared in PROVENANCE_KINDS else "inferred",
+            "source_ids": _strings(provenance.get("source_ids")),
             "note": f"Adopted from held proposal {proposal_id}.",
         }
         if proposal["kind"] == "problem_frame":
@@ -365,15 +372,21 @@ class SessionCoordinator:
                 "frame": {field: copy.deepcopy(value.get(field, "" if field in _FRAME_TEXT else [])) for field in _FRAME_FIELDS},
             }
         if proposal["kind"] == "abstraction_ladder":
-            levels = [level for level in value.get("levels", []) if level in LADDER_RANK]
+            proposed = value.get("levels") if isinstance(value.get("levels"), list) else []
+            levels = {level for level in proposed if isinstance(level, str) and level in LADDER_RANK}
             top = max(levels, key=LADDER_RANK.__getitem__, default=None)
+            top_outcome = value.get("top_outcome") if isinstance(value.get("top_outcome"), str) else ""
+            # One rung per level: a level already on the ladder is drafted as a
+            # re-recording of that rung, never as a second rung beside it.
+            recorded = {rung.get("abstraction_level"): rung["id"] for rung in self.state(session_id).get("ladder", [])}
             return {
                 "kind": "abstraction_ladder",
                 "command": "record_rung",
                 "rungs": [
                     {
+                        "rung_id": recorded.get(level),
                         "abstraction_level": level,
-                        "outcome": value.get("top_outcome", "") if level == top else "",
+                        "outcome": top_outcome if level == top else "",
                         "scope": "",
                         "system_boundary": "",
                         "success_measures": [],
@@ -634,6 +647,10 @@ def abstraction_required(state: dict) -> bool:
 # digest are FrameShift's to assign.
 _FRAME_TEXT = ("question", "outcome", "abstraction_level", "system_boundary")
 _FRAME_FIELDS = _FRAME_TEXT + ("included", "excluded", "success_measures", "constraints", "assumptions", "open_questions")
+
+
+# The schema's provenance kinds (`common.schema.json`).
+PROVENANCE_KINDS = frozenset({"observed", "sourced", "inferred", "assumed", "unknown"})
 
 
 # ADR-0024: the ladder reads bottom to top by level rank, never by the order
