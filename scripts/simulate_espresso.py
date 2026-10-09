@@ -19,8 +19,9 @@ store, so every approval in the log is theirs (ADR-0002, ADR-0022).
 `compare` can run after any stage. It reports, item by item, what the
 application reproduced, what it could not represent, and anything it holds
 that the reference does not; the gaps are the application's, not the case's
-(epic #253). A stage runs once per store: the id map is saved after every item,
-so an interrupted stage is refused rather than repeated.
+(epic #253). A stage can be run again: the id map is saved after every item,
+and a re-run adds only what is missing, so an interrupted or refused stage
+resumes where it stopped and never repeats an item.
 
 The script speaks only as the reasoner. It never prepares or answers a gate,
 and it offers every node and edge as `draft` or `proposed`: a status that
@@ -85,14 +86,33 @@ def _offered(status: str) -> str:
     return status if status in REASONER_STATUSES else "proposed"
 
 
-def _once(sim: Simulation, stage: str, reference_ids: list[str]) -> None:
-    """Refuse a stage that already ran, wholly or in part, on this store."""
-    done = [item for item in reference_ids if item in sim.ids]
-    if done:
-        raise SystemExit(
-            f"the {stage} stage already ran on this store ({len(done)} of {len(reference_ids)} items added); "
-            "start again from a fresh --store"
-        )
+def _place(sim: Simulation, reference_id: str, held, matches, add) -> str:
+    """Put one reference item in the store once, resuming whatever an earlier run left.
+
+    An item already in the map is kept. An unmapped item in the store that
+    matches it (a run stopped between its commit and saving the map) is
+    adopted. Only then is it added. So a stage interrupted or refused partway,
+    say by a revision conflict with the GUI open on the same store, resumes
+    where it stopped instead of repeating or locking the store.
+    """
+    if reference_id in sim.ids:
+        return "kept"
+    taken = set(sim.ids.values())
+    for item in held():
+        if item["id"] not in taken and matches(item):
+            sim.ids[reference_id] = item["id"]
+            sim.save()
+            return "adopted"
+    before = held()
+    add()
+    (new,) = _new_ids(before, held())
+    sim.ids[reference_id] = new
+    sim.save()
+    return "added"
+
+
+def _tally(outcomes: list[str]) -> str:
+    return ", ".join(f"{outcomes.count(kind)} {kind}" for kind in ("added", "adopted", "kept") if kind in outcomes)
 
 
 def _new_ids(before: list[dict], after: list[dict]) -> list[str]:
@@ -134,40 +154,39 @@ def stage_intake(co, sim: Simulation, ref: dict) -> list[str]:
 
 def stage_framing(co, sim: Simulation, ref: dict) -> list[str]:
     sid = _require(co, sim, "framing")
-    _once(sim, "framing", [rung["id"] for rung in ref["ladder"]] + [frame["id"] for frame in ref["frames"]])
+    outcomes: list[str] = []
     for rung in ref["ladder"]:
-        before = co.state(sid).get("ladder", [])
         fields = {key: value for key, value in rung.items() if key != "id"}
         fields["provenance"] = dict(rung["provenance"], source_ids=sim.mapped(rung["provenance"]["source_ids"]))
-        co.record_rung(sid, rung=fields, expected_revision=_revision(co, sid))
-        (new,) = _new_ids(before, co.state(sid)["ladder"])
-        sim.ids[rung["id"]] = new
-        sim.save()
-    working = None
+        outcomes.append(_place(
+            sim, rung["id"],
+            lambda: co.state(sid).get("ladder", []),
+            lambda held, rung=rung: held["abstraction_level"] == rung["abstraction_level"],
+            lambda fields=fields: co.record_rung(sid, rung=fields, expected_revision=_revision(co, sid)),
+        ))
     for frame in ref["frames"]:
-        before = co.state(sid)["frames"]
         fields = {key: value for key, value in frame.items() if key not in {"id", "status", "digest"}}
-        co.propose_frame(sid, frame=fields, expected_revision=_revision(co, sid))
-        (new,) = _new_ids(before, co.state(sid)["frames"])
-        sim.ids[frame["id"]] = new
-        sim.save()
-        if frame["status"] == "working":
-            working = new
-    co.activate_frame(sid, frame_id=working, expected_revision=_revision(co, sid))
-    sim.save()
+        outcomes.append(_place(
+            sim, frame["id"],
+            lambda: co.state(sid)["frames"],
+            lambda held, frame=frame: held["question"] == frame["question"],
+            lambda fields=fields: co.propose_frame(sid, frame=fields, expected_revision=_revision(co, sid)),
+        ))
+    working = sim.ids[ref["active_frame_id"]]
+    if co.state(sid).get("active_frame_id") != working:
+        co.activate_frame(sid, frame_id=working, expected_revision=_revision(co, sid))
     return [
-        f"Recorded {len(ref['ladder'])} rungs and proposed {len(ref['frames'])} frames; {working} is the working frame.",
+        f"Ladder and frames: {_tally(outcomes)}; {working} is the working frame.",
         f"Seal framing in the GUI: gate frame_selection on {working}.",
     ]
 
 
 def stage_causal(co, sim: Simulation, ref: dict) -> list[str]:
     sid = _require(co, sim, "causal")
-    _once(sim, "causal", [node["id"] for node in ref["graph"]["nodes"]] + [edge["id"] for edge in ref["graph"]["edges"]])
     refused: list[str] = []
+    outcomes: list[str] = []
     graph = ref["graph"]
     for node in graph["nodes"]:
-        before = co.state(sid)["graph"]["nodes"]
         fields = {
             "type": node["type"],
             "label": node["label"],
@@ -179,18 +198,18 @@ def stage_causal(co, sim: Simulation, ref: dict) -> list[str]:
             if optional in node:
                 fields[optional] = node[optional]
         try:
-            co.add_node(sid, node=fields, expected_revision=_revision(co, sid))
+            outcomes.append(_place(
+                sim, node["id"],
+                lambda: co.state(sid)["graph"]["nodes"],
+                lambda held, node=node: (held["type"], held["label"]) == (node["type"], node["label"]),
+                lambda fields=fields: co.add_node(sid, node=fields, expected_revision=_revision(co, sid)),
+            ))
         except CommandRefused as refusal:
             refused.append(f"node {node['id']}: {refusal}")
-            continue
-        (new,) = _new_ids(before, co.state(sid)["graph"]["nodes"])
-        sim.ids[node["id"]] = new
-        sim.save()
     for edge in graph["edges"]:
         if edge["source"] not in sim.ids or edge["target"] not in sim.ids:
             refused.append(f"edge {edge['id']}: an end was not added")
             continue
-        before = co.state(sid)["graph"]["edges"]
         fields = {
             "source": sim.ids[edge["source"]],
             "target": sim.ids[edge["target"]],
@@ -198,16 +217,17 @@ def stage_causal(co, sim: Simulation, ref: dict) -> list[str]:
             "confidence": edge["confidence"],
         }
         try:
-            co.add_edge(sid, edge=fields, expected_revision=_revision(co, sid))
+            outcomes.append(_place(
+                sim, edge["id"],
+                lambda: co.state(sid)["graph"]["edges"],
+                lambda held, fields=fields: (held["source"], held["target"], held["type"])
+                == (fields["source"], fields["target"], fields["type"]),
+                lambda fields=fields: co.add_edge(sid, edge=fields, expected_revision=_revision(co, sid)),
+            ))
         except CommandRefused as refusal:
             refused.append(f"edge {edge['id']}: {refusal}")
-            continue
-        (new,) = _new_ids(before, co.state(sid)["graph"]["edges"])
-        sim.ids[edge["id"]] = new
-        sim.save()
-    sim.save()
     added = co.state(sid)["graph"]
-    lines = [f"Added {len(added['nodes'])} nodes and {len(added['edges'])} edges."]
+    lines = [f"Graph: {_tally(outcomes)}; the store holds {len(added['nodes'])} nodes and {len(added['edges'])} edges."]
     lines += [f"Refused: {item}" for item in refused]
     return lines
 

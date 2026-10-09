@@ -122,7 +122,7 @@ class AFullRun(unittest.TestCase):
         self.assertEqual(self.report["session"]["extensions"]["application"], [])
 
 
-class StagesRunOnceAndInOrder(unittest.TestCase):
+class StagesResumeAndRunInOrder(unittest.TestCase):
     def setUp(self) -> None:
         self._dir = tempfile.TemporaryDirectory()
         self.store = Path(self._dir.name)
@@ -140,18 +140,48 @@ class StagesRunOnceAndInOrder(unittest.TestCase):
         self.assertIn("seal the previous gate", str(stopped.exception))
         self.assertEqual(self.co.state(self.sim.session_id)["phase"], "intake")
 
-    def test_a_stage_that_ran_in_part_is_refused_rather_than_repeated(self) -> None:
+    def to_framing(self) -> None:
         simulation.stage_intake(self.co, self.sim, self.ref)
         seal(self.co, self.sim, "intake_correction", self.ref["statements"][0]["id"])
-        # An interrupted framing stage: one rung landed and was saved before the stop.
-        working = [frame for frame in self.ref["frames"] if frame["status"] == "working"]
-        partial = dict(self.ref, ladder=self.ref["ladder"][:1], frames=working)
-        simulation.stage_framing(self.co, self.sim, partial)
+
+    def test_a_refused_stage_resumes_without_repeating_or_locking_the_store(self) -> None:
+        """Review of #252: a revision conflict with the GUI open must not strand the store."""
+        from frameshift.orchestration.api import CommandRefused
+
+        self.to_framing()
+
+        class ConflictOnSecondFrame:
+            def __init__(self, co) -> None:
+                self._co, self.frames = co, 0
+
+            def __getattr__(self, name):
+                return getattr(self._co, name)
+
+            def propose_frame(self, *args, **kwargs):
+                self.frames += 1
+                if self.frames == 2:
+                    raise CommandRefused("revision_conflict", "the GUI committed first")
+                return self._co.propose_frame(*args, **kwargs)
+
+        with self.assertRaises(CommandRefused):
+            simulation.stage_framing(ConflictOnSecondFrame(self.co), self.sim, self.ref)
+        lines = simulation.stage_framing(self.co, simulation.Simulation(self.store), self.ref)
+        self.assertIn("5 kept", lines[0])
+        state = self.co.state(self.sim.session_id)
+        self.assertEqual((len(state["ladder"]), len(state["frames"])), (4, 4))
         before = len(self.co.history(self.sim.session_id))
-        with self.assertRaises(SystemExit) as stopped:
-            simulation.stage_framing(self.co, simulation.Simulation(self.store), self.ref)
-        self.assertIn("already ran", str(stopped.exception))
-        self.assertEqual(len(self.co.history(self.sim.session_id)), before)
+        simulation.stage_framing(self.co, simulation.Simulation(self.store), self.ref)
+        self.assertEqual(len(self.co.history(self.sim.session_id)), before, "a finished stage adds nothing")
+
+    def test_an_item_committed_before_the_map_was_saved_is_adopted_not_repeated(self) -> None:
+        self.to_framing()
+        rung = dict(self.ref["ladder"][0])
+        rung.pop("id")
+        rung["provenance"] = dict(rung["provenance"], source_ids=self.sim.mapped(rung["provenance"]["source_ids"]))
+        self.co.record_rung(self.sim.session_id, rung=rung, expected_revision=self.co.state(self.sim.session_id)["revision"])
+        lines = simulation.stage_framing(self.co, self.sim, self.ref)
+        self.assertIn("1 adopted", lines[0])
+        self.assertEqual(len(self.co.state(self.sim.session_id)["ladder"]), 4)
 
     def test_the_comparison_counts_what_the_reference_does_not_hold(self) -> None:
         simulation.stage_intake(self.co, self.sim, self.ref)
