@@ -537,6 +537,53 @@ class KeepAndAdoptHeldProposals(Fixture):
         self.assertIn("prop_ladder_001", rung["provenance"]["note"])
         self.assertEqual(session_violations(self.co.state(self.sid)), [])
 
+    def test_a_later_classification_holding_nothing_keeps_the_held_result(self) -> None:
+        self.classify()
+        self.co.add_statement(self.sid, text="Pack cost per usable kWh meets the target.", primary_role="outcome", expected_revision=self.revision())
+        manual = self.co.manual_framing_result(self.sid, [{"statement_id": "stmt_002", "primary_role": "outcome", "secondary_roles": []}])
+        self.assertEqual(self.co.admit_result(self.sid, manual)["outcome"], "admitted")
+        held = self.co.view(self.sid)["derived"]["held"]
+        self.assertEqual(sorted(held["by_kind"]), ["abstraction_ladder", "problem_frame"])
+        self.co.held_draft(self.sid, proposal_id="prop_frame_001")
+
+    def test_a_ladder_draft_re_records_a_level_already_on_the_ladder(self) -> None:
+        self.seal_intake()
+        self.co.record_rung(self.sid, rung=_rung("product"), expected_revision=self.revision())
+        rungs = self.co.held_draft(self.sid, proposal_id="prop_ladder_001")["rungs"]
+        self.assertEqual([r["rung_id"] for r in rungs], [None, "rung_001", None])
+        # Seeded from the recorded rung, since a re-recording replaces it whole.
+        recorded = self.co.state(self.sid)["ladder"][0]
+        self.assertEqual({k: v for k, v in rungs[1].items() if k != "rung_id"}, {k: v for k, v in recorded.items() if k != "id"})
+        edited = dict(rungs[1], outcome="Pack margin holds.", scope="The pack as sold.", system_boundary="product", loss="Cells drop out of view.")
+        self.co.record_rung(self.sid, rung=edited, rung_id=rungs[1]["rung_id"], expected_revision=self.revision())
+        self.assertEqual(len(self.co.state(self.sid)["ladder"]), 1)
+
+    def test_a_top_level_already_on_the_ladder_takes_only_the_proposed_outcome(self) -> None:
+        self.seal_intake()
+        self.co.record_rung(self.sid, rung=_rung("business"), expected_revision=self.revision())
+        top = self.co.held_draft(self.sid, proposal_id="prop_ladder_001")["rungs"][-1]
+        self.assertEqual(top["rung_id"], "rung_001")
+        self.assertEqual(top["outcome"], "Improve contribution margin per pack.")
+        self.assertEqual((top["scope"], top["loss"], top["assumptions"]), (_rung()["scope"], _rung()["loss"], _rung()["assumptions"]))
+        self.assertIn("prop_ladder_001", top["provenance"]["note"])
+        self.co.record_rung(self.sid, rung=top, rung_id=top["rung_id"], expected_revision=self.revision())
+        self.assertEqual(session_violations(self.co.state(self.sid)), [])
+
+    def test_a_malformed_held_value_drafts_what_it_can_and_never_raises(self) -> None:
+        odd = [
+            dict(HELD[0], id="prop_ladder_002", value={"levels": [{"name": "system"}, "system", "system", 7], "top_outcome": ["x"]},
+                 provenance={"kind": "assumed", "source_ids": ["stmt_001"]}),
+            dict(HELD[0], id="prop_ladder_003", value={"levels": 7}),
+        ]
+        result = self.co.manual_framing_result(self.sid, [{"statement_id": "stmt_001", "primary_role": "proposal", "secondary_roles": ["need"]}])
+        result["proposals"].extend(copy.deepcopy(odd))
+        self.co.admit_result(self.sid, result)
+        rungs = self.co.held_draft(self.sid, proposal_id="prop_ladder_002")["rungs"]
+        self.assertEqual([(r["abstraction_level"], r["outcome"]) for r in rungs], [("system", "")])
+        self.assertEqual(rungs[0]["provenance"]["kind"], "assumed")
+        self.assertEqual(rungs[0]["provenance"]["source_ids"], ["stmt_001"])
+        self.assertEqual(self.co.held_draft(self.sid, proposal_id="prop_ladder_003")["rungs"], [])
+
     def test_drafting_writes_nothing(self) -> None:
         self.seal_intake()
         before = self.co.history(self.sid)

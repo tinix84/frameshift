@@ -406,13 +406,22 @@ function frameCard(f, live) {
 function fill(form, values) {
   for (const [key, value] of Object.entries(values)) {
     const field = form.elements.namedItem(key);
-    if (field) field.value = Array.isArray(value) ? value.join("\n") : (value ?? "");
+    if (!field) continue;
+    field.value = Array.isArray(value) ? value.join("\n") : (value ?? "");
+    if (field.tagName === "SELECT" && field.selectedIndex < 0) field.value = "";
   }
   const details = form.closest("details");
   if (details) details.open = true;
   form.scrollIntoView({ block: "start" });
   const blank = [...form.querySelectorAll("[required]")].find(x => !x.value);
   (blank || form.querySelector("input, select, textarea")).focus();
+}
+
+// A required choice with nothing chosen: a draft that leaves the level or the
+// boundary open is caught by the form, not refused after submit.
+function choice(name, values, label) {
+  return el("select", { name, required: true },
+    el("option", { value: "" }, "Choose…"), ...values.map(x => el("option", { value: x }, label(x))));
 }
 
 function fillRung(rung, rungId = "") {
@@ -432,8 +441,8 @@ function rungForm() {
   } },
     el("input", { type: "hidden", name: "rung_id" }),
     el("div", { class: "grid2" },
-      el("label", {}, "Level", el("select", { name: "abstraction_level" }, ...v.abstraction_levels.map(x => el("option", { value: x }, x)))),
-      el("label", {}, "System boundary", el("select", { name: "system_boundary" }, ...v.system_boundaries.map(x => el("option", { value: x }, words(x)))))),
+      el("label", {}, "Level", choice("abstraction_level", v.abstraction_levels, x => x)),
+      el("label", {}, "System boundary", choice("system_boundary", v.system_boundaries, words))),
     el("label", {}, "Outcome served at this level", el("input", { name: "outcome", required: true })),
     el("label", {}, "Scope", el("input", { name: "scope", required: true })),
     el("label", {}, "What drops out of view by moving to this level", el("textarea", { name: "loss", required: true })),
@@ -459,8 +468,8 @@ function frameForm(state, derived) {
     el("label", {}, "Question", el("input", { name: "question", required: true, placeholder: "How might we…" })),
     el("label", {}, "Outcome", el("input", { name: "outcome", required: true })),
     el("div", { class: "grid2" },
-      el("label", {}, "Abstraction level", el("select", { name: "abstraction_level" }, ...v.abstraction_levels.map(x => el("option", { value: x }, x)))),
-      el("label", {}, "System boundary", el("select", { name: "system_boundary" }, ...v.system_boundaries.map(x => el("option", { value: x }, words(x))))),
+      el("label", {}, "Abstraction level", choice("abstraction_level", v.abstraction_levels, x => x)),
+      el("label", {}, "System boundary", choice("system_boundary", v.system_boundaries, words)),
       area("included", "Included"), area("excluded", "Excluded"), area("success_measures", "Success measures"),
       area("constraints", "Constraints"), area("assumptions", "Assumptions"), area("open_questions", "Open questions")),
     el("p", {}, el("button", { class: "primary", type: "submit", disabled: live >= FRAME_SET.high,
@@ -487,7 +496,7 @@ function heldBlock(held) {
     for (const p of proposals) {
       const value = p.value || {};
       const summary = kind === "problem_frame" ? (value.question || p.id)
-        : kind === "abstraction_ladder" ? `Levels ${(value.levels || []).join(", ")}; outcome at the top: ${value.top_outcome || "none given"}`
+        : kind === "abstraction_ladder" ? `Levels ${Array.isArray(value.levels) ? value.levels.join(", ") : "none given"}; outcome at the top: ${typeof value.top_outcome === "string" && value.top_outcome ? value.top_outcome : "none given"}`
         : words(kind);
       const slot = el("div", {});
       const usable = kind === "problem_frame" || kind === "abstraction_ladder";
@@ -506,7 +515,7 @@ async function useHeld(proposalId, slot) {
   const { draft } = out;
   if (draft.command === "propose_frame") { fill($("#frame-form"), draft.frame); return; }
   slot.replaceChildren(el("p", { class: "hint" }, "Each draft fills the rung form. Add what drops out of view at that level, then record it."),
-    ...draft.rungs.map(r => el("button", { type: "button", onclick: () => fillRung(r) }, `Fill rung form: ${r.abstraction_level}`)), " ");
+    ...draft.rungs.map(r => el("button", { type: "button", onclick: () => fillRung(r, r.rung_id || "") }, r.rung_id ? `Fill rung form: ${r.abstraction_level} (re-records ${r.rung_id})` : `Fill rung form: ${r.abstraction_level}`)), " ");
 }
 
 // ------------------------------------------------------------------ causal
