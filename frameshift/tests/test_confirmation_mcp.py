@@ -245,6 +245,29 @@ class ConfirmationMcpTests(unittest.TestCase):
         output = [json.loads(line) for line in output_stream.getvalue().splitlines()]
         tool_response = next(message for message in output if message.get("id") == 11)
         self.assertIn("declined", tool_response["result"]["content"][0]["text"])
+        # The ping is answered while the dialog is open, not swallowed.
+        self.assertIn({"jsonrpc": "2.0", "id": 1, "result": {}}, output)
+
+    def test_a_second_tool_call_while_a_dialog_is_open_is_refused_and_answered(self) -> None:
+        server, request = self.server()
+        call = {"name": "frameshift_confirm", "arguments": {"request_id": request["id"]}}
+        messages = [
+            {"jsonrpc": "2.0", "id": 10, "method": "initialize", "params": {
+                "protocolVersion": "2025-11-25", "capabilities": {"elicitation": {"form": {}}},
+                "clientInfo": {"name": "claude-code", "version": "2.1.265"}}},
+            {"jsonrpc": "2.0", "id": 11, "method": "tools/call", "params": call},
+            {"jsonrpc": "2.0", "id": 12, "method": "tools/call", "params": call},
+            {"jsonrpc": "2.0", "method": "notifications/cancelled", "params": {"requestId": 99}},
+            {"jsonrpc": "2.0", "id": 1, "result": {"action": "cancel"}},
+        ]
+        output_stream = io.StringIO()
+        run_stdio(server, io.StringIO("".join(json.dumps(m) + "\n" for m in messages)), output_stream)
+        output = [json.loads(line) for line in output_stream.getvalue().splitlines()]
+        self.assertEqual([m["method"] for m in output if m.get("method")], ["elicitation/create"])
+        second = next(message for message in output if message.get("id") == 12)
+        self.assertEqual(second["error"]["code"], -32000)
+        first = next(message for message in output if message.get("id") == 11)
+        self.assertIn("cancelled", first["result"]["content"][0]["text"])
 
 
 MCP_CONFIGURATION = {"mcpServers": {"frameshift-confirmation": {"type": "stdio", "command": "python"}}}

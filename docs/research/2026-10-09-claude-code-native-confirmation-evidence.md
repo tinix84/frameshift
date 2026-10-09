@@ -5,7 +5,7 @@ client rather than a stub. The rules being exercised are owned by ADR-0014, ADR-
 `frameshift/broker/confirmation.py`; this note records what was observed, not what is required.
 
 **Date:** 2026-10-09. **Client:** Claude Code `2.1.295` (`claude --version`), Linux, run headless
-with `-p`. **Server:** `python -m frameshift.bootstrap confirmation` from this commit, with
+with `-p` (`--print`), which the configuration policy does not allow. **Server:** `python -m frameshift.bootstrap confirmation` from this commit, with
 `evals/fixtures/approval/gates.session.json` and `evals/fixtures/confirmation/frame-transition.json`
 (gate `frame_selection`, target `frame_001`, session revision 7). Every exchange was captured by a
 relay that logs the stdio JSON-RPC in both directions without changing it.
@@ -29,6 +29,12 @@ repository:
 This profile and attestation were written by an agent for a test that can only refuse. They are
 not an operator attestation, and they approved nothing.
 
+**The attested launch was not the launch that ran.** Every run added `-p`, which the allowlist
+excludes. The runs therefore show how the client behaves and which configurations the policy
+refuses. They do not show the allowed launch working end to end. Only an operator at an
+interactive client can show that (see the last section). An attempt to drive the interactive
+client from an agent terminal was refused by the sandbox, as it should be.
+
 ## What the client declares
 
 Before `initialize`, `2.1.295` sends `server/discover` (protocol `2026-07-28`). The server answers
@@ -47,13 +53,13 @@ dialog's answer.
 
 | # | Case | Launch | Observed | Outcome |
 |---|---|---|---|---|
-| 1 | Profile pinned to another version (`2.1.265`) | `--restricted --strict-mcp-config --tools=` | no dialog; `unsupported_configuration`, "live MCP client identity does not match the attested approval profile" | pending, no events |
-| 2 | Validated `2.1.295` profile, no human present | same | one `elicitation/create` carrying the request id and digest, session and revision, gate, target and target digest, actor authority, permitted dispositions and the exact proposal; the client answered `{"action": "cancel"}` | pending (`approval_required`, "confirmation was cancelled"), no events |
-| 3 | Project-settings `Elicitation` hook that accepts with `approved` | without `--restricted` | the hook answered `{"action": "accept", "content": {"disposition": "approved"}}` | approval without a human: the reason `--restricted` is required |
-| 4 | Same project hook | with `--restricted` | the hook was ignored; the client cancelled | pending |
-| 5 | Same hook passed as `--settings <file>` | with `--restricted` | the hook still ran and accepted. Under the earlier policy, which only required flags to be present, the server committed an approval of `frame_001` as `user_lead_eng` with no human. | now refused before any dialog: `unsupported_configuration` |
+| 1 | Profile pinned to another version (`2.1.265`) | `-p --restricted --strict-mcp-config --tools=` | no dialog; `unsupported_configuration`, "live MCP client identity does not match the attested approval profile" | pending, no events |
+| 2 | Validated `2.1.295` profile, no human present | same as 1 | one `elicitation/create` carrying the request id and digest, session and revision, gate, target and target digest, actor authority, permitted dispositions and the exact proposal; the client answered `{"action": "cancel"}` | pending (`approval_required`, "confirmation was cancelled"), no events |
+| 3 | Project-settings `Elicitation` hook that accepts with `approved` | `-p --strict-mcp-config --tools=` (no `--restricted`) | the hook answered `{"action": "accept", "content": {"disposition": "approved"}}` | approval without a human: the reason `--restricted` is required |
+| 4 | Same project hook | same as 1 | the hook was ignored; the client cancelled | pending |
+| 5 | Same hook passed as `--settings <file>` | same as 1, plus `--settings <file>` | the hook still ran and accepted. Under the earlier policy, which only required flags to be present, the server committed an approval of `frame_001` as `user_lead_eng` with no human. | now refused before any dialog: `unsupported_configuration` |
 
-Case 5 is why the launch is now an exact allowlist (`--restricted`, `--strict-mcp-config`,
+Each run also passed `--mcp-config` and pre-approved the one MCP tool with `--allowedTools`. Case 5 is why the launch is now an exact allowlist (`--restricted`, `--strict-mcp-config`,
 `--tools=`, one `--mcp-config=`), and why the configuration must state an empty
 `approval_relevant_managed_configuration`.
 
@@ -65,9 +71,10 @@ Case 5 is why the launch is now an exact allowlist (`--restricted`, `--strict-mc
 - **Launch flags are attested, not observed.** The server sees the configuration file, not the
   process's arguments. An operator who launches with flags other than the ones attested defeats
   the check.
-- **A person accepting the dialog.** Cases 2 and 4 show a client with no human present cannot
-  accept. Dialog acceptance, its rendering, and edit-then-review need the operator at an
-  interactive `claude` with the pinned configuration. An agent must not supply those answers.
+- **The allowed launch itself.** Cases 2 and 4 show that a headless client (`-p`) with no human
+  present cannot accept. They do not show the dialog rendering, a person accepting it, or
+  edit-then-review under the exact allowed launch. Those need the operator at an interactive
+  `claude` with the pinned configuration. An agent must not supply those answers.
   Steps for the operator:
   1. Pin a profile, configuration and attestation for the installed version, outside the
      repository.

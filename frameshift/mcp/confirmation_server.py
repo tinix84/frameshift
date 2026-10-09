@@ -170,6 +170,9 @@ def run_stdio(server: ConfirmationMcpServer, input_stream: TextIO, output_stream
         output_stream.write(json.dumps(message, separators=(",", ":")) + "\n")
         output_stream.flush()
 
+    def error(rpc_id, code: int, text: str) -> None:
+        write({"jsonrpc": "2.0", "id": rpc_id, "error": {"code": code, "message": text}})
+
     def elicit(parameters: dict) -> dict:
         nonlocal next_request_id
         request_id = next_request_id
@@ -187,16 +190,24 @@ def run_stdio(server: ConfirmationMcpServer, input_stream: TextIO, output_stream
             if not line:
                 return {"action": "cancel", "content": None}
             incoming = json.loads(line)
-            # JSON-RPC ids are per direction: a client request may reuse this id.
-            if incoming.get("id") == request_id and "method" not in incoming:
+            # JSON-RPC ids are per direction: a client request may reuse this
+            # id. Requests arriving while the dialog is open are answered, so
+            # a client that waits on one cannot stall the dialog.
+            if "method" in incoming:
+                dispatch(incoming, dialog_open=True)
+            elif incoming.get("id") == request_id:
                 if "error" in incoming:
                     return {"action": "cancel", "content": None}
                 return incoming.get("result", {"action": "cancel", "content": None})
 
-    for line in input_stream:
-        message = json.loads(line)
+    def dispatch(message: dict, *, dialog_open: bool = False) -> None:
         method = message.get("method")
         rpc_id = message.get("id")
+        if rpc_id is None:
+            return
+        if dialog_open and method in {"initialize", "tools/call"}:
+            error(rpc_id, -32000, f"{method} refused: a confirmation dialog is open")
+            return
         if method == "initialize":
             params = message.get("params", {})
             server.initialize(params.get("capabilities", {}), params.get("clientInfo", {}))
@@ -205,6 +216,8 @@ def run_stdio(server: ConfirmationMcpServer, input_stream: TextIO, output_stream
                 "capabilities": {"tools": {}},
                 "serverInfo": {"name": "frameshift-confirmation", "version": "1.0.0"},
             }
+        elif method == "ping":
+            result = {}
         elif method == "tools/list":
             result = {"tools": server.list_tools()}
         elif method == "tools/call":
@@ -214,19 +227,15 @@ def run_stdio(server: ConfirmationMcpServer, input_stream: TextIO, output_stream
                 "content": [{"type": "text", "text": json.dumps(outcome, sort_keys=True)}],
                 "isError": outcome.get("outcome") not in {"accepted", "confirmed", "revised"},
             }
-        elif rpc_id is None:
-            continue
         else:
-            write(
-                {
-                    "jsonrpc": "2.0",
-                    "id": rpc_id,
-                    "error": {"code": -32601, "message": f"method not found: {method}"},
-                }
-            )
-            continue
-        if rpc_id is not None:
-            write({"jsonrpc": "2.0", "id": rpc_id, "result": result})
+            error(rpc_id, -32601, f"method not found: {method}")
+            return
+        write({"jsonrpc": "2.0", "id": rpc_id, "result": result})
+
+    for line in input_stream:
+        message = json.loads(line)
+        if "method" in message:
+            dispatch(message)
 
 
 def _pending(code: str, detail: str) -> dict:
