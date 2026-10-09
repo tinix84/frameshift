@@ -129,6 +129,7 @@ def restore(
         "outcome": "refused" if violations else "verified",
         "violations": violations,
         "capability_differences": [],
+        "capability_comparison_declined": False,
         "executed_capabilities": list(journal.executed_capabilities),
         "committed_proposal_ids": list(journal.committed_proposal_ids),
         "pending_proposal_ids": [],
@@ -142,6 +143,7 @@ def restore(
         if capability_profile is None:
             # Declining to compare is itself a difference. Staying silent here
             # made the guard opt-in, so #125's own reproduction still passed.
+            plan["capability_comparison_declined"] = True
             plan["capability_differences"] = [
                 f"profile not compared: the checkpoint records "
                 f"{recorded.get('profile_id', 'a profile')!r} and no offered profile was given"

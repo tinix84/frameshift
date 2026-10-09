@@ -208,11 +208,13 @@ def offered_profile(checkpoint: dict, adapter: str | None = None) -> dict | None
             return json.load(handle)
     recorded = checkpoint.get("capability_profile")
     adapter_id = recorded.get("adapter", {}).get("id") if isinstance(recorded, dict) else None
+    if adapter_id is None:
+        return None
     for manifest in sorted((ROOT / "adapters").glob("*/capabilities.json")):
         profile = json.loads(manifest.read_text(encoding="utf-8"))
-        if adapter_id is not None and profile.get("adapter", {}).get("id") == adapter_id:
+        if profile.get("adapter", {}).get("id") == adapter_id:
             return profile
-    return None
+    raise LookupError(f"no adapter manifest declares {adapter_id!r}, the adapter the checkpoint records")
 
 
 def _nested(levels: int) -> object:
@@ -278,7 +280,10 @@ def checkpoint_integrity(case: dict, load) -> list[str]:
     override: dict[str, bytes] = {}
     # Resolved before any mutation: the adapter restoring is a fact about the
     # runtime, not about the bytes a case corrupts.
-    offered = offered_profile(checkpoint, case.get("adapter"))
+    try:
+        offered = offered_profile(checkpoint, case.get("adapter"))
+    except LookupError as missing:
+        return [str(missing)]
 
     mutation = case.get("mutate")
     if mutation is not None:

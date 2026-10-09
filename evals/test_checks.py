@@ -363,6 +363,17 @@ class IntegrityTests(unittest.TestCase):
         self.assertEqual(seen["profile"]["adapter"]["id"], "frameshift.generic")
         self.assertTrue(any("profile not compared" in item for item in errors), errors)
 
+    def test_an_unresolvable_recorded_adapter_is_named(self) -> None:
+        case = run.load("evals/fixtures/checkpoint-restore-is-not-an-action.case.json")
+
+        def load(relative: str) -> object:
+            artifact = run.load(relative, run.FIXTURES)
+            artifact["capability_profile"]["adapter"]["id"] = "frameshift.renamed"
+            return artifact
+
+        errors = checkpoint.checkpoint_integrity(case, load)
+        self.assertEqual(errors, ["no adapter manifest declares 'frameshift.renamed', the adapter the checkpoint records"])
+
     def test_the_correct_restore_still_passes_the_same_case(self) -> None:
         self.assertEqual(
             run.evaluate(run.load("evals/fixtures/checkpoint-restore-is-not-an-action.case.json")), []

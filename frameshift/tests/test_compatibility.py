@@ -55,6 +55,11 @@ def artifacts(cp: dict) -> dict[str, bytes]:
     }
 
 
+def generic_profile() -> dict:
+    """The adapter both committed checkpoints were recorded under offers its profile."""
+    return json.loads((ROOT / "adapters" / "generic" / "capabilities.json").read_text(encoding="utf-8"))
+
+
 def prompt_change_confirmations(cp: dict) -> list:
     confirmed = []
     for change in cp.get("prompt_version_changes", []):
@@ -126,9 +131,26 @@ class CompatibilityTests(unittest.TestCase):
             installed_prompts=installed(),
             published_prompts=published_identities(ROOT / "prompts" / "releases"),
             prompt_change_confirmations=prompt_change_confirmations(value),
+            capability_profile=generic_profile(),
         )
         self.assertEqual(plan["outcome"], "verified")
         self.assertTrue(plan["reasoning_allowed"], plan["contract_differences"])
+
+    def test_a_restore_offering_no_capability_profile_may_not_reason(self) -> None:
+        """#217: declining to compare profiles is not passing the comparison."""
+        from frameshift.bootstrap import published_identities
+
+        value = prompt_identity_checkpoint()
+        plan = restore_checkpoint(
+            value,
+            {},
+            installed_prompts=installed(),
+            published_prompts=published_identities(ROOT / "prompts" / "releases"),
+            prompt_change_confirmations=prompt_change_confirmations(value),
+        )
+        self.assertEqual(plan["outcome"], "verified")
+        self.assertFalse(plan["reasoning_allowed"])
+        self.assertTrue(any("capability profile was not offered" in item for item in plan["contract_differences"]))
 
     def test_a_missing_prompt_stays_inspectable_but_blocks_new_reasoning(self) -> None:
         from frameshift.bootstrap import published_identities
@@ -280,6 +302,7 @@ class CompatibilityTests(unittest.TestCase):
             installed_prompts=manifests,
             published_prompts=published,
             prompt_change_confirmations=prompt_change_confirmations(value),
+            capability_profile=generic_profile(),
         )
         self.assertTrue(plan["reasoning_allowed"], plan)
 

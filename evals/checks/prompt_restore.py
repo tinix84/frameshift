@@ -64,7 +64,12 @@ def _confirm_changes(checkpoint: dict, selected_ids: list[str]) -> list:
 
 
 def prompt_restore(case: dict, load) -> list[str]:
+    from .checkpoint import offered_profile
+
     checkpoint = load(case["artifact"])
+    # The adapter the checkpoint was recorded under offers its profile (#217);
+    # a restore offering none may not reason.
+    offered = offered_profile(checkpoint)
     synthetic_manifest = None
     synthetic_publication = None
     mutation = case.get("mutation")
@@ -124,6 +129,7 @@ def prompt_restore(case: dict, load) -> list[str]:
     plan = restore_checkpoint(
         checkpoint,
         {},
+        capability_profile=offered,
         installed_prompts=manifests,
         published_prompts=published,
         prompt_change_confirmations=_confirm_changes(
