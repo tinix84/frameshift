@@ -149,7 +149,10 @@ class AFullRun(unittest.TestCase):
             },
         )
         # The specification is session state now; citation records stay checkpoint artifacts (ADR-0027).
-        self.assertEqual(self.report["session"]["extensions"]["reference"], ["citations", "corpus", "views"])
+        self.assertEqual(
+            self.report["session"]["extensions"]["reference"],
+            ["citations", "corpus", "symptom_specification.note", "symptom_specification.status", "views"],
+        )
         self.assertEqual(self.report["session"]["extensions"]["application"], [])
 
 

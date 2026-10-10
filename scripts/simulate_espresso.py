@@ -286,6 +286,21 @@ def stage_causal(co, sim: Simulation, ref: dict) -> list[str]:
 CANONICAL_EXTENSIONS = ("symptom_specification",)
 
 
+def _extensions(ref: dict) -> list[str]:
+    """The reference's extensions the session does not hold as state.
+
+    A canonical extension's own metadata (the collection's `status` and
+    `note`) stays an extension under ADR-0027, so it is still reported.
+    """
+    names = []
+    for name, value in ref.get("extensions", {}).items():
+        if name not in CANONICAL_EXTENSIONS:
+            names.append(name)
+        elif isinstance(value, dict):
+            names += [f"{name}.{key}" for key in value if key not in ("specifications", "method_source_ids")]
+    return sorted(names)
+
+
 def _specifications(ref: dict) -> list[dict]:
     """The reference's specifications, each carrying the method its list names (ADR-0027)."""
     collection = ref.get("extensions", {}).get("symptom_specification", {})
@@ -299,13 +314,19 @@ def _specifications(ref: dict) -> list[dict]:
     return specs
 
 
-def _mapped_ids(ids: dict[str, str], value):
-    """Every id string inside `value` translated through `ids`; any other string kept."""
+# The keys whose values are ids; text such as a distinction is never translated.
+ID_KEYS = ("is", "is_not", "source_ids", "knot_node_id")
+
+
+def _mapped_ids(ids: dict[str, str], value, key: str | None = None):
+    """The ids inside `value` (under ID_KEYS) translated through `ids`; everything else kept."""
     if isinstance(value, dict):
-        return {key: _mapped_ids(ids, item) for key, item in value.items()}
+        return {name: _mapped_ids(ids, item, name) for name, item in value.items()}
     if isinstance(value, list):
-        return [_mapped_ids(ids, item) for item in value]
-    return ids.get(value, value) if isinstance(value, str) else value
+        return [_mapped_ids(ids, item, key) for item in value]
+    if key in ID_KEYS and isinstance(value, str):
+        return ids.get(value, value)
+    return value
 
 
 def _require(co, sim: Simulation, phase: str) -> str:
@@ -340,7 +361,7 @@ def compare(state: dict, ref: dict, sim: Simulation) -> dict:
             if field == "provenance" and isinstance(want, dict) and isinstance(have, dict):
                 have = dict(have, source_ids=[back.get(item, item) for item in have.get("source_ids", [])])
             elif field in ID_FIELDS:
-                have = _mapped_ids(back, have)
+                have = _mapped_ids(back, have, field)
             if want != have:
                 differences.append(f"{field}: reference {_short(want)}, application {_short(have)}")
         return differences
@@ -400,7 +421,7 @@ def compare(state: dict, ref: dict, sim: Simulation) -> dict:
             ],
         },
         "extensions": {
-            "reference": sorted(name for name in ref.get("extensions", {}) if name not in CANONICAL_EXTENSIONS),
+            "reference": _extensions(ref),
             "application": sorted(state.get("extensions", {})),
         },
     }

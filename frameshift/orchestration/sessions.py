@@ -536,19 +536,31 @@ class SessionCoordinator:
         state = self._expect(session_id, expected_revision, phase=SPECIFICATION_PHASES)
         if not isinstance(specification, dict):
             raise CommandRefused(SCHEMA_INVALID, "a symptom specification is an object")
+        unknown = sorted(set(specification) - set(SPECIFICATION_FIELDS))
+        if unknown:
+            # An `id` among them most likely meant `spec_id`; neither is dropped silently.
+            raise CommandRefused(SCHEMA_INVALID, f"a symptom specification has no field {', '.join(map(repr, unknown))}")
         standing = state.get("symptom_specifications", [])
-        if spec_id is not None and spec_id not in {item["id"] for item in standing}:
+        if spec_id is not None and (not isinstance(spec_id, str) or spec_id not in {item["id"] for item in standing}):
             raise CommandRefused(INVARIANT_VIOLATION, f"no symptom specification {spec_id!r} to re-record")
         recorded = {"id": spec_id or _next_id("spec", standing)}
         for field in SPECIFICATION_FIELDS:
             if field in specification:
                 recorded[field] = copy.deepcopy(specification[field])
         # Shape first, so a malformed field is refused as a schema matter and
-        # never mistaken for a dangling id.
-        others = [item for item in standing if item["id"] != recorded["id"]]
-        violations = validate_against(dict(state, symptom_specifications=others + [recorded]), "session.v2.schema.json")
+        # never mistaken for a dangling id. A re-recording keeps its place.
+        prospective = [recorded if item["id"] == recorded["id"] else item for item in standing]
+        if spec_id is None:
+            prospective.append(recorded)
+        violations = validate_against(dict(state, symptom_specifications=prospective), "session.v2.schema.json")
         if violations:
             raise CommandRefused(SCHEMA_INVALID, "; ".join(violations))
+        cited = [
+            *recorded.get("provenance", {}).get("source_ids", []),
+            *(source for part in ("reference", "actual") for source in recorded.get(part, {}).get("source_ids", [])),
+        ]
+        if recorded["id"] in cited:
+            raise CommandRefused(INVARIANT_VIOLATION, f"{recorded['id']!r} cannot cite itself")
         if "provenance" in recorded:
             recorded["provenance"] = _earned(recorded["provenance"], state, observed=_observed_node)
         for part in ("reference", "actual"):

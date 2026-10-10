@@ -713,7 +713,7 @@ class RecordASymptomSpecification(Fixture):
     def test_a_dangling_id_is_refused_as_an_invariant(self) -> None:
         for spec, naming in (
             (self.spec(rows=[{"dimension": "what", "is": ["stmt_099"], "is_not": [], "distinction": "x"}]), "stmt_099"),
-            (self.spec(rows=[{"dimension": "what", "is": [], "is_not": ["frame_001"], "distinction": "x"}]), "not a statement"),
+            (self.spec(rows=[{"dimension": "what", "is": [], "is_not": ["intake_t0001"], "distinction": "x"}]), "not a statement"),
             (self.spec(knot_node_id="node_001"), "not a node"),
             (self.spec(actual={"value": "x", "source_ids": ["stmt_099"]}), "does not resolve"),
             (self.spec(reference={"measure": "m", "expected": "e", "source_ids": ["madeup_1"]}), "registered"),
@@ -723,6 +723,61 @@ class RecordASymptomSpecification(Fixture):
                 refused = self.refused(spec)
                 self.assertEqual(refused.code, "invariant_violation")
                 self.assertIn(naming, refused.detail)
+
+    def test_an_existing_id_that_is_not_a_statement_is_refused_in_a_row(self) -> None:
+        self.record(self.spec())
+        row = {"dimension": "what", "is": ["stmt_002"], "is_not": ["spec_001"], "distinction": "x"}
+        refused = self.refused(self.spec(rows=[row]))
+        self.assertEqual(refused.code, "invariant_violation")
+        self.assertIn("spec_001", refused.detail)
+
+    def test_re_recording_keeps_the_specification_in_its_place(self) -> None:
+        self.record(self.spec())
+        self.record(self.spec(deviation="weight per pack above target"))
+        state = self.record(self.spec(object="the 2026 pack, line B"), "spec_001")
+        self.assertEqual([item["id"] for item in state["symptom_specifications"]], ["spec_001", "spec_002"])
+        self.assertEqual(state["symptom_specifications"][0]["object"], "the 2026 pack, line B")
+
+    def test_a_schema_refusal_names_the_place_the_specification_holds(self) -> None:
+        self.record(self.spec())
+        self.record(self.spec(deviation="weight per pack above target"))
+        refused = self.refused(self.spec(object=""), "spec_001")
+        self.assertEqual(refused.code, "schema_invalid")
+        self.assertIn("$.symptom_specifications[0].object", refused.detail)
+
+    def test_an_unknown_field_is_refused_not_dropped(self) -> None:
+        for spec in (dict(self.spec(), notes="x"), dict(self.spec(), id="spec_001")):
+            with self.subTest(keys=sorted(set(spec) - set(self.spec()))):
+                self.assertEqual(self.refused(spec).code, "schema_invalid")
+
+    def test_a_spec_id_that_is_not_a_string_is_refused(self) -> None:
+        self.record(self.spec())
+        for spec_id in (["spec_001"], {}, 1):
+            with self.subTest(spec_id=spec_id):
+                self.assertEqual(self.refused(self.spec(), spec_id).code, "invariant_violation")
+
+    def test_a_specification_cannot_cite_itself(self) -> None:
+        self.record(self.spec())
+        for spec in (
+            self.spec(provenance={"kind": "inferred", "source_ids": ["spec_001"]}),
+            self.spec(actual={"value": "x", "source_ids": ["spec_001"]}),
+        ):
+            with self.subTest(spec=spec):
+                refused = self.refused(spec, "spec_001")
+                self.assertEqual(refused.code, "invariant_violation")
+                self.assertIn("cannot cite itself", refused.detail)
+
+    def test_the_command_belongs_to_intake_framing_and_causal_only(self) -> None:
+        state = self.co.state(self.sid)
+        for phase in ("solutions", "decision", "monitoring"):
+            with self.subTest(phase=phase):
+                self.co.state = lambda sid, phase=phase: dict(state, phase=phase)  # noqa: E731
+                with self.assertRaises(CommandRefused) as refused:
+                    self.co.record_symptom_specification(self.sid, specification=self.spec(), expected_revision=state["revision"])
+                self.assertEqual(refused.exception.code, "invariant_violation")
+                self.assertIn("'intake' or 'framing' or 'causal'", refused.exception.detail)
+        del self.co.state
+        self.assertEqual(self.co.state(self.sid)["revision"], state["revision"], "nothing was written")
 
     def test_two_rows_for_one_dimension_are_refused(self) -> None:
         row = {"dimension": "what", "is": ["stmt_002"], "is_not": [], "distinction": "x"}

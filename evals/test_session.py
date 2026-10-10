@@ -242,11 +242,15 @@ class TheSymptomSpecificationInvariantAgrees(unittest.TestCase):
         self.assertEqual(session.reference_violations(state), application.reference_violations(state))
         self.assertEqual(session.reference_violations(state), [])
 
-    def test_the_application_reducer_reaches_the_snapshot(self) -> None:
-        from frameshift.orchestration import replay
+    def test_both_reducers_reach_the_snapshot_with_the_re_recording_in_place(self) -> None:
+        from evals.checks import replay as reference
+        from frameshift.orchestration import replay as application
 
         events = [json.loads(line) for line in (run.ROOT / "evals" / "fixtures" / "symptom.events.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
-        self.assertEqual(replay.fold(events), self.state())
+        self.assertEqual(application.fold(copy.deepcopy(events)), self.state())
+        self.assertEqual(reference.fold(copy.deepcopy(events)), self.state())
+        specs = self.state()["symptom_specifications"]
+        self.assertEqual([(spec["id"], len(spec["rows"])) for spec in specs], [("spec_001", 2), ("spec_002", 1)])
 
     def test_a_v2_checkpoint_without_the_field_still_validates(self) -> None:
         state = copy.deepcopy(run.load("evals/fixtures/ladder.checkpoint.v2.json")["state"])

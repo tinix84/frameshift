@@ -26,7 +26,7 @@
     "profile_id": "generic-conversation-only",
     "schema_version": "1.0.0"
   },
-  "checkpoint_digest": "sha256:fb103cd07e34390df22c5bdee609de302c235a19288c5b67e48494855f982531",
+  "checkpoint_digest": "sha256:1f568a042f8f444489746e7c0be829152d4758232c57ef6e61db8dcdcf40a80c",
   "contracts": {
     "engines": {
       "problem_framing": "1.0.0"
@@ -40,7 +40,7 @@
     }
   },
   "created_at": "2026-10-06T09:00:00Z",
-  "event_cursor": 8,
+  "event_cursor": 9,
   "execution_summaries": [],
   "id": "ckpt_symptom_001",
   "pending_proposals": [],
@@ -49,7 +49,7 @@
   "prompt_version_changes": [],
   "schema_version": "2.0.0",
   "session_id": "sess_symptom_001",
-  "session_revision": 6,
+  "session_revision": 7,
   "state": {
     "active_frame_id": null,
     "approvals": [],
@@ -63,7 +63,7 @@
     "id": "sess_symptom_001",
     "options": [],
     "phase": "intake",
-    "revision": 6,
+    "revision": 7,
     "schema_version": "2.0.0",
     "statements": [
       {
@@ -166,10 +166,33 @@
             ]
           }
         ]
+      },
+      {
+        "deviation": "no crema although a pressurized basket is used",
+        "id": "spec_002",
+        "object": "shots from the home machine",
+        "provenance": {
+          "kind": "observed",
+          "note": "The person's own account.",
+          "source_ids": [
+            "stmt_004"
+          ]
+        },
+        "rows": [
+          {
+            "dimension": "when",
+            "distinction": "Coffee age unknown.",
+            "is": [
+              "stmt_002"
+            ],
+            "is_not": [],
+            "needs_more_data": true
+          }
+        ]
       }
     ],
     "title": "Espresso shots taste wrong at home",
     "workspace_id": "ws_local"
   },
-  "state_digest": "sha256:a44839350fcb67145a6352432875e2a4e7cc2c2003f2257df1451f2cff2786b9"
+  "state_digest": "sha256:5523a113ec61c205ab4871e5f22dabfb6953520d0664171a5374b3b988e5304b"
 }

@@ -6,7 +6,7 @@
   "mutate": [
     {
       "kind": "drop",
-      "sequence": 8
+      "sequence": 9
     }
   ],
   "expect": {
