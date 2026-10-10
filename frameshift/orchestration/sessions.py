@@ -38,7 +38,7 @@ import copy
 from typing import Callable
 
 from frameshift.contracts import errors
-from frameshift.validation import session_violations, validate_against
+from frameshift.validation import addressable, provenance_namespaces, session_violations, validate_against
 
 from . import phases, proposals, replay, transitions
 from .ports import EventLog, EventLogRefused
@@ -238,7 +238,7 @@ class SessionCoordinator:
         if provenance is None:
             provenance = {"kind": "assumed", "source_ids": [], "note": "Added by the reasoner during intake."}
         else:
-            provenance = _earned(provenance)
+            provenance = _earned(provenance, state)
         statement = self._statement(state, text, primary_role, provenance)
         self._commit_next(state, [{"type": "statement.added", "payload": statement}])
         return self.view(session_id)
@@ -865,31 +865,60 @@ def _next_id(prefix: str, items: list[dict]) -> str:
     return f"{prefix}_{number:03d}"
 
 
-def _earned(provenance: dict) -> dict:
+def _earned(provenance: dict, state: dict) -> dict:
     """A reasoner's declared provenance, refused unless its sources earn its kind (ADR-0026).
 
-    `observed` is never the reasoner's to declare (ADR-0028). Whether each
-    source id is registered and resolves is checked on commit (ADR-0012).
+    `observed` is never the reasoner's to declare (ADR-0028). Every citation
+    is checked here, before anything is built, so that a refusal names the
+    invariant it breaks: a registered prefix, resolution inside the session
+    (ADR-0012), and, for an intake record, one a person's boundary minted in
+    this session (ADR-0028).
     """
     if not isinstance(provenance, dict):
         raise CommandRefused(SCHEMA_INVALID, "provenance must be an object")
     kind = provenance.get("kind")
     sources = provenance.get("source_ids", [])
+    if not isinstance(kind, str) or kind not in PROVENANCE_KINDS:
+        raise CommandRefused(SCHEMA_INVALID, f"unknown provenance kind {kind!r}")
+    if not isinstance(sources, list) or not all(isinstance(source, str) for source in sources):
+        raise CommandRefused(SCHEMA_INVALID, "provenance source_ids must be a list of strings")
     if kind == "observed":
         raise CommandRefused(
             INVARIANT_VIOLATION,
             "a reasoner never records an observed statement: only the boundary that "
             "received the person's words can say they are theirs",
         )
-    if kind not in PROVENANCE_KINDS:
-        raise CommandRefused(SCHEMA_INVALID, f"unknown provenance kind {kind!r}")
-    if not isinstance(sources, list) or not all(isinstance(source, str) for source in sources):
-        raise CommandRefused(SCHEMA_INVALID, "provenance source_ids must be a list of strings")
     if kind == "sourced" and not any(source.startswith("art_") for source in sources):
         raise CommandRefused(INVARIANT_VIOLATION, "a sourced provenance cites at least one referenced artifact (art_)")
     if kind == "inferred" and not sources:
         raise CommandRefused(INVARIANT_VIOLATION, "an inferred provenance cites at least one source")
+    local, external = provenance_namespaces()
+    reachable = addressable(state)
+    for source in sources:
+        if source.startswith("intake_"):
+            if source not in intake_records(state):
+                raise CommandRefused(
+                    INVARIANT_VIOLATION,
+                    f"{source!r} is not an intake record a person's boundary minted in this session",
+                )
+        elif source.startswith(tuple(external)):
+            continue
+        elif not source.startswith(tuple(local)):
+            raise CommandRefused(INVARIANT_VIOLATION, f"{source!r} cites no registered provenance namespace")
+        elif source not in reachable:
+            raise CommandRefused(INVARIANT_VIOLATION, f"{source!r} does not resolve in this session")
     return copy.deepcopy(provenance)
+
+
+def intake_records(state: dict) -> set[str]:
+    """The intake records a person's boundary minted: cited by an observed statement (ADR-0028)."""
+    return {
+        source
+        for statement in state["statements"]
+        if statement.get("provenance", {}).get("kind") == "observed"
+        for source in statement["provenance"].get("source_ids", [])
+        if source.startswith("intake_")
+    }
 
 
 def _strings(value) -> list[str]:

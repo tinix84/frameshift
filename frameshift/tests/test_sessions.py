@@ -266,9 +266,33 @@ class OnlyThePersonsWordsAreObserved(Fixture):
         self.assertEqual(self.refused({"kind": "sourced", "source_ids": ["stmt_001"]}), "invariant_violation")
         self.assertEqual(self.refused({"kind": "certain", "source_ids": []}), "schema_invalid")
 
-    def test_a_dangling_or_unregistered_citation_is_refused(self) -> None:
-        self.refused({"kind": "inferred", "source_ids": ["stmt_099"]})
-        self.refused({"kind": "inferred", "source_ids": ["madeup_001"]})
+    def test_a_dangling_or_unregistered_citation_is_refused_as_an_invariant(self) -> None:
+        for sources in (["stmt_099"], ["madeup_001"], ["art_x", "stmt_099"]):
+            with self.subTest(sources=sources):
+                self.assertEqual(self.refused({"kind": "inferred", "source_ids": sources}), "invariant_violation")
+
+    def test_only_an_intake_record_a_person_minted_can_be_cited(self) -> None:
+        request = self.co.state(self.sid)["statements"][0]["provenance"]["source_ids"][0]
+        self.assertEqual(self.refused({"kind": "inferred", "source_ids": ["intake_fabricated"]}), "invariant_violation")
+        cited = {"kind": "inferred", "source_ids": [request]}
+        self.assertEqual(self.add(copy.deepcopy(cited))["provenance"], cited)
+
+    def test_no_reasoner_facing_boundary_names_the_persons_path(self) -> None:
+        """ADR-0028: which commands a boundary exposes carries authority; MCP never offers this one."""
+        for path in sorted((ROOT / "frameshift" / "mcp").rglob("*.py")) + sorted((ROOT / "adapters").rglob("*.py")):
+            with self.subTest(path=path.relative_to(ROOT).as_posix()):
+                self.assertNotIn("add_operator_statement", path.read_text(encoding="utf-8"))
+
+    def test_a_malformed_provenance_is_refused_not_raised(self) -> None:
+        for provenance in (
+            "observed",
+            {"kind": ["observed"], "source_ids": []},
+            {"kind": {"observed": True}, "source_ids": []},
+            {"kind": "inferred", "source_ids": "stmt_001"},
+            {"kind": "inferred", "source_ids": [1]},
+        ):
+            with self.subTest(provenance=provenance):
+                self.assertEqual(self.refused(provenance), "schema_invalid")
 
 
 class SealIntakeThroughTheGate(Fixture):

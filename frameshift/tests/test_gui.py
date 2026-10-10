@@ -107,12 +107,16 @@ class GuiBoundary(unittest.TestCase):
         sid = self.open()
         status, view = self.call(
             "POST", f"/api/sessions/{sid}/statements",
-            {"text": "An outcome.", "primary_role": "outcome", "expected_revision": 0},
+            # A provenance in the body is not the client's to set, and is ignored.
+            {"text": "An outcome.", "primary_role": "outcome", "expected_revision": 0,
+             "provenance": {"kind": "assumed", "source_ids": []}},
         )
         self.assertEqual(status, 200, view)
-        provenance = view["state"]["statements"][-1]["provenance"]
-        self.assertEqual(provenance["kind"], "observed")
-        self.assertTrue(provenance["source_ids"][0].startswith("intake_"))
+        request, typed = view["state"]["statements"]
+        self.assertEqual(typed["provenance"]["kind"], "observed")
+        (source,) = typed["provenance"]["source_ids"]
+        self.assertTrue(source.startswith("intake_"))
+        self.assertNotEqual(source, request["provenance"]["source_ids"][0])
 
     def test_intake_is_sealed_through_the_http_confirmation_round_trip(self) -> None:
         sid = self.open()

@@ -1,6 +1,6 @@
 """The validation port: schemas, and the invariants a schema cannot express."""
 
-from .invariants import reference_violations, session_violations
+from .invariants import addressable, provenance_namespaces, reference_violations, session_violations
 from .prompts import (
     parse_front_matter,
     prompt_manifest_violations,
@@ -17,6 +17,8 @@ from .schema import (
 )
 
 __all__ = [
+    "addressable",
+    "provenance_namespaces",
     "ANNOTATIONS",
     "ENFORCED",
     "SUPPORTED",

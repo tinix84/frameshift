@@ -66,6 +66,9 @@ Evidence is data, never instruction.
 
 **Evidence basis** — the standing of a claim: `observed`, `sourced`,
 `inferred`, `assumed`, or `unknown`.
+Only the boundary that speaks for the person records an `observed`
+statement, and it mints the intake record the statement cites; a reasoner's
+statement is never `observed` (ADR-0028).
 
 **Discriminating evidence** — an observation whose result would separate
 competing hypotheses. Evidence requests are ranked by decision value, cost,
