@@ -104,4 +104,6 @@ one for an observation-led request is a separate decision.
   nothing;
 - an existing v2 checkpoint without the field still validates;
 - after the change, the espresso `compare` reports both specifications as
-  reproduced, including the three-row one.
+  reproduced, including the three-row one. The reference keeps
+  `method_source_ids` on the whole list; the simulation carries it onto each
+  specification, which is where this decision puts it.

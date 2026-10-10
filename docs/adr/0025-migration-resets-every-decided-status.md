@@ -25,7 +25,9 @@ a decision becomes `proposed`. The decided statuses are `approved`, `rejected`,
 carry no status and are copied as they are.
 
 The session's own status is a decision too: a `decided` or `archived` source
-session yields a linked session whose status is `active`.
+session yields a linked session whose status is `active`. A `deleted` source
+is not migrated: deletion is a retention matter (#17), and resurrecting a
+deleted session by migrating it is not this decision's to allow.
 
 Ids, text, provenance, links and every other field are kept. Only status
 changes, and the immutable source checkpoint remains the record of what was
@@ -46,7 +48,7 @@ carry those decisions exist, a reset decision stays unmade:
 - superseding a statement (#255);
 - withdrawing a frame (#246);
 - graph editing (#9);
-- option assessment (#12, #13).
+- option generation and assessment (#12, #13).
 
 This ADR accepts that gap rather than carrying authority across without its
 record.
