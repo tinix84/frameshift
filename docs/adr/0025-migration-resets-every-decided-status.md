@@ -21,7 +21,11 @@ or a `selected` option with no approval record behind it. That is the pattern
 session, every statement, graph node, graph edge and option whose status records
 a decision becomes `proposed`. The decided statuses are `approved`, `rejected`,
 `superseded` and `archived`, plus an option's `shortlisted` and `selected`.
-`draft` and `proposed` are kept. Frames follow ADR-0020 unchanged.
+`draft` and `proposed` are kept. Frames follow ADR-0020 unchanged. Criteria
+carry no status and are copied as they are.
+
+The session's own status is a decision too: a `decided` or `archived` source
+session yields a linked session whose status is `active`.
 
 Ids, text, provenance, links and every other field are kept. Only status
 changes, and the immutable source checkpoint remains the record of what was
@@ -30,10 +34,22 @@ decided before.
 ## Consequences
 
 The linked session asks again for every decision the source session recorded.
-For a long history that is real work: a superseded statement and its correction
-are both live again, and the person supersedes one again. That is the cost of
-carrying no authority, and it is the same cost ADR-0020 already accepted for
-frames.
+A superseded statement and its correction are both live again. That is the
+cost of carrying no authority, and it is the same cost ADR-0020 already
+accepted for frames.
+
+**For most items there is no way yet to decide again.** No command emits
+`statement.status.changed` or changes a node, edge or option status, and the
+linked session starts in framing, past intake. So until the commands that
+carry those decisions exist, a reset decision stays unmade:
+
+- superseding a statement (#255);
+- withdrawing a frame (#246);
+- graph editing (#9);
+- option assessment (#12, #13).
+
+This ADR accepts that gap rather than carrying authority across without its
+record.
 
 Derived checks that read live statements (for example `abstraction_required`)
 can give a different answer on the linked session than on its source, until
@@ -51,7 +67,7 @@ the person repeats the decisions.
 
 ## Validation
 
-#262: a fixture whose source holds an approved node, a superseded statement and
-a selected option migrates to `proposed` for all three, with every other field
-unchanged. The linked session holds no decided status lacking an approval
-record in that session.
+#262: a fixture whose source holds an approved node, a superseded statement, a
+selected option and a `decided` session migrates the first three to `proposed`
+and the session to `active`, with every other field unchanged. The linked
+session holds no decided status lacking an approval record in that session.

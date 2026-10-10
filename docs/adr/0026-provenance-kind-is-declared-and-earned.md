@@ -38,11 +38,28 @@ rule for that kind:
 Every source id must also satisfy ADR-0012: a registered prefix, and resolution
 for namespaces inside canonical state. A node whose declared kind is not
 earned is refused with `invariant_violation`; it is never rewritten to another
-kind. A node that declares no kind is `assumed`, as now.
+kind.
+
+**What is stored.** `add_node` takes an optional `provenance` object with
+`kind`, `source_ids` and an optional `note`. When the rule admits it, that
+object is stored exactly as given, with no default note added. A node that
+supplies no `provenance` keeps today's behaviour: kind `assumed`, its
+`source_ids`, and the note "Supplied by the reasoner; not established."
+
+**#256 comes first.** The `observed` guarantee depends on statements whose kind
+is `observed` really being the person's words. Today `add_statement` gives that
+kind to every statement, including those a reasoner adds, so a reasoner could
+add a statement and then cite it to earn `observed`. #257 must not ship before
+#256 restricts `observed` to the person's own statements.
 
 **Kind never promotes.** Whatever kind a node carries, its status stays `draft`
-or `proposed` until a person decides (#254). The same rule applies to edges
-when they take declared provenance (#258).
+or `proposed` until a person decides (#254).
+
+**Scope.** The rule applies to edges when they take declared provenance
+(#258). Until then, an edge keeps today's provenance: `assumed`, citing its two
+ends. It applies to symptom specifications (ADR-0027). Ladder rungs already
+store a declared provenance unchecked (ADR-0024). Bringing them under the rule
+is a follow-up, not part of this decision.
 
 ## Consequences
 
@@ -68,6 +85,8 @@ its prefix, because the session cannot see the artifact.
 
 ## Validation
 
-#257: tests accept each kind with sources that earn it and refuse each kind
-without them. Status is unaffected. After the change, the espresso `compare`
-shows no node-provenance difference; the reference meets the rule throughout.
+#257, after #256: tests accept each kind with sources that earn it and refuse
+each kind without them. Status is unaffected. After the change, the espresso
+`compare` shows no node-provenance difference. All 43 reference nodes and 52
+reference edges meet the rule, judged by the kinds of the reference's own
+statements.

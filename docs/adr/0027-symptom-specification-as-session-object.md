@@ -20,17 +20,35 @@ session built through the application carries none of it (#252, #260).
 ## Decision
 
 **A session holds a list of symptom specifications, written by a command.**
-Session v2 gains `symptom_specifications`. Each specification has:
+Session v2 gains an optional `symptom_specifications` list. Absent means none,
+so existing v2 sessions and checkpoints stay valid. Each specification has:
 
 - an id with the prefix `spec_`, registered in the `CONTEXT.md` namespace table
   as living in canonical state;
 - `object` and `deviation`: one object and one deviation per specification;
-- `rows`: one per dimension (`what`, `where`, `when`, `extent`). Each row holds
-  `is` and `is_not` as lists of statement ids, and `distinction` as text;
-- optionally, `reference` (a measure and its expected value, with source ids)
-  and `actual` (the observed value, with source ids);
-- optionally, `knot_node_id`: the graph node the deviation becomes;
-- provenance, under ADR-0012 and ADR-0026.
+- `rows`: up to four, at most one per `dimension` (`what`, `where`, `when`,
+  `extent`). A specification may be partial; the reference's second deviation
+  has three rows. Each row holds:
+  - `dimension`;
+  - `is` and `is_not`: lists of statement ids;
+  - `distinction`: text;
+  - optionally, `needs_more_data`: a boolean.
+- optionally:
+  - `reference`: a `measure`, its `expected` value, and `source_ids`;
+  - `actual`: a `value` and `source_ids`;
+  - `knot_node_id`: the graph node the deviation becomes;
+  - `method_source_ids`: the method the specification follows, as `art_` ids;
+  - `provenance`, under ADR-0012 and ADR-0026.
+
+**Integrity at record time.**
+
+- Every statement id in a row, and every `stmt_` id in a citation, must resolve
+  to a statement in the session, whatever its status. A superseded statement
+  can still be the IS NOT that matters.
+- A `knot_node_id`, when given, must resolve to an existing node. A
+  specification recorded before the graph exists omits it, and gains it when
+  recorded again in causal.
+- A dangling id is refused with `invariant_violation`, and nothing is written.
 
 The command `record_symptom_specification` records a specification, or, given
 its id, records it again whole, like a ladder rung (ADR-0024). It emits
@@ -40,7 +58,15 @@ before causal branching, but its knot node exists only once the graph does.
 
 Bibliographic citations stay `art_` references (ADR-0012), with their records
 carried by checkpoint artifacts. `views` and `corpus` stay extensions: they are
-presentation and fixture metadata, not reasoning state.
+presentation and fixture metadata, not reasoning state. So do the reference's
+collection-level `status` and `note`, which describe the corpus case, not a
+specification.
+
+**This narrows #260.** #260 asked for the specification *and the citations* to
+be reproduced. Citation records are not session state under this decision, so
+`compare` will report the reference's `extensions.citations` as an extension
+the application does not hold. That is by design, not a gap. The citations stay
+reachable through the `art_` ids the specification and the graph carry.
 
 ## Consequences
 
@@ -52,6 +78,8 @@ The lockstep cost follows ADR-0013 and ADR-0024:
 - the v2 session schema;
 - both reducers;
 - the `CONTEXT.md` prefix registry and its mirror in the evaluation harness;
+- `CONTEXT.md` vocabulary for *symptom specification*, *deviation* and *knot
+  node* (AGENTS.md working method 9);
 - a v2 history fixture.
 
 No gate requires a specification yet. Whether `frame_selection` should expect
@@ -68,7 +96,12 @@ one for an observation-led request is a separate decision.
 
 ## Validation
 
-#260: schema and reducer change with a v2 history fixture; the command records
-and re-records a specification, and a refused write leaves nothing. After the
-change, the espresso `compare` reports the symptom specification as
-reproduced.
+#260 (as narrowed above):
+
+- a schema and reducer change with a v2 history fixture;
+- the command records and re-records a specification;
+- a dangling statement or node id is refused, and the refused write leaves
+  nothing;
+- an existing v2 checkpoint without the field still validates;
+- after the change, the espresso `compare` reports both specifications as
+  reproduced, including the three-row one.
