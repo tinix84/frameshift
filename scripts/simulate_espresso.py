@@ -114,13 +114,7 @@ def _place(sim: Simulation, reference_id: str, held, matches, add) -> str:
 def _same(fields: dict):
     """Adopt only an exact match of what the script would write, never a person's look-alike."""
     def matches(held: dict) -> bool:
-        for key, value in fields.items():
-            if key == "source_ids":
-                if held.get("provenance", {}).get("source_ids") != value:
-                    return False
-            elif held.get(key) != value:
-                return False
-        return True
+        return all(held.get(key) == value for key, value in fields.items())
     return matches
 
 
@@ -210,6 +204,8 @@ def _declared(sim: Simulation, provenance: dict) -> dict:
 
     An observed node cites the person's statements, which the script cannot
     record as observed, so it can only offer the node as inferred from them.
+    That holds for this corpus: none of its observed nodes cites the request,
+    the one statement the script does record as observed.
     """
     declared = dict(provenance, source_ids=sim.mapped(provenance["source_ids"]))
     if declared["kind"] == "observed":

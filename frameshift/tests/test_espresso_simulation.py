@@ -92,10 +92,14 @@ class AFullRun(unittest.TestCase):
         }
         self.assertEqual(differing, observed)
         held = {node["id"]: node for node in self.state["graph"]["nodes"]}
+        back = {mine: theirs for theirs, mine in self.sim.ids.items()}
         for node in self.ref["graph"]["nodes"]:
-            mine = held[self.sim.ids[node["id"]]]["provenance"]
-            want = "inferred" if node["id"] in observed else node["provenance"]["kind"]
-            self.assertEqual(mine["kind"], want, node["id"])
+            mine = dict(held[self.sim.ids[node["id"]]]["provenance"])
+            mine["source_ids"] = [back.get(source, source) for source in mine["source_ids"]]
+            if node["id"] in observed:
+                self.assertEqual(mine["kind"], "inferred", node["id"])
+                mine["kind"] = "observed"
+            self.assertEqual(mine, node["provenance"], node["id"])
 
     def test_the_comparison_is_pinned(self) -> None:
         summary = {}

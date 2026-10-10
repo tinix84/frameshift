@@ -550,6 +550,8 @@ class SessionCoordinator:
                 f"a reasoner offers a node as {' or '.join(REASONER_NODE_STATUSES)}, not {status!r}: "
                 "a decided status is a person's, reached through a gate",
             )
+        if node.get("provenance") is not None and node.get("source_ids") is not None:
+            raise CommandRefused(SCHEMA_INVALID, "a node's sources go in its provenance or at its top level, not both")
         if node.get("provenance") is None:
             provenance = {
                 "kind": "assumed",
