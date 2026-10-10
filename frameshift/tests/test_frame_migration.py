@@ -86,6 +86,59 @@ class FrameContractTests(unittest.TestCase):
         self.assertEqual(schema.validate_against(migrated, "checkpoint.v2.schema.json"), [])
         self.assertEqual(checkpoint.verify(migrated, artifact_bytes()), [])
 
+    def migrate(self, source):
+        return migration.migrate_frame_axes(
+            checkpoint.encode(source),
+            artifact_bytes(),
+            checkpoint_id="ckpt_decided_v2_001",
+            session_id="sess_decided_v2_001",
+            prompt_identities=TARGET_PROMPTS,
+            created_at="2026-09-09T15:00:00Z",
+        )
+
+    def test_every_decided_status_resets_because_no_approval_crosses(self):
+        """ADR-0025 (#262): statements, graph items, options and the session itself."""
+        source = reference()
+        state = source["state"]
+        state["status"] = "decided"
+        state["statements"].append({
+            "id": "stmt_002", "text": "An earlier answer, since corrected.", "primary_role": "observation",
+            "status": "superseded", "provenance": {"kind": "observed", "source_ids": []},
+        })
+        state["options"].append({
+            "id": "opt_001", "frame_id": "frame_001", "title": "Source cells from a second supplier.",
+            "leverage_level": "change process or sourcing", "mechanism": "Competition lowers the cell price.",
+            "status": "selected",
+        })
+        state["graph"]["edges"][0]["status"] = "rejected"
+        result = self.migrate(source)
+        self.assertEqual(result["outcome"], "migrated", result)
+        migrated = result["checkpoint"]["state"]
+        self.assertEqual(migrated["status"], "active")
+        items = [*migrated["statements"], *migrated["graph"]["nodes"], *migrated["graph"]["edges"], *migrated["options"]]
+        self.assertEqual({item["id"]: item["status"] for item in items}, {
+            "stmt_001": "proposed", "stmt_002": "proposed", "node_outcome_001": "proposed",
+            "node_factor_001": "proposed", "edge_001": "proposed", "opt_001": "proposed",
+        })
+        # Only status changes: text, provenance and links cross as they were.
+        for before, after in zip(state["statements"], migrated["statements"]):
+            self.assertEqual({k: v for k, v in before.items() if k != "status"}, {k: v for k, v in after.items() if k != "status"})
+        self.assertEqual(migrated["approvals"], [])
+        self.assertEqual(schema.validate_against(result["checkpoint"], "checkpoint.v2.schema.json"), [])
+
+    def test_a_draft_or_proposed_status_is_kept(self):
+        source = reference()
+        source["state"]["graph"]["nodes"][1]["status"] = "draft"
+        migrated = self.migrate(source)["checkpoint"]["state"]
+        self.assertEqual(migrated["graph"]["nodes"][1]["status"], "draft")
+
+    def test_a_deleted_session_is_not_migrated(self):
+        source = reference()
+        source["state"]["status"] = "deleted"
+        result = self.migrate(source)
+        self.assertEqual((result["outcome"], result["code"], result["checkpoint"]), ("refused", "invariant_violation", None))
+        self.assertIn("deleted", result["detail"])
+
     def test_ambiguous_legacy_axes_require_human_review(self):
         source = reference()
         source["state"]["frames"][0]["abstraction_level"] = "supply_chain"
