@@ -105,6 +105,14 @@ def _apply(state: dict, event: dict) -> dict:
             ladder[positions[0]] = copy.deepcopy(payload)
         else:
             ladder.append(copy.deepcopy(payload))
+    elif kind == "symptom.specification.recorded":
+        # ADR-0027: recorded again whole under its id, like a rung.
+        specifications = state.setdefault("symptom_specifications", [])
+        positions = [index for index, spec in enumerate(specifications) if spec.get("id") == payload["id"]]
+        if positions:
+            specifications[positions[0]] = copy.deepcopy(payload)
+        else:
+            specifications.append(copy.deepcopy(payload))
     elif kind == "phase.changed":
         state["phase"] = payload["phase"]
     elif kind == "approval.recorded":

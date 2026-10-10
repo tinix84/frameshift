@@ -47,7 +47,7 @@ class AFullRun(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls._dir = tempfile.TemporaryDirectory()
-        store = Path(cls._dir.name)
+        store = cls._store = Path(cls._dir.name)
         cls.co = coordinator(store)
         cls.spy = GateSpy(cls.co)
         cls.sim = simulation.Simulation(store)
@@ -68,9 +68,15 @@ class AFullRun(unittest.TestCase):
         self.assertFalse([line for line in self.causal_lines if line.startswith("Refused")], self.causal_lines)
         self.assertEqual(self.state["phase"], "causal")
         self.assertEqual(session_violations(self.state), [])
-        counts = [len(self.state[k]) for k in ("statements", "ladder", "frames")]
+        counts = [len(self.state[k]) for k in ("statements", "ladder", "frames", "symptom_specifications")]
         counts += [len(self.state["graph"][k]) for k in ("nodes", "edges")]
-        self.assertEqual(counts, [12, 4, 4, 43, 52])
+        self.assertEqual(counts, [12, 4, 4, 2, 43, 52])
+
+    def test_a_finished_causal_stage_adds_nothing_when_run_again(self) -> None:
+        before = len(self.co.history(self.sim.session_id))
+        lines = simulation.stage_causal(self.co, simulation.Simulation(self._store), self.ref)
+        self.assertEqual(len(self.co.history(self.sim.session_id)), before, lines)
+        self.assertIn("Symptom specifications: 2 kept.", lines)
 
     def test_the_script_never_touches_a_gate(self) -> None:
         self.assertEqual(self.spy.gate_calls, [])
@@ -115,6 +121,8 @@ class AFullRun(unittest.TestCase):
                 "frames": (4, 3, 0, 0),
                 "nodes": (43, 32, 0, 0),
                 "edges": (52, 0, 0, 0),
+                # Both deviations, the three-row one included (ADR-0027).
+                "specifications": (2, 2, 0, 0),
             },
         )
         fields: dict[tuple[str, str], int] = {}
@@ -140,7 +148,8 @@ class AFullRun(unittest.TestCase):
                 ("edges", "status"): 9,
             },
         )
-        self.assertIn("symptom_specification", self.report["session"]["extensions"]["reference"])
+        # The specification is session state now; citation records stay checkpoint artifacts (ADR-0027).
+        self.assertEqual(self.report["session"]["extensions"]["reference"], ["citations", "corpus", "views"])
         self.assertEqual(self.report["session"]["extensions"]["application"], [])
 
 

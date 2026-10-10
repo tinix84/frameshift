@@ -46,6 +46,20 @@ solved. Candidate frames may coexist; only approval makes one working.
 
 ## Causal model
 
+**Deviation** — one observed departure of one object from what was expected of
+it: "taste alternates between sour and bitter", not "the coffee is bad". A
+vague complaint is split into deviations before any cause is sought.
+
+**Symptom specification** — the IS / IS NOT description of one deviation
+(`spec_`, ADR-0027): for each of what, where, when and extent, the statements
+where the deviation IS, the closest case where it IS NOT, and the distinction
+between them. The contrasts, not a list of causes, decide which part of the
+cause tree is worth analysing. Recorded, and recorded again whole, by
+`symptom.specification.recorded`.
+
+**Knot node** — the graph node a deviation becomes once the causal model
+exists; a symptom specification names it by `knot_node_id`.
+
 **Graph node** — a typed element of the causal model: `outcome`, `observation`,
 `factor`, `mechanism`, `hypothesis`, `evidence`, `assumption`, `constraint`,
 `intervention`, `risk`, or `decision`.
@@ -100,6 +114,7 @@ rather than an assumed external reference.
 | `stmt_` | an authored statement | yes |
 | `frame_` | a problem frame | yes |
 | `rung_` | a rung of the abstraction ladder | yes |
+| `spec_` | a symptom specification | yes |
 | `node_` | a graph node | yes |
 | `opt_` | an option | yes |
 | `crit_` | a criterion | yes |

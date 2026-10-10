@@ -63,6 +63,7 @@ No edge uses `causes`: nothing here is a supported causal assertion yet.
 ## Downstream change
 
 The person must measure shot time and cup quantity spread before and after
-descaling. Only that result can promote a hypothesis. The symptom specification
-lives in `extensions.symptom_specification` because no canonical field holds it;
-it is the worked example for adding one.
+descaling. Only that result can promote a hypothesis. The reference keeps the
+symptom specification in `extensions.symptom_specification`, the worked example
+that ADR-0027 turned into the session's `symptom_specifications` list. The
+simulation records both deviations there.

@@ -45,6 +45,7 @@ EVENT_TYPES = frozenset(
         "frame.activated",
         "frame.digest.recorded",
         "ladder.rung.recorded",
+        "symptom.specification.recorded",
         "phase.changed",
         "approval.recorded",
     }
@@ -168,6 +169,8 @@ def _apply(state: dict, event: dict) -> None:
         _named(state["frames"], payload["id"])["digest"] = payload["digest"]
     elif kind == "ladder.rung.recorded":
         _record_rung(state, payload)
+    elif kind == "symptom.specification.recorded":
+        _record(state.setdefault("symptom_specifications", []), payload)
     elif kind == "phase.changed":
         state["phase"] = payload["phase"]
     elif kind == "approval.recorded":
@@ -183,12 +186,16 @@ def _apply(state: dict, event: dict) -> None:
 
 def _record_rung(state: dict, rung: dict) -> None:
     """ADR-0024: a rung recorded under an existing id replaces it in place."""
-    ladder = state.setdefault("ladder", [])
-    for index, standing in enumerate(ladder):
-        if standing.get("id") == rung.get("id"):
-            ladder[index] = copy.deepcopy(rung)
+    _record(state.setdefault("ladder", []), rung)
+
+
+def _record(items: list[dict], item: dict) -> None:
+    """A whole re-recording (ADR-0024, ADR-0027): replace in place, else append."""
+    for index, standing in enumerate(items):
+        if standing.get("id") == item.get("id"):
+            items[index] = copy.deepcopy(item)
             return
-    ladder.append(copy.deepcopy(rung))
+    items.append(copy.deepcopy(item))
 
 
 def _named(items: list[dict], item_id: str) -> dict:

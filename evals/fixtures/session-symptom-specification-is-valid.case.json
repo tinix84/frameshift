@@ -1,0 +1,11 @@
+{
+  "id": "session-symptom-specification-is-valid",
+  "check": "session_invariants",
+  "artifact": "symptom.checkpoint.v2.json",
+  "at": [
+    "state"
+  ],
+  "expect": {
+    "outcome": "valid"
+  }
+}

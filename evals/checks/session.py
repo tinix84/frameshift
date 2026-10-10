@@ -28,14 +28,14 @@ from . import errors
 INVARIANT_VIOLATION = errors.INVARIANT_VIOLATION
 
 # Collections whose members carry an `id` that a reference may name.
-TARGET_COLLECTIONS = ("statements", "frames", "options", "criteria", "ladder")
+TARGET_COLLECTIONS = ("statements", "frames", "options", "criteria", "ladder", "symptom_specifications")
 
 # The provenance namespaces from ADR-0012. This mirrors the registry table in
 # `CONTEXT.md`, which is the contract; `evals/test_session.py` asserts the two
 # still agree, so adding a namespace means editing the glossary and not this
 # file. A prefix in SESSION_LOCAL must resolve inside canonical state; one in
 # EXTERNAL is accepted on its prefix alone.
-SESSION_LOCAL_PREFIXES = ("crit_", "frame_", "node_", "opt_", "rung_", "stmt_")
+SESSION_LOCAL_PREFIXES = ("crit_", "frame_", "node_", "opt_", "rung_", "spec_", "stmt_")
 EXTERNAL_PREFIXES = ("art_", "intake_")
 CONTEXT = Path(__file__).resolve().parents[2] / "CONTEXT.md"
 
@@ -118,6 +118,58 @@ def reference_violations(session: dict) -> list[str]:
             )
         else:
             held[level] = index
+    violations.extend(symptom_specification_violations(session))
+    return violations
+
+
+def symptom_specification_violations(session: dict) -> list[str]:
+    """ADR-0027: a specification's rows, knot and method land in this session."""
+    violations: list[str] = []
+    statements = {
+        item["id"]
+        for item in session.get("statements", [])
+        if isinstance(item, dict) and isinstance(item.get("id"), str)
+    }
+    nodes = {
+        node["id"]
+        for node in session.get("graph", {}).get("nodes", [])
+        if isinstance(node, dict) and isinstance(node.get("id"), str)
+    }
+    for index, spec in enumerate(session.get("symptom_specifications", [])):
+        if not isinstance(spec, dict):
+            continue
+        path = f"$.symptom_specifications[{index}]"
+        held: dict = {}
+        for row_index, row in enumerate(spec.get("rows", [])):
+            if not isinstance(row, dict):
+                continue
+            dimension = row.get("dimension")
+            if dimension in held:
+                violations.append(
+                    f"{INVARIANT_VIOLATION}: {path}.rows[{row_index}] repeats dimension {dimension!r}, "
+                    f"which {path}.rows[{held[dimension]}] already holds"
+                )
+            else:
+                held[dimension] = row_index
+            for side in ("is", "is_not"):
+                for item_index, item in enumerate(row.get(side, [])):
+                    if item not in statements:
+                        violations.append(
+                            f"{INVARIANT_VIOLATION}: dangling reference, {path}.rows[{row_index}].{side}[{item_index}] "
+                            f"names {item!r}, which is not a statement in this session"
+                        )
+        knot = spec.get("knot_node_id")
+        if knot is not None and knot not in nodes:
+            violations.append(
+                f"{INVARIANT_VIOLATION}: dangling reference, {path}.knot_node_id names {knot!r}, "
+                "which is not a node in this graph"
+            )
+        for item_index, item in enumerate(spec.get("method_source_ids", [])):
+            if not (isinstance(item, str) and item.startswith("art_")):
+                violations.append(
+                    f"{INVARIANT_VIOLATION}: {path}.method_source_ids[{item_index}] names {item!r}, "
+                    "which is not a referenced artifact (art_)"
+                )
     return violations
 
 

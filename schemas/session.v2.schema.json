@@ -16,6 +16,7 @@
     "statements": {"type": "array", "items": {"$ref": "#/$defs/statement"}},
     "frames": {"type": "array", "items": {"$ref": "#/$defs/frame"}},
     "ladder": {"type": "array", "items": {"$ref": "#/$defs/rung"}},
+    "symptom_specifications": {"type": "array", "items": {"$ref": "#/$defs/symptom_specification"}},
     "graph": {"$ref": "graph.schema.json"},
     "options": {"type": "array", "items": {"$ref": "#/$defs/option"}},
     "criteria": {"type": "array", "items": {"$ref": "#/$defs/criterion"}},
@@ -50,6 +51,51 @@
         "assumptions": {"type": "array", "items": {"type": "string"}},
         "loss": {"type": "string", "minLength": 1, "maxLength": 1000},
         "provenance": {"$ref": "common.schema.json#/$defs/provenance"}
+      },
+      "additionalProperties": false
+    },
+    "symptom_specification": {
+      "type": "object",
+      "required": ["id", "object", "deviation", "rows"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/id"},
+        "object": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "deviation": {"type": "string", "minLength": 1, "maxLength": 1000},
+        "rows": {"type": "array", "items": {"$ref": "#/$defs/symptom_row"}},
+        "reference": {
+          "type": "object",
+          "required": ["measure", "expected", "source_ids"],
+          "properties": {
+            "measure": {"type": "string", "minLength": 1, "maxLength": 1000},
+            "expected": {"type": "string", "minLength": 1, "maxLength": 1000},
+            "source_ids": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/id"}, "uniqueItems": true}
+          },
+          "additionalProperties": false
+        },
+        "actual": {
+          "type": "object",
+          "required": ["value", "source_ids"],
+          "properties": {
+            "value": {"type": "string", "minLength": 1, "maxLength": 1000},
+            "source_ids": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/id"}, "uniqueItems": true}
+          },
+          "additionalProperties": false
+        },
+        "knot_node_id": {"$ref": "common.schema.json#/$defs/id"},
+        "method_source_ids": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/id"}},
+        "provenance": {"$ref": "common.schema.json#/$defs/provenance"}
+      },
+      "additionalProperties": false
+    },
+    "symptom_row": {
+      "type": "object",
+      "required": ["dimension", "is", "is_not", "distinction"],
+      "properties": {
+        "dimension": {"type": "string", "enum": ["what", "where", "when", "extent"]},
+        "is": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/id"}},
+        "is_not": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/id"}},
+        "distinction": {"type": "string", "minLength": 1, "maxLength": 2000},
+        "needs_more_data": {"type": "boolean"}
       },
       "additionalProperties": false
     },

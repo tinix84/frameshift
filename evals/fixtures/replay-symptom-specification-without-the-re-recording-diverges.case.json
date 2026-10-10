@@ -1,0 +1,19 @@
+{
+  "id": "replay-symptom-specification-without-the-re-recording-diverges",
+  "check": "replay_equivalence",
+  "artifact": "symptom.checkpoint.v2.json",
+  "log": "evals/fixtures/symptom.events.jsonl",
+  "mutate": [
+    {
+      "kind": "drop",
+      "sequence": 8
+    }
+  ],
+  "expect": {
+    "outcome": "diverged",
+    "check_sequence": false,
+    "violations_naming": [
+      "replay reached"
+    ]
+  }
+}

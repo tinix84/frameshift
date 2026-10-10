@@ -1,0 +1,175 @@
+{
+  "artifacts": [],
+  "capability_profile": {
+    "adapter": {
+      "id": "frameshift.generic",
+      "version": "0.1.0"
+    },
+    "capabilities": [
+      {
+        "approval": "never",
+        "available": true,
+        "data_classes": [
+          "user-provided"
+        ],
+        "id": "artifact.read",
+        "limitations": [
+          "Only artifacts provided in the current context."
+        ],
+        "operations": [
+          "read-inline"
+        ],
+        "side_effect": "none",
+        "version": "1"
+      }
+    ],
+    "profile_id": "generic-conversation-only",
+    "schema_version": "1.0.0"
+  },
+  "checkpoint_digest": "sha256:fb103cd07e34390df22c5bdee609de302c235a19288c5b67e48494855f982531",
+  "contracts": {
+    "engines": {
+      "problem_framing": "1.0.0"
+    },
+    "prompts": {
+      "problem_framing": {
+        "digest": "sha256:bb57c98a14c2fd82ae287787c19cc079266a28160650326df33daf2cd685bea2",
+        "id": "frameshift.problem-framing.v2",
+        "version": "2.0.0"
+      }
+    }
+  },
+  "created_at": "2026-10-06T09:00:00Z",
+  "event_cursor": 8,
+  "execution_summaries": [],
+  "id": "ckpt_symptom_001",
+  "pending_proposals": [],
+  "phase": "intake",
+  "prior_checkpoint_digest": null,
+  "prompt_version_changes": [],
+  "schema_version": "2.0.0",
+  "session_id": "sess_symptom_001",
+  "session_revision": 6,
+  "state": {
+    "active_frame_id": null,
+    "approvals": [],
+    "criteria": [],
+    "frames": [],
+    "graph": {
+      "edges": [],
+      "nodes": [],
+      "schema_version": "1.0.0"
+    },
+    "id": "sess_symptom_001",
+    "options": [],
+    "phase": "intake",
+    "revision": 6,
+    "schema_version": "2.0.0",
+    "statements": [
+      {
+        "id": "stmt_001",
+        "primary_role": "observation",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "intake_t0001"
+          ]
+        },
+        "secondary_roles": [],
+        "status": "draft",
+        "text": "My espresso at home is terrible."
+      },
+      {
+        "id": "stmt_002",
+        "primary_role": "observation",
+        "provenance": {
+          "kind": "observed",
+          "note": "Typed by the operator during intake.",
+          "source_ids": [
+            "intake_t0003"
+          ]
+        },
+        "secondary_roles": [],
+        "status": "draft",
+        "text": "Shots are sour one day and bitter the next."
+      },
+      {
+        "id": "stmt_003",
+        "primary_role": "observation",
+        "provenance": {
+          "kind": "observed",
+          "note": "Typed by the operator during intake.",
+          "source_ids": [
+            "intake_t0004"
+          ]
+        },
+        "secondary_roles": [],
+        "status": "draft",
+        "text": "No single shot is both sour and bitter."
+      },
+      {
+        "id": "stmt_004",
+        "primary_role": "observation",
+        "provenance": {
+          "kind": "observed",
+          "note": "Typed by the operator during intake.",
+          "source_ids": [
+            "intake_t0005"
+          ]
+        },
+        "secondary_roles": [],
+        "status": "draft",
+        "text": "The bar brewed the same bag with acceptable results."
+      }
+    ],
+    "status": "active",
+    "symptom_specifications": [
+      {
+        "actual": {
+          "source_ids": [
+            "stmt_002"
+          ],
+          "value": "unmeasured"
+        },
+        "deviation": "taste alternates between sour and bitter without a pattern",
+        "id": "spec_001",
+        "method_source_ids": [
+          "art_kt_pa_guide"
+        ],
+        "object": "shots from the home machine",
+        "reference": {
+          "expected": "20-27 s",
+          "measure": "shot time",
+          "source_ids": [
+            "art_cic_disciplinare_2018"
+          ]
+        },
+        "rows": [
+          {
+            "dimension": "what",
+            "distinction": "Shot-to-shot drift rather than uneven flow inside one shot.",
+            "is": [
+              "stmt_002"
+            ],
+            "is_not": [
+              "stmt_003"
+            ]
+          },
+          {
+            "dimension": "where",
+            "distinction": "Same bag, different machine, water and operator.",
+            "is": [
+              "stmt_002"
+            ],
+            "is_not": [
+              "stmt_004"
+            ]
+          }
+        ]
+      }
+    ],
+    "title": "Espresso shots taste wrong at home",
+    "workspace_id": "ws_local"
+  },
+  "state_digest": "sha256:a44839350fcb67145a6352432875e2a4e7cc2c2003f2257df1451f2cff2786b9"
+}
