@@ -152,8 +152,18 @@ def stage_intake(co, sim: Simulation, ref: dict) -> list[str]:
     co.admit_result(sid, result)
     for statement in statements[1:]:
         before = co.state(sid)["statements"]
+        # The script plays the reasoner, so it never records observed (ADR-0028):
+        # the person's words come out assumed here, and only the GUI reproduces them.
+        provenance = statement["provenance"]
+        declared = None
+        if provenance["kind"] != "observed":
+            declared = dict(provenance, source_ids=sim.mapped(provenance["source_ids"]))
         co.add_statement(
-            sid, text=statement["text"], primary_role=statement["primary_role"], expected_revision=_revision(co, sid)
+            sid,
+            text=statement["text"],
+            primary_role=statement["primary_role"],
+            expected_revision=_revision(co, sid),
+            provenance=declared,
         )
         (new,) = _new_ids(before, co.state(sid)["statements"])
         sim.ids[statement["id"]] = new

@@ -197,25 +197,62 @@ class SessionCoordinator:
         self._commit(session_id, [], bodies, revision=0)
         return self.view(session_id)
 
-    def add_statement(
+    def add_operator_statement(
         self, session_id: str, *, text: str, primary_role: str, expected_revision: int
     ) -> dict:
-        """A statement the reasoner adds during intake, already classified by them."""
+        """The person's own words, as typed at a boundary that speaks for them (ADR-0028).
+
+        Mints an intake record, as `open_session` does for the request, and is
+        the only command that records an `observed` statement. A
+        reasoner-facing boundary never exposes it.
+        """
         state = self._expect(session_id, expected_revision, phase="intake")
-        statement = {
+        statement = self._statement(
+            state,
+            text,
+            primary_role,
+            {
+                "kind": "observed",
+                "source_ids": [f"intake_{self._new_suffix()}"],
+                "note": "Typed by the operator during intake.",
+            },
+        )
+        self._commit_next(state, [{"type": "statement.added", "payload": statement}])
+        return self.view(session_id)
+
+    def add_statement(
+        self,
+        session_id: str,
+        *,
+        text: str,
+        primary_role: str,
+        expected_revision: int,
+        provenance: dict | None = None,
+    ) -> dict:
+        """A statement the reasoner adds during intake, already classified by them.
+
+        Never `observed` (ADR-0028): a declared kind must be earned by its
+        sources (ADR-0026), and without one the statement is `assumed`.
+        """
+        state = self._expect(session_id, expected_revision, phase="intake")
+        if provenance is None:
+            provenance = {"kind": "assumed", "source_ids": [], "note": "Added by the reasoner during intake."}
+        else:
+            provenance = _earned(provenance)
+        statement = self._statement(state, text, primary_role, provenance)
+        self._commit_next(state, [{"type": "statement.added", "payload": statement}])
+        return self.view(session_id)
+
+    @staticmethod
+    def _statement(state: dict, text: str, primary_role: str, provenance: dict) -> dict:
+        return {
             "id": _next_id("stmt", state["statements"]),
             "text": text,
             "primary_role": primary_role,
             "secondary_roles": [],
             "status": "draft",
-            "provenance": {
-                "kind": "observed",
-                "source_ids": [],
-                "note": "Added by the reasoner during intake.",
-            },
+            "provenance": provenance,
         }
-        self._commit_next(state, [{"type": "statement.added", "payload": statement}])
-        return self.view(session_id)
 
     def manual_framing_result(self, session_id: str, classifications: list[dict]) -> dict:
         """Build the problem-framing result a person authored in place of a model.
@@ -826,6 +863,33 @@ def _next_id(prefix: str, items: list[dict]) -> str:
     while f"{prefix}_{number:03d}" in taken:
         number += 1
     return f"{prefix}_{number:03d}"
+
+
+def _earned(provenance: dict) -> dict:
+    """A reasoner's declared provenance, refused unless its sources earn its kind (ADR-0026).
+
+    `observed` is never the reasoner's to declare (ADR-0028). Whether each
+    source id is registered and resolves is checked on commit (ADR-0012).
+    """
+    if not isinstance(provenance, dict):
+        raise CommandRefused(SCHEMA_INVALID, "provenance must be an object")
+    kind = provenance.get("kind")
+    sources = provenance.get("source_ids", [])
+    if kind == "observed":
+        raise CommandRefused(
+            INVARIANT_VIOLATION,
+            "a reasoner never records an observed statement: only the boundary that "
+            "received the person's words can say they are theirs",
+        )
+    if kind not in PROVENANCE_KINDS:
+        raise CommandRefused(SCHEMA_INVALID, f"unknown provenance kind {kind!r}")
+    if not isinstance(sources, list) or not all(isinstance(source, str) for source in sources):
+        raise CommandRefused(SCHEMA_INVALID, "provenance source_ids must be a list of strings")
+    if kind == "sourced" and not any(source.startswith("art_") for source in sources):
+        raise CommandRefused(INVARIANT_VIOLATION, "a sourced provenance cites at least one referenced artifact (art_)")
+    if kind == "inferred" and not sources:
+        raise CommandRefused(INVARIANT_VIOLATION, "an inferred provenance cites at least one source")
+    return copy.deepcopy(provenance)
 
 
 def _strings(value) -> list[str]:

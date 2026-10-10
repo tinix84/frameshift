@@ -102,6 +102,18 @@ class GuiBoundary(unittest.TestCase):
         )
         self.assertEqual((status, body["code"]), (409, "revision_conflict"))
 
+    def test_a_statement_typed_in_the_gui_is_the_persons_own(self) -> None:
+        """#256 (ADR-0028): the GUI speaks for the operator, so its statements are observed."""
+        sid = self.open()
+        status, view = self.call(
+            "POST", f"/api/sessions/{sid}/statements",
+            {"text": "An outcome.", "primary_role": "outcome", "expected_revision": 0},
+        )
+        self.assertEqual(status, 200, view)
+        provenance = view["state"]["statements"][-1]["provenance"]
+        self.assertEqual(provenance["kind"], "observed")
+        self.assertTrue(provenance["source_ids"][0].startswith("intake_"))
+
     def test_intake_is_sealed_through_the_http_confirmation_round_trip(self) -> None:
         sid = self.open()
         _, built = self.call(

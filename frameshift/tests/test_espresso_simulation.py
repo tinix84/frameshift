@@ -108,7 +108,8 @@ class AFullRun(unittest.TestCase):
         self.assertEqual(
             fields,
             {
-                ("statements", "provenance"): 12,
+                # The ten observed ones: the script is a reasoner, so they come out assumed (ADR-0028).
+                ("statements", "provenance"): 10,
                 ("statements", "status"): 12,
                 ("frames", "status"): 1,
                 ("nodes", "provenance"): 43,

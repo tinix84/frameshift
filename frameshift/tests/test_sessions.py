@@ -214,6 +214,63 @@ class CorrectAClassification(Fixture):
         self.assertFalse(self.co.view(self.sid)["derived"]["abstraction_required"])
 
 
+class OnlyThePersonsWordsAreObserved(Fixture):
+    """#256 (ADR-0028): `observed` means the person's words, recorded at their boundary."""
+
+    TEXT = "Pack cost per usable kWh meets the target."
+
+    def add(self, provenance=None) -> dict:
+        return self.co.add_statement(
+            self.sid, text=self.TEXT, primary_role="outcome", expected_revision=self.revision(), provenance=provenance
+        )["state"]["statements"][-1]
+
+    def refused(self, provenance: dict) -> str:
+        before = len(self.co.history(self.sid))
+        with self.assertRaises(CommandRefused) as refused:
+            self.add(provenance)
+        self.assertEqual(len(self.co.history(self.sid)), before, "a refused statement writes nothing")
+        return refused.exception.code
+
+    def test_the_persons_path_mints_a_fresh_intake_record(self) -> None:
+        state = self.co.add_operator_statement(
+            self.sid, text=self.TEXT, primary_role="outcome", expected_revision=self.revision()
+        )["state"]
+        request, typed = state["statements"]
+        self.assertEqual(typed["provenance"]["kind"], "observed")
+        (source,) = typed["provenance"]["source_ids"]
+        self.assertTrue(source.startswith("intake_"))
+        self.assertNotEqual(source, request["provenance"]["source_ids"][0], "each arrival is its own record")
+        self.assertEqual(session_violations(state), [])
+
+    def test_the_reasoners_path_defaults_to_assumed(self) -> None:
+        provenance = self.add()["provenance"]
+        self.assertEqual((provenance["kind"], provenance["source_ids"]), ("assumed", []))
+
+    def test_the_reasoner_cannot_declare_observed_even_citing_the_person(self) -> None:
+        for sources in ([], ["stmt_001"], ["intake_t0001"]):
+            with self.subTest(sources=sources):
+                self.assertEqual(self.refused({"kind": "observed", "source_ids": sources}), "invariant_violation")
+
+    def test_a_declared_kind_its_sources_earn_is_stored_as_given(self) -> None:
+        for provenance in (
+            {"kind": "inferred", "source_ids": ["stmt_001"], "note": "Restates the request."},
+            {"kind": "sourced", "source_ids": ["art_datasheet_cell"]},
+            {"kind": "unknown", "source_ids": []},
+            {"kind": "assumed", "source_ids": []},
+        ):
+            with self.subTest(kind=provenance["kind"]):
+                self.assertEqual(self.add(copy.deepcopy(provenance))["provenance"], provenance)
+
+    def test_an_unearned_kind_is_refused(self) -> None:
+        self.assertEqual(self.refused({"kind": "inferred", "source_ids": []}), "invariant_violation")
+        self.assertEqual(self.refused({"kind": "sourced", "source_ids": ["stmt_001"]}), "invariant_violation")
+        self.assertEqual(self.refused({"kind": "certain", "source_ids": []}), "schema_invalid")
+
+    def test_a_dangling_or_unregistered_citation_is_refused(self) -> None:
+        self.refused({"kind": "inferred", "source_ids": ["stmt_099"]})
+        self.refused({"kind": "inferred", "source_ids": ["madeup_001"]})
+
+
 class SealIntakeThroughTheGate(Fixture):
     """#229."""
 
