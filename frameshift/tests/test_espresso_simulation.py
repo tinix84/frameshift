@@ -108,7 +108,9 @@ class AFullRun(unittest.TestCase):
         self.assertEqual(
             fields,
             {
-                ("statements", "provenance"): 12,
+                # The script is a reasoner (ADR-0028): nine observed statements come out assumed, and the
+                # request differs in its intake id and note. The two inferred ones reproduce.
+                ("statements", "provenance"): 10,
                 ("statements", "status"): 12,
                 ("frames", "status"): 1,
                 ("nodes", "provenance"): 43,

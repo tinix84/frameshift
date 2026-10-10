@@ -127,7 +127,8 @@ class ManualApp:
         return self.coordinator.admit_result(sid, body.get("result", {}))
 
     def add_statement(self, body, sid):
-        return self.coordinator.add_statement(
+        # The operator types here, so their words enter as theirs (ADR-0028).
+        return self.coordinator.add_operator_statement(
             sid,
             text=body.get("text", ""),
             primary_role=body.get("primary_role", ""),
