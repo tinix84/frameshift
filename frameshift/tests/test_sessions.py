@@ -400,6 +400,28 @@ class TheShallowJourney(Fixture):
         self.assertEqual(state["graph"]["nodes"][0]["status"], "proposed")
         self.assertEqual(len(state["approvals"]), 3)
 
+    def test_a_reasoner_cannot_offer_a_node_with_a_decided_status(self) -> None:
+        """#254: approved, rejected, superseded and archived are decisions, never fields."""
+        self.seal_intake()
+        self.co.propose_frame(self.sid, frame=_frame(), expected_revision=self.revision())
+        self.co.propose_frame(self.sid, frame=_alternative(), expected_revision=self.revision())
+        self.co.activate_frame(self.sid, frame_id="frame_001", expected_revision=self.revision())
+        approve(self.co, self.co.prepare_gate(self.sid, gate="frame_selection", target_id="frame_001"))
+        before = len(self.co.history(self.sid))
+        for status in ("approved", "rejected", "superseded", "archived", "established", ""):
+            with self.subTest(status=status), self.assertRaises(CommandRefused) as refused:
+                self.co.add_node(
+                    self.sid,
+                    node={"type": "hypothesis", "label": "Scale insulates the thermoblock.", "status": status, "confidence": "high"},
+                    expected_revision=self.revision(),
+                )
+            self.assertEqual(refused.exception.code, "invariant_violation")
+        self.assertEqual(len(self.co.history(self.sid)), before, "a refused node writes nothing")
+        for status in ("draft", "proposed"):
+            self.co.add_node(self.sid, node={"type": "hypothesis", "label": f"Offered {status}.", "status": status}, expected_revision=self.revision())
+        self.co.add_node(self.sid, node={"type": "hypothesis", "label": "No status given."}, expected_revision=self.revision())
+        self.assertEqual([n["status"] for n in self.co.state(self.sid)["graph"]["nodes"]], ["draft", "proposed", "proposed"])
+
     def test_reactivating_moves_the_working_frame_and_rerecords_both_digests(self) -> None:
         self.seal_intake()
         self.co.propose_frame(self.sid, frame=_frame(), expected_revision=self.revision())
