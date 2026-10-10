@@ -121,10 +121,24 @@ class FrameContractTests(unittest.TestCase):
             "node_factor_001": "proposed", "edge_001": "proposed", "opt_001": "proposed",
         })
         # Only status changes: text, provenance and links cross as they were.
-        for before, after in zip(state["statements"], migrated["statements"]):
-            self.assertEqual({k: v for k, v in before.items() if k != "status"}, {k: v for k, v in after.items() if k != "status"})
+        for kind in ("statements", "options"):
+            for before, after in zip(state[kind], migrated[kind]):
+                self.assertEqual({k: v for k, v in before.items() if k != "status"}, {k: v for k, v in after.items() if k != "status"})
+        for kind in ("nodes", "edges"):
+            for before, after in zip(state["graph"][kind], migrated["graph"][kind]):
+                self.assertEqual({k: v for k, v in before.items() if k != "status"}, {k: v for k, v in after.items() if k != "status"})
         self.assertEqual(migrated["approvals"], [])
         self.assertEqual(schema.validate_against(result["checkpoint"], "checkpoint.v2.schema.json"), [])
+
+    def test_an_archived_session_and_a_shortlisted_option_reset_too(self):
+        source = reference()
+        source["state"]["status"] = "archived"
+        source["state"]["options"].append({
+            "id": "opt_001", "frame_id": "frame_001", "title": "Reuse the current pack design.",
+            "leverage_level": "reuse a platform", "mechanism": "No new tooling.", "status": "shortlisted",
+        })
+        migrated = self.migrate(source)["checkpoint"]["state"]
+        self.assertEqual((migrated["status"], migrated["options"][0]["status"]), ("active", "proposed"))
 
     def test_a_draft_or_proposed_status_is_kept(self):
         source = reference()

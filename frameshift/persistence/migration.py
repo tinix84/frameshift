@@ -41,8 +41,9 @@ def migrate_frame_axes(
     event sequence, carries no approval records, and returns changed frames as
     proposals. Every other decided status resets too (ADR-0025): statements,
     graph items and options to `proposed`, a decided or archived session to
-    `active`; a deleted session is not migrated. Lateral legacy values cannot supply a missing ladder value, so
-    they remain pending human review instead of being guessed.
+    `active`; a deleted session is not migrated. Lateral legacy values cannot
+    supply a missing ladder value, so they remain pending human review instead
+    of being guessed.
     """
     if not isinstance(source, dict):
         return _refused(SCHEMA_INVALID, "source checkpoint must be an object")
