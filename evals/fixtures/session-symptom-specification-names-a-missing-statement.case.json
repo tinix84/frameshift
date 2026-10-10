@@ -1,0 +1,29 @@
+{
+  "id": "session-symptom-specification-names-a-missing-statement",
+  "check": "session_invariants",
+  "artifact": "symptom.checkpoint.v2.json",
+  "at": [
+    "state"
+  ],
+  "mutate": [
+    {
+      "path": [
+        "symptom_specifications",
+        0,
+        "rows",
+        0,
+        "is_not",
+        0
+      ],
+      "value": "stmt_099"
+    }
+  ],
+  "expect": {
+    "outcome": "invalid",
+    "violations_naming": [
+      "dangling reference",
+      "stmt_099",
+      "not a statement"
+    ]
+  }
+}

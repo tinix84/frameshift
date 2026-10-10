@@ -1,0 +1,9 @@
+{
+  "id": "replay-symptom-specification-reproduces-the-snapshot",
+  "check": "replay_equivalence",
+  "artifact": "symptom.checkpoint.v2.json",
+  "log": "evals/fixtures/symptom.events.jsonl",
+  "expect": {
+    "outcome": "equivalent"
+  }
+}

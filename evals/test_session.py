@@ -9,6 +9,7 @@ oversights.
 from __future__ import annotations
 
 import copy
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -211,6 +212,53 @@ class TheLadderInvariantAgrees(unittest.TestCase):
         )
         self.assertEqual(session.reference_violations(state), application.reference_violations(state))
         self.assertFalse(any("rung_001" in item for item in session.reference_violations(state)))
+
+class TheSymptomSpecificationInvariantAgrees(unittest.TestCase):
+    """#260 (ADR-0027): both validators refuse the same specification, word for word."""
+
+    def state(self) -> dict:
+        return copy.deepcopy(run.load("evals/fixtures/symptom.checkpoint.v2.json")["state"])
+
+    def test_application_and_reference_name_the_same_violations(self) -> None:
+        from frameshift.validation import invariants as application
+
+        state = self.state()
+        self.assertEqual(session.reference_violations(state), [])
+        self.assertEqual(application.reference_violations(state), [])
+        spec = state["symptom_specifications"][0]
+        spec["rows"][1]["dimension"] = "what"
+        spec["rows"][0]["is"].append("stmt_099")
+        spec["knot_node_id"] = "node_099"
+        spec["method_source_ids"] = ["stmt_002"]
+        mine, theirs = application.reference_violations(state), session.reference_violations(state)
+        self.assertEqual(mine, theirs)
+        self.assertEqual(len(mine), 4, mine)
+
+    def test_a_specification_citation_resolves_in_both_validators(self) -> None:
+        from frameshift.validation import invariants as application
+
+        state = self.state()
+        state["statements"][1]["provenance"] = {"kind": "inferred", "source_ids": ["spec_001"]}
+        self.assertEqual(session.reference_violations(state), application.reference_violations(state))
+        self.assertEqual(session.reference_violations(state), [])
+
+    def test_both_reducers_reach_the_snapshot_with_the_re_recording_in_place(self) -> None:
+        from evals.checks import replay as reference
+        from frameshift.orchestration import replay as application
+
+        events = [json.loads(line) for line in (run.ROOT / "evals" / "fixtures" / "symptom.events.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+        self.assertEqual(application.fold(copy.deepcopy(events)), self.state())
+        self.assertEqual(reference.fold(copy.deepcopy(events)), self.state())
+        specs = self.state()["symptom_specifications"]
+        self.assertEqual([(spec["id"], len(spec["rows"])) for spec in specs], [("spec_001", 2), ("spec_002", 1)])
+
+    def test_a_v2_checkpoint_without_the_field_still_validates(self) -> None:
+        state = copy.deepcopy(run.load("evals/fixtures/ladder.checkpoint.v2.json")["state"])
+        self.assertNotIn("symptom_specifications", state)
+        from frameshift.validation import session_violations
+
+        self.assertEqual(session_violations(state), [])
+
 
 if __name__ == "__main__":
     unittest.main()

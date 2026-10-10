@@ -32,6 +32,7 @@ so the reference's decided statuses show up as differences (#254).
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import sys
 from pathlib import Path
@@ -257,10 +258,75 @@ def stage_causal(co, sim: Simulation, ref: dict) -> list[str]:
             ))
         except CommandRefused as refusal:
             refused.append(f"edge {edge['id']}: {refusal}")
+    specified: list[str] = []
+    for spec in _specifications(ref):
+        if spec.get("knot_node_id") is not None and spec["knot_node_id"] not in sim.ids:
+            refused.append(f"specification {spec['id']}: its knot node was not added")
+            continue
+        fields = _mapped_ids(sim.ids, {key: value for key, value in spec.items() if key != "id"})
+        try:
+            specified.append(_place(
+                sim, spec["id"],
+                lambda: co.state(sid).get("symptom_specifications", []),
+                _same(fields),
+                lambda fields=fields: co.record_symptom_specification(
+                    sid, specification=fields, expected_revision=_revision(co, sid)
+                ),
+            ))
+        except CommandRefused as refusal:
+            refused.append(f"specification {spec['id']}: {refusal}")
     added = co.state(sid)["graph"]
     lines = [f"Graph: {_tally(outcomes)}; the store holds {len(added['nodes'])} nodes and {len(added['edges'])} edges."]
+    lines.append(f"Symptom specifications: {_tally(specified)}.")
     lines += [f"Refused: {item}" for item in refused]
     return lines
+
+
+# The reference keeps these under `extensions`; the session now holds them (ADR-0027).
+CANONICAL_EXTENSIONS = ("symptom_specification",)
+
+
+def _extensions(ref: dict) -> list[str]:
+    """The reference's extensions the session does not hold as state.
+
+    A canonical extension's own metadata (the collection's `status` and
+    `note`) stays an extension under ADR-0027, so it is still reported.
+    """
+    names = []
+    for name, value in ref.get("extensions", {}).items():
+        if name not in CANONICAL_EXTENSIONS:
+            names.append(name)
+        elif isinstance(value, dict):
+            names += [f"{name}.{key}" for key in value if key not in ("specifications", "method_source_ids")]
+    return sorted(names)
+
+
+def _specifications(ref: dict) -> list[dict]:
+    """The reference's specifications, each carrying the method its list names (ADR-0027)."""
+    collection = ref.get("extensions", {}).get("symptom_specification", {})
+    method = collection.get("method_source_ids")
+    specs = []
+    for spec in collection.get("specifications", []):
+        spec = copy.deepcopy(spec)
+        if method and "method_source_ids" not in spec:
+            spec["method_source_ids"] = list(method)
+        specs.append(spec)
+    return specs
+
+
+# The keys whose values are ids; text such as a distinction is never translated.
+ID_KEYS = ("is", "is_not", "source_ids", "knot_node_id")
+
+
+def _mapped_ids(ids: dict[str, str], value, key: str | None = None):
+    """The ids inside `value` (under ID_KEYS) translated through `ids`; everything else kept."""
+    if isinstance(value, dict):
+        return {name: _mapped_ids(ids, item, name) for name, item in value.items()}
+    if isinstance(value, list):
+        return [_mapped_ids(ids, item, key) for item in value]
+    if key in ID_KEYS and isinstance(value, str):
+        return ids.get(value, value)
+    return value
 
 
 def _require(co, sim: Simulation, phase: str) -> str:
@@ -278,6 +344,10 @@ def _require(co, sim: Simulation, phase: str) -> str:
 # --------------------------------------------------------------------- compare
 
 
+# Fields whose ids the application renamed, translated back before comparing.
+ID_FIELDS = ("rows", "reference", "actual", "knot_node_id")
+
+
 def compare(state: dict, ref: dict, sim: Simulation) -> dict:
     """Item by item: what the application holds, against the reference."""
     back = {new: old for old, new in sim.ids.items()}
@@ -290,6 +360,8 @@ def compare(state: dict, ref: dict, sim: Simulation) -> dict:
             want, have = ref_item.get(field), sim_item.get(field)
             if field == "provenance" and isinstance(want, dict) and isinstance(have, dict):
                 have = dict(have, source_ids=[back.get(item, item) for item in have.get("source_ids", [])])
+            elif field in ID_FIELDS:
+                have = _mapped_ids(back, have, field)
             if want != have:
                 differences.append(f"{field}: reference {_short(want)}, application {_short(have)}")
         return differences
@@ -299,6 +371,7 @@ def compare(state: dict, ref: dict, sim: Simulation) -> dict:
         by_id.update({item["id"]: item for item in state.get(section, [])})
     by_id.update({item["id"]: item for item in state["graph"]["nodes"]})
     by_id.update({item["id"]: item for item in state["graph"]["edges"]})
+    by_id.update({item["id"]: item for item in state.get("symptom_specifications", [])})
 
     sections = {
         "statements": (ref["statements"], ["text", "primary_role", "status", "provenance"]),
@@ -310,6 +383,8 @@ def compare(state: dict, ref: dict, sim: Simulation) -> dict:
         "nodes": (ref["graph"]["nodes"], ["type", "label", "status", "confidence", "description", "extensions",
                                           "provenance"]),
         "edges": (ref["graph"]["edges"], ["type", "status", "confidence", "extensions", "provenance"]),
+        "specifications": (_specifications(ref), ["object", "deviation", "rows", "reference", "actual",
+                                                  "knot_node_id", "method_source_ids", "provenance"]),
     }
     held = {
         "statements": state.get("statements", []),
@@ -317,6 +392,7 @@ def compare(state: dict, ref: dict, sim: Simulation) -> dict:
         "frames": state.get("frames", []),
         "nodes": state["graph"]["nodes"],
         "edges": state["graph"]["edges"],
+        "specifications": state.get("symptom_specifications", []),
     }
     report: dict = {"sections": {}, "extra": {}}
     for name, (items, fields) in sections.items():
@@ -344,7 +420,10 @@ def compare(state: dict, ref: dict, sim: Simulation) -> dict:
                 for a in state.get("approvals", [])
             ],
         },
-        "extensions": {"reference": sorted(ref.get("extensions", {})), "application": sorted(state.get("extensions", {}))},
+        "extensions": {
+            "reference": _extensions(ref),
+            "application": sorted(state.get("extensions", {})),
+        },
     }
     return report
 

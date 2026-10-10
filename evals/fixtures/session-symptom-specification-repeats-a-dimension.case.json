@@ -1,0 +1,28 @@
+{
+  "id": "session-symptom-specification-repeats-a-dimension",
+  "check": "session_invariants",
+  "artifact": "symptom.checkpoint.v2.json",
+  "at": [
+    "state"
+  ],
+  "mutate": [
+    {
+      "path": [
+        "symptom_specifications",
+        0,
+        "rows",
+        1,
+        "dimension"
+      ],
+      "value": "what"
+    }
+  ],
+  "expect": {
+    "outcome": "invalid",
+    "violations_naming": [
+      "$.symptom_specifications[0].rows[1]",
+      "invariant_violation",
+      "already holds"
+    ]
+  }
+}

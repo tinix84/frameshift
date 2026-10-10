@@ -38,7 +38,13 @@ import copy
 from typing import Callable
 
 from frameshift.contracts import errors
-from frameshift.validation import addressable, provenance_namespaces, session_violations, validate_against
+from frameshift.validation import (
+    addressable,
+    provenance_namespaces,
+    session_violations,
+    symptom_specification_violations,
+    validate_against,
+)
 
 from . import phases, proposals, replay, transitions
 from .ports import EventLog, EventLogRefused
@@ -60,6 +66,10 @@ ADMITTED_KINDS = frozenset({"statement_classification"})
 # a decision (approved, rejected, superseded, archived), and a decision is a
 # person's, reached through a gate, never a field a caller sets.
 REASONER_NODE_STATUSES = ("draft", "proposed")
+SPECIFICATION_PHASES = ("intake", "framing", "causal")
+SPECIFICATION_FIELDS = (
+    "object", "deviation", "rows", "reference", "actual", "knot_node_id", "method_source_ids", "provenance",
+)
 
 class CommandRefused(Exception):
     """A command that changed nothing, with a published code and the reason."""
@@ -508,6 +518,61 @@ class SessionCoordinator:
         self._commit_next(state, [{"type": "ladder.rung.recorded", "payload": recorded}])
         return self.view(session_id)
 
+    def record_symptom_specification(
+        self,
+        session_id: str,
+        *,
+        specification: dict,
+        expected_revision: int,
+        spec_id: str | None = None,
+    ) -> dict:
+        """ADR-0027: record one IS / IS NOT specification, or record it again whole.
+
+        Accepted in intake, framing and causal: a specification belongs before
+        causal branching, and its knot node exists only once the graph does.
+        Every id it names must land in this session, and a declared provenance
+        must be earned (ADR-0026); either refusal writes nothing.
+        """
+        state = self._expect(session_id, expected_revision, phase=SPECIFICATION_PHASES)
+        if not isinstance(specification, dict):
+            raise CommandRefused(SCHEMA_INVALID, "a symptom specification is an object")
+        unknown = sorted(set(specification) - set(SPECIFICATION_FIELDS))
+        if unknown:
+            # An `id` among them most likely meant `spec_id`; neither is dropped silently.
+            raise CommandRefused(SCHEMA_INVALID, f"a symptom specification has no field {', '.join(map(repr, unknown))}")
+        standing = state.get("symptom_specifications", [])
+        if spec_id is not None and (not isinstance(spec_id, str) or spec_id not in {item["id"] for item in standing}):
+            raise CommandRefused(INVARIANT_VIOLATION, f"no symptom specification {spec_id!r} to re-record")
+        recorded = {"id": spec_id or _next_id("spec", standing)}
+        for field in SPECIFICATION_FIELDS:
+            if field in specification:
+                recorded[field] = copy.deepcopy(specification[field])
+        # Shape first, so a malformed field is refused as a schema matter and
+        # never mistaken for a dangling id. A re-recording keeps its place.
+        prospective = [recorded if item["id"] == recorded["id"] else item for item in standing]
+        if spec_id is None:
+            prospective.append(recorded)
+        violations = validate_against(dict(state, symptom_specifications=prospective), "session.v2.schema.json")
+        if violations:
+            raise CommandRefused(SCHEMA_INVALID, "; ".join(violations))
+        cited = [
+            *recorded.get("provenance", {}).get("source_ids", []),
+            *(source for part in ("reference", "actual") for source in recorded.get(part, {}).get("source_ids", [])),
+        ]
+        if recorded["id"] in cited:
+            raise CommandRefused(INVARIANT_VIOLATION, f"{recorded['id']!r} cannot cite itself")
+        if "provenance" in recorded:
+            recorded["provenance"] = _earned(recorded["provenance"], state, observed=_observed_node)
+        for part in ("reference", "actual"):
+            if part in recorded:
+                _check_citations(recorded[part]["source_ids"], state)
+        dangling = symptom_specification_violations(dict(state, symptom_specifications=[recorded]))
+        if dangling:
+            code, _, detail = dangling[0].partition(": ")
+            raise CommandRefused(code, detail.replace("$.symptom_specifications[0]", "the specification"))
+        self._commit_next(state, [{"type": "symptom.specification.recorded", "payload": recorded}])
+        return self.view(session_id)
+
     def activate_frame(self, session_id: str, *, frame_id: str, expected_revision: int) -> dict:
         """Make one candidate the working frame, ready for `frame_selection`.
 
@@ -659,7 +724,7 @@ class SessionCoordinator:
 
     # ----------------------------------------------------------- the commit
 
-    def _expect(self, session_id: str, expected_revision: int, *, phase: str) -> dict:
+    def _expect(self, session_id: str, expected_revision: int, *, phase: str | tuple[str, ...]) -> dict:
         state = self.state(session_id)
         if type(expected_revision) is not int or expected_revision != state["revision"]:
             raise CommandRefused(
@@ -667,10 +732,12 @@ class SessionCoordinator:
                 f"command was formed against revision {expected_revision!r} and the session is at "
                 f"{state['revision']}; re-read before acting",
             )
-        if state["phase"] != phase:
+        phases = (phase,) if isinstance(phase, str) else phase
+        if state["phase"] not in phases:
+            named = repr(phase) if isinstance(phase, str) else " or ".join(repr(item) for item in phase)
             raise CommandRefused(
                 INVARIANT_VIOLATION,
-                f"this command belongs to phase {phase!r}, and the session is in {state['phase']!r}",
+                f"this command belongs to phase {named}, and the session is in {state['phase']!r}",
             )
         return state
 
@@ -900,9 +967,23 @@ def _earned(provenance: dict, state: dict, *, observed: Callable[[list[str], dic
         raise CommandRefused(INVARIANT_VIOLATION, "a sourced provenance cites at least one referenced artifact (art_)")
     if kind == "inferred" and not sources:
         raise CommandRefused(INVARIANT_VIOLATION, "an inferred provenance cites at least one source")
+    _check_citations(sources, state)
+    if kind == "observed" and not observed(sources, state):
+        raise CommandRefused(
+            INVARIANT_VIOLATION,
+            "an observed provenance cites the person: an intake record minted in this session, "
+            "or an observed statement that cites one",
+        )
+    return copy.deepcopy(provenance)
+
+
+def _check_citations(sources: list[str], state: dict) -> None:
+    """ADR-0012 and ADR-0028 for each source id, refused as an invariant before anything is built."""
     local, external = provenance_namespaces()
     reachable = addressable(state)
     for source in sources:
+        if not isinstance(source, str):
+            raise CommandRefused(SCHEMA_INVALID, "a source id is a string")
         if source.startswith("intake_"):
             if source not in intake_records(state):
                 raise CommandRefused(
@@ -915,13 +996,6 @@ def _earned(provenance: dict, state: dict, *, observed: Callable[[list[str], dic
             raise CommandRefused(INVARIANT_VIOLATION, f"{source!r} cites no registered provenance namespace")
         elif source not in reachable:
             raise CommandRefused(INVARIANT_VIOLATION, f"{source!r} does not resolve in this session")
-    if kind == "observed" and not observed(sources, state):
-        raise CommandRefused(
-            INVARIANT_VIOLATION,
-            "an observed provenance cites the person: an intake record minted in this session, "
-            "or an observed statement that cites one",
-        )
-    return copy.deepcopy(provenance)
 
 
 def _observed_node(sources: list[str], state: dict) -> bool:
