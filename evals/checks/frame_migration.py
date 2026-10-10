@@ -46,6 +46,17 @@ def frame_migration(case: dict, load) -> list[str]:
     state = migrated["state"]
     if state["approvals"] or state.get("active_frame_id") is not None:
         errors.append("linked migration inherited approval authority")
+    # ADR-0025: no decided status crosses without the approval behind it.
+    graph = state.get("graph", {})
+    decided = [
+        item["id"]
+        for item in [*state.get("statements", []), *graph.get("nodes", []), *graph.get("edges", []), *state.get("options", [])]
+        if item.get("status") in {"approved", "rejected", "superseded", "archived", "shortlisted", "selected"}
+    ]
+    if decided:
+        errors.append(f"linked migration kept decided statuses without their approvals: {decided}")
+    if state.get("status") in {"decided", "archived"}:
+        errors.append(f"linked migration kept the source session status {state['status']!r}")
     frame = state["frames"][0]
     for field, expected in case["expect"]["frame"].items():
         if frame.get(field) != expected:

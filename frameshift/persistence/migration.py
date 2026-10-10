@@ -13,6 +13,11 @@ SCHEMA_INVALID = errors.SCHEMA_INVALID
 INVARIANT_VIOLATION = errors.INVARIANT_VIOLATION
 APPROVAL_REQUIRED = errors.APPROVAL_REQUIRED
 
+# ADR-0025: a status that records a decision needs its decision, and a linked
+# session carries no approval records, so it carries no decided status either.
+DECIDED_STATUSES = frozenset({"approved", "rejected", "superseded", "archived", "shortlisted", "selected"})
+DECIDED_SESSION_STATUSES = frozenset({"decided", "archived"})
+
 _AUTOMATIC_AXES = {
     "component": ("component", "component"),
     "subsystem": ("subsystem", "subsystem"),
@@ -34,8 +39,11 @@ def migrate_frame_axes(
 
     The source is input only. A migration begins a new session revision and
     event sequence, carries no approval records, and returns changed frames as
-    proposals. Lateral legacy values cannot supply a missing ladder value, so
-    they remain pending human review instead of being guessed.
+    proposals. Every other decided status resets too (ADR-0025): statements,
+    graph items and options to `proposed`, a decided or archived session to
+    `active`; a deleted session is not migrated. Lateral legacy values cannot
+    supply a missing ladder value, so they remain pending human review instead
+    of being guessed.
     """
     if not isinstance(source, dict):
         return _refused(SCHEMA_INVALID, "source checkpoint must be an object")
@@ -66,6 +74,10 @@ def migrate_frame_axes(
     semantic = session_violations(state)
     if coherence or semantic:
         return _refused(INVARIANT_VIOLATION, "; ".join(coherence + semantic))
+
+    if state.get("status") == "deleted":
+        # ADR-0025: deletion is a retention matter (#17); migrating must not undo it.
+        return _refused(INVARIANT_VIOLATION, "a deleted session is not migrated")
 
     if checkpoint_id == source["id"] or session_id == source["session_id"]:
         return _refused(
@@ -112,6 +124,12 @@ def migrate_frame_axes(
             "approvals": [],
         }
     )
+    if state.get("status") in DECIDED_SESSION_STATUSES:
+        state["status"] = "active"
+    graph = state.get("graph", {})
+    for item in [*state.get("statements", []), *graph.get("nodes", []), *graph.get("edges", []), *state.get("options", [])]:
+        if item.get("status") in DECIDED_STATUSES:
+            item["status"] = "proposed"
     for frame in state["frames"]:
         abstraction_level, system_boundary = _AUTOMATIC_AXES[frame["abstraction_level"]]
         frame["abstraction_level"] = abstraction_level
