@@ -205,6 +205,18 @@ def stage_framing(co, sim: Simulation, ref: dict) -> list[str]:
     ]
 
 
+def _declared(sim: Simulation, provenance: dict) -> dict:
+    """The reference's provenance as the reasoner can declare it (ADR-0026, ADR-0028).
+
+    An observed node cites the person's statements, which the script cannot
+    record as observed, so it can only offer the node as inferred from them.
+    """
+    declared = dict(provenance, source_ids=sim.mapped(provenance["source_ids"]))
+    if declared["kind"] == "observed":
+        declared["kind"] = "inferred"
+    return declared
+
+
 def stage_causal(co, sim: Simulation, ref: dict) -> list[str]:
     sid = _require(co, sim, "causal")
     refused: list[str] = []
@@ -216,7 +228,7 @@ def stage_causal(co, sim: Simulation, ref: dict) -> list[str]:
             "label": node["label"],
             "status": _offered(node["status"]),
             "confidence": node["confidence"],
-            "source_ids": sim.mapped(node["provenance"]["source_ids"]),
+            "provenance": _declared(sim, node["provenance"]),
         }
         for optional in ("description", "extensions"):
             if optional in node:

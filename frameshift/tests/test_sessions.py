@@ -529,6 +529,88 @@ class TheShallowJourney(Fixture):
         self.assertEqual([s["id"] for s in again.sessions()], [self.sid])
 
 
+class ANodeKeepsTheKindItsSourcesEarn(Fixture):
+    """#257 (ADR-0026, under ADR-0028's conditions): kind is declared and earned, never rewritten."""
+
+    def to_causal(self) -> None:
+        self.classify()
+        self.co.add_operator_statement(self.sid, text="The pack misses the cost target.", primary_role="observation", expected_revision=self.revision())
+        self.co.add_statement(self.sid, text="Pack cost per usable kWh meets the target.", primary_role="outcome", expected_revision=self.revision())
+        approve(self.co, self.co.prepare_gate(self.sid, gate="intake_correction", target_id="stmt_001"))
+        self.co.propose_frame(self.sid, frame=_frame(), expected_revision=self.revision())
+        self.co.propose_frame(self.sid, frame=_alternative(), expected_revision=self.revision())
+        self.co.activate_frame(self.sid, frame_id="frame_001", expected_revision=self.revision())
+        approve(self.co, self.co.prepare_gate(self.sid, gate="frame_selection", target_id="frame_001"))
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.to_causal()
+        statements = self.co.state(self.sid)["statements"]
+        self.request_intake = statements[0]["provenance"]["source_ids"][0]
+        self.typed, self.reasoned = statements[1]["id"], statements[2]["id"]
+
+    def add(self, provenance: dict, status: str = "proposed") -> dict:
+        node = {"type": "observation", "label": "Cost above target.", "status": status, "confidence": "high", "provenance": provenance}
+        return self.co.add_node(self.sid, node=node, expected_revision=self.revision())["state"]["graph"]["nodes"][-1]
+
+    def refused(self, provenance: dict) -> str:
+        before = len(self.co.history(self.sid))
+        with self.assertRaises(CommandRefused) as refused:
+            self.add(provenance)
+        self.assertEqual(len(self.co.history(self.sid)), before, "a refused node writes nothing")
+        return refused.exception.code
+
+    def test_each_kind_its_sources_earn_is_stored_as_given(self) -> None:
+        for provenance in (
+            {"kind": "observed", "source_ids": [self.typed], "note": "The person said so."},
+            {"kind": "observed", "source_ids": [self.request_intake]},
+            {"kind": "sourced", "source_ids": ["art_cell_quote"]},
+            {"kind": "inferred", "source_ids": [self.reasoned, "frame_001"]},
+            {"kind": "assumed", "source_ids": []},
+            {"kind": "unknown", "source_ids": []},
+        ):
+            with self.subTest(provenance=provenance):
+                self.assertEqual(self.add(copy.deepcopy(provenance))["provenance"], provenance)
+
+    def test_each_kind_without_its_sources_is_refused_not_rewritten(self) -> None:
+        for provenance in (
+            {"kind": "observed", "source_ids": []},
+            {"kind": "observed", "source_ids": [self.reasoned]},
+            {"kind": "observed", "source_ids": ["frame_001", "art_cell_quote"]},
+            {"kind": "observed", "source_ids": ["intake_fabricated"]},
+            {"kind": "sourced", "source_ids": [self.typed]},
+            {"kind": "inferred", "source_ids": []},
+            {"kind": "inferred", "source_ids": ["node_099"]},
+        ):
+            with self.subTest(provenance=provenance):
+                self.assertEqual(self.refused(provenance), "invariant_violation")
+
+    def test_a_legacy_observed_statement_with_no_intake_record_earns_nothing(self) -> None:
+        """ADR-0028: reasoner statements recorded as observed before it carry no intake record."""
+        state = self.co.state(self.sid)
+        legacy = {"kind": "observed", "source_ids": [], "note": "Added by the reasoner during intake."}
+        state["statements"][2]["provenance"] = legacy
+        from frameshift.orchestration.sessions import _observed_node
+
+        self.assertFalse(_observed_node([self.reasoned], state))
+        self.assertTrue(_observed_node([self.typed], state))
+
+    def test_kind_never_promotes_status(self) -> None:
+        provenance = {"kind": "observed", "source_ids": [self.typed]}
+        self.assertEqual(self.add(dict(provenance), status="draft")["status"], "draft")
+        self.assertEqual(self.add(dict(provenance))["status"], "proposed")
+        with self.assertRaises(CommandRefused):
+            self.add(dict(provenance), status="approved")
+
+    def test_a_node_without_provenance_keeps_todays_default(self) -> None:
+        node = {"type": "hypothesis", "label": "Cell price dominates.", "confidence": "low", "source_ids": ["frame_001"]}
+        added = self.co.add_node(self.sid, node=node, expected_revision=self.revision())["state"]["graph"]["nodes"][-1]
+        self.assertEqual(
+            added["provenance"],
+            {"kind": "assumed", "source_ids": ["frame_001"], "note": "Supplied by the reasoner; not established."},
+        )
+
+
 class TheGuiStaysAtTheBoundary(unittest.TestCase):
     """ADR-0022: the GUI imports contracts and orchestration.api only."""
 

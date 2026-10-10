@@ -83,6 +83,20 @@ class AFullRun(unittest.TestCase):
         statuses |= {edge["status"] for edge in self.state["graph"]["edges"]}
         self.assertLessEqual(statuses, set(simulation.REASONER_STATUSES))
 
+    def test_only_the_observed_nodes_differ_in_provenance_and_only_by_kind(self) -> None:
+        """#257: every declared kind is kept; observed is the person's and comes out inferred here."""
+        observed = {node["id"] for node in self.ref["graph"]["nodes"] if node["provenance"]["kind"] == "observed"}
+        differing = {
+            row["id"] for row in self.report["sections"]["nodes"]
+            if any(difference.startswith("provenance") for difference in row["differences"])
+        }
+        self.assertEqual(differing, observed)
+        held = {node["id"]: node for node in self.state["graph"]["nodes"]}
+        for node in self.ref["graph"]["nodes"]:
+            mine = held[self.sim.ids[node["id"]]]["provenance"]
+            want = "inferred" if node["id"] in observed else node["provenance"]["kind"]
+            self.assertEqual(mine["kind"], want, node["id"])
+
     def test_the_comparison_is_pinned(self) -> None:
         summary = {}
         for name, rows in self.report["sections"].items():
@@ -95,7 +109,7 @@ class AFullRun(unittest.TestCase):
                 "statements": (12, 0, 0, 0),
                 "ladder": (4, 4, 0, 0),
                 "frames": (4, 3, 0, 0),
-                "nodes": (43, 0, 0, 0),
+                "nodes": (43, 32, 0, 0),
                 "edges": (52, 0, 0, 0),
             },
         )
@@ -113,7 +127,9 @@ class AFullRun(unittest.TestCase):
                 ("statements", "provenance"): 10,
                 ("statements", "status"): 12,
                 ("frames", "status"): 1,
-                ("nodes", "provenance"): 43,
+                # Observed in the reference, offered as inferred: the script's statements are not the
+                # person's, so they cannot earn observed (ADR-0028). Every other kind is kept (ADR-0026).
+                ("nodes", "provenance"): 10,
                 ("nodes", "status"): 2,  # rejected and superseded: the person's to decide (#254)
                 ("edges", "extensions"): 52,
                 ("edges", "provenance"): 52,
