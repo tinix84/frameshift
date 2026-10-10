@@ -529,6 +529,129 @@ class TheShallowJourney(Fixture):
         self.assertEqual([s["id"] for s in again.sessions()], [self.sid])
 
 
+class ANodeKeepsTheKindItsSourcesEarn(Fixture):
+    """#257 (ADR-0026, under ADR-0028's conditions): kind is declared and earned, never rewritten."""
+
+    def to_causal(self) -> None:
+        self.classify()
+        self.co.add_operator_statement(self.sid, text="The pack misses the cost target.", primary_role="observation", expected_revision=self.revision())
+        self.co.add_statement(self.sid, text="Pack cost per usable kWh meets the target.", primary_role="outcome", expected_revision=self.revision())
+        approve(self.co, self.co.prepare_gate(self.sid, gate="intake_correction", target_id="stmt_001"))
+        self.co.propose_frame(self.sid, frame=_frame(), expected_revision=self.revision())
+        self.co.propose_frame(self.sid, frame=_alternative(), expected_revision=self.revision())
+        self.co.activate_frame(self.sid, frame_id="frame_001", expected_revision=self.revision())
+        approve(self.co, self.co.prepare_gate(self.sid, gate="frame_selection", target_id="frame_001"))
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.to_causal()
+        statements = self.co.state(self.sid)["statements"]
+        self.request_intake = statements[0]["provenance"]["source_ids"][0]
+        self.typed, self.reasoned = statements[1]["id"], statements[2]["id"]
+
+    def add(self, provenance: dict, status: str = "proposed") -> dict:
+        node = {"type": "observation", "label": "Cost above target.", "status": status, "confidence": "high", "provenance": provenance}
+        return self.co.add_node(self.sid, node=node, expected_revision=self.revision())["state"]["graph"]["nodes"][-1]
+
+    def refused(self, provenance: dict) -> str:
+        before = len(self.co.history(self.sid))
+        with self.assertRaises(CommandRefused) as refused:
+            self.add(provenance)
+        self.assertEqual(len(self.co.history(self.sid)), before, "a refused node writes nothing")
+        self.last_detail = refused.exception.detail
+        return refused.exception.code
+
+    def test_each_kind_its_sources_earn_is_stored_as_given(self) -> None:
+        for provenance in (
+            {"kind": "observed", "source_ids": [self.typed], "note": "The person said so."},
+            {"kind": "observed", "source_ids": [self.request_intake]},
+            {"kind": "sourced", "source_ids": ["art_cell_quote"]},
+            {"kind": "inferred", "source_ids": [self.reasoned, "frame_001"]},
+            {"kind": "assumed", "source_ids": []},
+            {"kind": "unknown", "source_ids": []},
+        ):
+            with self.subTest(provenance=provenance):
+                self.assertEqual(self.add(copy.deepcopy(provenance))["provenance"], provenance)
+
+    def test_each_kind_without_its_sources_is_refused_not_rewritten(self) -> None:
+        person = "an observed provenance cites the person"
+        for provenance, rule in (
+            ({"kind": "observed", "source_ids": []}, person),
+            ({"kind": "observed", "source_ids": [self.reasoned]}, person),
+            ({"kind": "observed", "source_ids": ["frame_001", "art_cell_quote"]}, person),
+            ({"kind": "observed", "source_ids": ["intake_fabricated"]}, "not an intake record"),
+            ({"kind": "sourced", "source_ids": [self.typed]}, "referenced artifact"),
+            ({"kind": "inferred", "source_ids": []}, "at least one source"),
+            ({"kind": "inferred", "source_ids": ["node_099"]}, "does not resolve"),
+        ):
+            with self.subTest(provenance=provenance):
+                self.assertEqual(self.refused(provenance), "invariant_violation")
+                self.assertIn(rule, self.last_detail)
+
+    def test_a_legacy_observed_statement_with_no_intake_record_earns_nothing(self) -> None:
+        """ADR-0028: a replayed log's reasoner statement marked observed with no source earns nothing."""
+        import shutil
+
+        shutil.copy(ROOT / "evals" / "fixtures" / "ladder.events.jsonl", self.store / "sess_ladder_001.events.jsonl")
+        sid = "sess_ladder_001"
+        legacy = self.co.state(sid)["statements"][1]
+        self.assertEqual((legacy["id"], legacy["provenance"]["kind"], legacy["provenance"]["source_ids"]), ("stmt_002", "observed", []))
+        revision = lambda: self.co.state(sid)["revision"]  # noqa: E731
+        self.co.propose_frame(sid, frame=_frame(), expected_revision=revision())
+        self.co.propose_frame(sid, frame=_alternative(), expected_revision=revision())
+        self.co.activate_frame(sid, frame_id="frame_001", expected_revision=revision())
+        approve(self.co, self.co.prepare_gate(sid, gate="frame_selection", target_id="frame_001"))
+        node = {"type": "observation", "label": "Cost above target.", "confidence": "high"}
+
+        def add(sources: list[str]) -> dict:
+            provenance = {"kind": "observed", "source_ids": sources}
+            return self.co.add_node(sid, node=dict(node, provenance=provenance), expected_revision=revision())
+
+        with self.assertRaises(CommandRefused) as refused:
+            add(["stmt_002"])
+        self.assertIn("an observed provenance cites the person", refused.exception.detail)
+        add(["stmt_001"])
+        add(["intake_t0001"])
+
+    def test_an_observed_node_earns_nothing_for_the_next(self) -> None:
+        first = self.add({"kind": "observed", "source_ids": [self.typed]})
+        self.assertEqual(self.refused({"kind": "observed", "source_ids": [first["id"]]}), "invariant_violation")
+
+    def test_one_source_from_the_person_is_enough(self) -> None:
+        """ADR-0026: the sources must *include* the person's words."""
+        provenance = {"kind": "observed", "source_ids": [self.reasoned, self.typed]}
+        self.assertEqual(self.add(copy.deepcopy(provenance))["provenance"], provenance)
+
+    def test_a_malformed_provenance_is_refused_never_defaulted(self) -> None:
+        for provenance in ({}, {"kind": None, "source_ids": []}, False, 0, "", [], "observed"):
+            with self.subTest(provenance=provenance):
+                self.assertEqual(self.refused(provenance), "schema_invalid")
+
+    def test_provenance_and_top_level_sources_together_are_refused(self) -> None:
+        before = len(self.co.history(self.sid))
+        node = {"type": "observation", "label": "Cost above target.", "source_ids": ["frame_001"],
+                "provenance": {"kind": "inferred", "source_ids": [self.reasoned]}}
+        with self.assertRaises(CommandRefused) as refused:
+            self.co.add_node(self.sid, node=node, expected_revision=self.revision())
+        self.assertEqual(refused.exception.code, "schema_invalid")
+        self.assertEqual(len(self.co.history(self.sid)), before)
+
+    def test_kind_never_promotes_status(self) -> None:
+        provenance = {"kind": "observed", "source_ids": [self.typed]}
+        self.assertEqual(self.add(dict(provenance), status="draft")["status"], "draft")
+        self.assertEqual(self.add(dict(provenance))["status"], "proposed")
+        with self.assertRaises(CommandRefused):
+            self.add(dict(provenance), status="approved")
+
+    def test_a_node_without_provenance_keeps_todays_default(self) -> None:
+        node = {"type": "hypothesis", "label": "Cell price dominates.", "confidence": "low", "source_ids": ["frame_001"]}
+        added = self.co.add_node(self.sid, node=node, expected_revision=self.revision())["state"]["graph"]["nodes"][-1]
+        self.assertEqual(
+            added["provenance"],
+            {"kind": "assumed", "source_ids": ["frame_001"], "note": "Supplied by the reasoner; not established."},
+        )
+
+
 class TheGuiStaysAtTheBoundary(unittest.TestCase):
     """ADR-0022: the GUI imports contracts and orchestration.api only."""
 

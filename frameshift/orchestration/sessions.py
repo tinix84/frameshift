@@ -541,7 +541,7 @@ class SessionCoordinator:
     # ---------------------------------------------------------- causal (#89)
 
     def add_node(self, session_id: str, *, node: dict, expected_revision: int) -> dict:
-        """A reasoner-supplied node. Proposed, never established, by construction."""
+        """A reasoner-supplied node: never decided, and its declared provenance kind earned (ADR-0026)."""
         state = self._expect(session_id, expected_revision, phase="causal")
         status = node.get("status", "proposed")
         if status not in REASONER_NODE_STATUSES:
@@ -550,17 +550,24 @@ class SessionCoordinator:
                 f"a reasoner offers a node as {' or '.join(REASONER_NODE_STATUSES)}, not {status!r}: "
                 "a decided status is a person's, reached through a gate",
             )
+        if node.get("provenance") is not None and node.get("source_ids") is not None:
+            raise CommandRefused(SCHEMA_INVALID, "a node's sources go in its provenance or at its top level, not both")
+        if node.get("provenance") is None:
+            provenance = {
+                "kind": "assumed",
+                "source_ids": _strings(node.get("source_ids")),
+                "note": "Supplied by the reasoner; not established.",
+            }
+        else:
+            # Kind is declared and earned, never rewritten; it does not touch status (ADR-0026).
+            provenance = _earned(node["provenance"], state, observed=_observed_node)
         payload = {
             "id": _next_id("node", state["graph"]["nodes"]),
             "type": node.get("type", ""),
             "label": node.get("label", ""),
             "status": status,
             "confidence": node.get("confidence", "unknown"),
-            "provenance": {
-                "kind": "assumed",
-                "source_ids": _strings(node.get("source_ids")),
-                "note": "Supplied by the reasoner; not established.",
-            },
+            "provenance": provenance,
         }
         if node.get("description"):
             payload["description"] = node["description"]
@@ -865,10 +872,11 @@ def _next_id(prefix: str, items: list[dict]) -> str:
     return f"{prefix}_{number:03d}"
 
 
-def _earned(provenance: dict, state: dict) -> dict:
+def _earned(provenance: dict, state: dict, *, observed: Callable[[list[str], dict], bool] | None = None) -> dict:
     """A reasoner's declared provenance, refused unless its sources earn its kind (ADR-0026).
 
-    `observed` is never the reasoner's to declare (ADR-0028). Every citation
+    `observed` earns nothing unless the caller says how it is earned: never
+    for a statement (ADR-0028), and for a node through `_observed_node`. Every citation
     is checked here, before anything is built, so that a refusal names the
     invariant it breaks: a registered prefix, resolution inside the session
     (ADR-0012), and, for an intake record, one a person's boundary minted in
@@ -882,7 +890,7 @@ def _earned(provenance: dict, state: dict) -> dict:
         raise CommandRefused(SCHEMA_INVALID, f"unknown provenance kind {kind!r}")
     if not isinstance(sources, list) or not all(isinstance(source, str) for source in sources):
         raise CommandRefused(SCHEMA_INVALID, "provenance source_ids must be a list of strings")
-    if kind == "observed":
+    if kind == "observed" and observed is None:
         raise CommandRefused(
             INVARIANT_VIOLATION,
             "a reasoner never records an observed statement: only the boundary that "
@@ -907,7 +915,30 @@ def _earned(provenance: dict, state: dict) -> dict:
             raise CommandRefused(INVARIANT_VIOLATION, f"{source!r} cites no registered provenance namespace")
         elif source not in reachable:
             raise CommandRefused(INVARIANT_VIOLATION, f"{source!r} does not resolve in this session")
+    if kind == "observed" and not observed(sources, state):
+        raise CommandRefused(
+            INVARIANT_VIOLATION,
+            "an observed provenance cites the person: an intake record minted in this session, "
+            "or an observed statement that cites one",
+        )
     return copy.deepcopy(provenance)
+
+
+def _observed_node(sources: list[str], state: dict) -> bool:
+    """ADR-0026's `observed` row, under ADR-0028's two conditions.
+
+    A statement marked `observed` with no intake record behind it, as reasoner
+    statements were before ADR-0028, earns nothing.
+    """
+    minted = intake_records(state)
+    if minted.intersection(sources):
+        return True
+    return any(
+        statement["id"] in sources
+        and statement.get("provenance", {}).get("kind") == "observed"
+        and minted.intersection(statement["provenance"].get("source_ids", []))
+        for statement in state["statements"]
+    )
 
 
 def intake_records(state: dict) -> set[str]:

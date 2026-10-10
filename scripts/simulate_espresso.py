@@ -114,13 +114,7 @@ def _place(sim: Simulation, reference_id: str, held, matches, add) -> str:
 def _same(fields: dict):
     """Adopt only an exact match of what the script would write, never a person's look-alike."""
     def matches(held: dict) -> bool:
-        for key, value in fields.items():
-            if key == "source_ids":
-                if held.get("provenance", {}).get("source_ids") != value:
-                    return False
-            elif held.get(key) != value:
-                return False
-        return True
+        return all(held.get(key) == value for key, value in fields.items())
     return matches
 
 
@@ -205,6 +199,20 @@ def stage_framing(co, sim: Simulation, ref: dict) -> list[str]:
     ]
 
 
+def _declared(sim: Simulation, provenance: dict) -> dict:
+    """The reference's provenance as the reasoner can declare it (ADR-0026, ADR-0028).
+
+    An observed node cites the person's statements, which the script cannot
+    record as observed, so it can only offer the node as inferred from them.
+    That holds for this corpus: none of its observed nodes cites the request,
+    the one statement the script does record as observed.
+    """
+    declared = dict(provenance, source_ids=sim.mapped(provenance["source_ids"]))
+    if declared["kind"] == "observed":
+        declared["kind"] = "inferred"
+    return declared
+
+
 def stage_causal(co, sim: Simulation, ref: dict) -> list[str]:
     sid = _require(co, sim, "causal")
     refused: list[str] = []
@@ -216,7 +224,7 @@ def stage_causal(co, sim: Simulation, ref: dict) -> list[str]:
             "label": node["label"],
             "status": _offered(node["status"]),
             "confidence": node["confidence"],
-            "source_ids": sim.mapped(node["provenance"]["source_ids"]),
+            "provenance": _declared(sim, node["provenance"]),
         }
         for optional in ("description", "extensions"):
             if optional in node:
