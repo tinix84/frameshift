@@ -56,6 +56,11 @@ EMPTY_GRAPH = {"schema_version": "1.0.0", "nodes": [], "edges": []}
 # error code, and the no-bare-code guard rightly cannot tell the two apart.
 ADMITTED_KINDS = frozenset({"statement_classification"})
 
+# #254: what a reasoner may say about its own node. Every other status records
+# a decision (approved, rejected, superseded, archived), and a decision is a
+# person's, reached through a gate, never a field a caller sets.
+REASONER_NODE_STATUSES = ("draft", "proposed")
+
 class CommandRefused(Exception):
     """A command that changed nothing, with a published code and the reason."""
 
@@ -501,11 +506,18 @@ class SessionCoordinator:
     def add_node(self, session_id: str, *, node: dict, expected_revision: int) -> dict:
         """A reasoner-supplied node. Proposed, never established, by construction."""
         state = self._expect(session_id, expected_revision, phase="causal")
+        status = node.get("status", "proposed")
+        if status not in REASONER_NODE_STATUSES:
+            raise CommandRefused(
+                INVARIANT_VIOLATION,
+                f"a reasoner offers a node as {' or '.join(REASONER_NODE_STATUSES)}, not {status!r}: "
+                "a decided status is a person's, reached through a gate",
+            )
         payload = {
             "id": _next_id("node", state["graph"]["nodes"]),
             "type": node.get("type", ""),
             "label": node.get("label", ""),
-            "status": node.get("status", "proposed"),
+            "status": status,
             "confidence": node.get("confidence", "unknown"),
             "provenance": {
                 "kind": "assumed",

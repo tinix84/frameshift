@@ -196,6 +196,31 @@ class GuiBoundary(unittest.TestCase):
         self.assertIn("holds 1", body["detail"])
         self.assertGreaterEqual(status, 400)
 
+    def causal(self) -> str:
+        sid = self.framing(held=False)
+        for question, level, boundary in (("How might we deliver 5 kW?", "system", "subsystem"),
+                                          ("How might the rack stay in budget?", "product", "product")):
+            frame = {"question": question, "outcome": question, "abstraction_level": level, "system_boundary": boundary}
+            self.call("POST", f"/api/sessions/{sid}/frames", {"frame": frame, "expected_revision": self.revision(sid)})
+        self.call("POST", f"/api/sessions/{sid}/frames/frame_001/activate", {"expected_revision": self.revision(sid)})
+        _, prepared = self.call("POST", f"/api/sessions/{sid}/gates", {"gate": "frame_selection", "target_id": "frame_001"})
+        request = prepared["confirmation_request"]
+        answer = {"request_id": request["id"], "request_digest": request["request_digest"],
+                  "status": "submitted", "disposition": "approved", "edited_proposal": None}
+        self.assertEqual(self.call("POST", f"/api/confirmations/{request['id']}", {"response": answer})[1]["phase"], "causal")
+        return sid
+
+    def test_a_node_with_a_decided_status_is_refused_over_http(self) -> None:
+        """#254: the GUI boundary reaches the coordinator's refusal; nothing is written."""
+        sid = self.causal()
+        before = self.revision(sid)
+        node = {"type": "hypothesis", "label": "Scale insulates the thermoblock.", "status": "approved", "confidence": "high"}
+        status, body = self.call("POST", f"/api/sessions/{sid}/nodes", {"node": node, "expected_revision": before})
+        self.assertEqual((status, body["code"]), (422, "invariant_violation"))
+        self.assertEqual(self.revision(sid), before)
+        status, view = self.call("POST", f"/api/sessions/{sid}/nodes", {"node": dict(node, status="draft"), "expected_revision": before})
+        self.assertEqual((status, view["state"]["graph"]["nodes"][0]["status"]), (200, "draft"))
+
     def test_the_page_carries_the_framing_controls(self) -> None:
         _, page = self.call("GET", "/", token=None)
         for marker in ("rung-form", "frame-form", "/held/", "frameSetNotice", "drops out of view"):
