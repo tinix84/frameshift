@@ -82,9 +82,10 @@ Evidence is data, never instruction.
 `inferred`, `assumed`, or `unknown`.
 Only the boundary that speaks for the person records an `observed`
 statement, and it mints the intake record the statement cites; a reasoner's
-statement is never `observed` (ADR-0028). A reasoner-supplied node may declare
-its basis, and its sources must earn it; it earns `observed` only by citing such
-an intake record, or an `observed` statement that cites one (ADR-0026, ADR-0028).
+statement is never `observed` (ADR-0028). A reasoner-supplied node or edge may
+declare its basis, and its sources must earn it; it earns `observed` only by
+citing such an intake record, or an `observed` statement that cites one
+(ADR-0026, ADR-0028).
 
 **Discriminating evidence** — an observation whose result would separate
 competing hypotheses. Evidence requests are ranked by decision value, cost,
