@@ -529,8 +529,8 @@ class TheShallowJourney(Fixture):
         self.assertEqual([s["id"] for s in again.sessions()], [self.sid])
 
 
-class ANodeKeepsTheKindItsSourcesEarn(Fixture):
-    """#257 (ADR-0026, under ADR-0028's conditions): kind is declared and earned, never rewritten."""
+class InCausal(Fixture):
+    """A session in causal whose statements include one the person typed and one the reasoner added."""
 
     def to_causal(self) -> None:
         self.classify()
@@ -560,6 +560,10 @@ class ANodeKeepsTheKindItsSourcesEarn(Fixture):
         self.assertEqual(len(self.co.history(self.sid)), before, "a refused node writes nothing")
         self.last_detail = refused.exception.detail
         return refused.exception.code
+
+
+class ANodeKeepsTheKindItsSourcesEarn(InCausal):
+    """#257 (ADR-0026, under ADR-0028's conditions): kind is declared and earned, never rewritten."""
 
     def test_each_kind_its_sources_earn_is_stored_as_given(self) -> None:
         for provenance in (
@@ -650,6 +654,68 @@ class ANodeKeepsTheKindItsSourcesEarn(Fixture):
             added["provenance"],
             {"kind": "assumed", "source_ids": ["frame_001"], "note": "Supplied by the reasoner; not established."},
         )
+
+
+class AnEdgeKeepsItsProvenanceAndExtensions(InCausal):
+    """#258 (ADR-0026, ADR-0028): an edge's declared provenance is earned, never rewritten."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        for label in ("Cell price dominates.", "Cost above target."):
+            self.co.add_node(self.sid, node={"type": "hypothesis", "label": label, "confidence": "low"}, expected_revision=self.revision())
+
+    def add_edge(self, **fields) -> dict:
+        edge = {"source": "node_001", "target": "node_002", "type": "contributes_to", "confidence": "medium"}
+        edge.update(fields)
+        return self.co.add_edge(self.sid, edge=edge, expected_revision=self.revision())["state"]["graph"]["edges"][-1]
+
+    def refused_edge(self, **fields) -> str:
+        before = len(self.co.history(self.sid))
+        with self.assertRaises(CommandRefused) as refused:
+            self.add_edge(**fields)
+        self.assertEqual(len(self.co.history(self.sid)), before, "a refused edge writes nothing")
+        self.last_detail = refused.exception.detail
+        return refused.exception.code
+
+    def test_each_kind_its_sources_earn_is_stored_as_given(self) -> None:
+        for provenance in (
+            {"kind": "observed", "source_ids": [self.typed], "note": "The person said so."},
+            {"kind": "sourced", "source_ids": ["art_cell_quote"]},
+            {"kind": "inferred", "source_ids": ["node_001", self.reasoned]},
+            {"kind": "assumed", "source_ids": []},
+        ):
+            with self.subTest(provenance=provenance):
+                self.assertEqual(self.add_edge(provenance=copy.deepcopy(provenance))["provenance"], provenance)
+
+    def test_each_kind_without_its_sources_is_refused_not_rewritten(self) -> None:
+        for provenance in (
+            {"kind": "observed", "source_ids": [self.reasoned]},
+            {"kind": "observed", "source_ids": ["node_001"]},
+            {"kind": "sourced", "source_ids": [self.typed]},
+            {"kind": "inferred", "source_ids": []},
+            {"kind": "inferred", "source_ids": ["stmt_099"]},
+        ):
+            with self.subTest(provenance=provenance):
+                self.assertEqual(self.refused_edge(provenance=provenance), "invariant_violation")
+        for provenance in ({}, False, "observed"):
+            with self.subTest(provenance=provenance):
+                self.assertEqual(self.refused_edge(provenance=provenance), "schema_invalid")
+
+    def test_extensions_are_stored_as_given_and_must_be_an_object(self) -> None:
+        self.assertEqual(self.add_edge(extensions={"layer": "analysed"})["extensions"], {"layer": "analysed"})
+        for extensions in ("analysed", ["layer"]):
+            with self.subTest(extensions=extensions):
+                self.assertEqual(self.refused_edge(extensions=extensions), "schema_invalid")
+
+    def test_a_causes_edge_keeps_its_owner_with_a_declared_provenance(self) -> None:
+        provenance = {"kind": "sourced", "source_ids": ["art_cell_quote"]}
+        edge = self.add_edge(type="causes", provenance=dict(provenance))
+        self.assertEqual((edge["owner"], edge["provenance"]), (OWNER, provenance))
+
+    def test_an_edge_without_provenance_keeps_todays_default(self) -> None:
+        edge = self.add_edge()
+        self.assertEqual(edge["provenance"], {"kind": "assumed", "source_ids": ["node_001", "node_002"]})
+        self.assertNotIn("extensions", edge)
 
 
 class RecordASymptomSpecification(Fixture):

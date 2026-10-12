@@ -203,9 +203,9 @@ def stage_framing(co, sim: Simulation, ref: dict) -> list[str]:
 def _declared(sim: Simulation, provenance: dict) -> dict:
     """The reference's provenance as the reasoner can declare it (ADR-0026, ADR-0028).
 
-    An observed node cites the person's statements, which the script cannot
+    An observed node or edge cites the person's statements, which the script cannot
     record as observed, so it can only offer the node as inferred from them.
-    That holds for this corpus: none of its observed nodes cites the request,
+    That holds for this corpus: none of its observed nodes or edges cites the request,
     the one statement the script does record as observed.
     """
     declared = dict(provenance, source_ids=sim.mapped(provenance["source_ids"]))
@@ -248,7 +248,10 @@ def stage_causal(co, sim: Simulation, ref: dict) -> list[str]:
             "target": sim.ids[edge["target"]],
             "type": edge["type"],
             "confidence": edge["confidence"],
+            "provenance": _declared(sim, edge["provenance"]),
         }
+        if "extensions" in edge:
+            fields["extensions"] = edge["extensions"]
         try:
             outcomes.append(_place(
                 sim, edge["id"],

@@ -642,7 +642,19 @@ class SessionCoordinator:
         return self.view(session_id)
 
     def add_edge(self, session_id: str, *, edge: dict, expected_revision: int) -> dict:
+        """A reasoner-supplied edge: proposed, and its declared provenance earned (ADR-0026, #258).
+
+        Without a declared provenance the edge is `assumed` and cites its two
+        ends, as before. Extensions are stored as given.
+        """
         state = self._expect(session_id, expected_revision, phase="causal")
+        if edge.get("provenance") is None:
+            provenance = {
+                "kind": "assumed",
+                "source_ids": [edge.get("source", ""), edge.get("target", "")],
+            }
+        else:
+            provenance = _earned(edge["provenance"], state, observed=_observed_node)
         payload = {
             "id": _next_id("edge", state["graph"]["edges"]),
             "source": edge.get("source", ""),
@@ -650,11 +662,12 @@ class SessionCoordinator:
             "type": edge.get("type", ""),
             "status": "proposed",
             "confidence": edge.get("confidence", "unknown"),
-            "provenance": {
-                "kind": "assumed",
-                "source_ids": [edge.get("source", ""), edge.get("target", "")],
-            },
+            "provenance": provenance,
         }
+        if edge.get("extensions") is not None:
+            if not isinstance(edge["extensions"], dict):
+                raise CommandRefused(SCHEMA_INVALID, "an edge's extensions are an object")
+            payload["extensions"] = copy.deepcopy(edge["extensions"])
         if payload["type"] == "causes":
             # ADR-0003: a causal claim has an owner. Here it is the operator.
             payload["owner"] = self.operator

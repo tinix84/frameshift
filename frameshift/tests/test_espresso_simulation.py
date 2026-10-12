@@ -89,23 +89,25 @@ class AFullRun(unittest.TestCase):
         statuses |= {edge["status"] for edge in self.state["graph"]["edges"]}
         self.assertLessEqual(statuses, set(simulation.REASONER_STATUSES))
 
-    def test_only_the_observed_nodes_differ_in_provenance_and_only_by_kind(self) -> None:
-        """#257: every declared kind is kept; observed is the person's and comes out inferred here."""
-        observed = {node["id"] for node in self.ref["graph"]["nodes"] if node["provenance"]["kind"] == "observed"}
-        differing = {
-            row["id"] for row in self.report["sections"]["nodes"]
-            if any(difference.startswith("provenance") for difference in row["differences"])
-        }
-        self.assertEqual(differing, observed)
-        held = {node["id"]: node for node in self.state["graph"]["nodes"]}
+    def test_only_the_observed_items_differ_in_provenance_and_only_by_kind(self) -> None:
+        """#257, #258: every declared kind is kept; observed is the person's and comes out inferred here."""
         back = {mine: theirs for theirs, mine in self.sim.ids.items()}
-        for node in self.ref["graph"]["nodes"]:
-            mine = dict(held[self.sim.ids[node["id"]]]["provenance"])
-            mine["source_ids"] = [back.get(source, source) for source in mine["source_ids"]]
-            if node["id"] in observed:
-                self.assertEqual(mine["kind"], "inferred", node["id"])
-                mine["kind"] = "observed"
-            self.assertEqual(mine, node["provenance"], node["id"])
+        for section in ("nodes", "edges"):
+            items = self.ref["graph"][section]
+            observed = {item["id"] for item in items if item["provenance"]["kind"] == "observed"}
+            differing = {
+                row["id"] for row in self.report["sections"][section]
+                if any(difference.startswith("provenance") for difference in row["differences"])
+            }
+            self.assertEqual(differing, observed, section)
+            held = {item["id"]: item for item in self.state["graph"][section]}
+            for item in items:
+                mine = dict(held[self.sim.ids[item["id"]]]["provenance"])
+                mine["source_ids"] = [back.get(source, source) for source in mine["source_ids"]]
+                if item["id"] in observed:
+                    self.assertEqual(mine["kind"], "inferred", item["id"])
+                    mine["kind"] = "observed"
+                self.assertEqual(mine, item["provenance"], item["id"])
 
     def test_the_comparison_is_pinned(self) -> None:
         summary = {}
@@ -120,7 +122,7 @@ class AFullRun(unittest.TestCase):
                 "ladder": (4, 4, 0, 0),
                 "frames": (4, 3, 0, 0),
                 "nodes": (43, 32, 0, 0),
-                "edges": (52, 0, 0, 0),
+                "edges": (52, 31, 0, 0),
                 # Both deviations, the three-row one included (ADR-0027).
                 "specifications": (2, 2, 0, 0),
             },
@@ -143,8 +145,8 @@ class AFullRun(unittest.TestCase):
                 # person's, so they cannot earn observed (ADR-0028). Every other kind is kept (ADR-0026).
                 ("nodes", "provenance"): 10,
                 ("nodes", "status"): 2,  # rejected and superseded: the person's to decide (#254)
-                ("edges", "extensions"): 52,
-                ("edges", "provenance"): 52,
+                # Observed in the reference, offered as inferred, as for nodes; extensions all kept (#258).
+                ("edges", "provenance"): 12,
                 ("edges", "status"): 9,
             },
         )
