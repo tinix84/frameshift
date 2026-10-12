@@ -712,6 +712,31 @@ class AnEdgeKeepsItsProvenanceAndExtensions(InCausal):
         edge = self.add_edge(type="causes", provenance=dict(provenance))
         self.assertEqual((edge["owner"], edge["provenance"]), (OWNER, provenance))
 
+    def test_observed_by_the_intake_record_itself_and_never_a_forged_one(self) -> None:
+        provenance = {"kind": "observed", "source_ids": [self.request_intake]}
+        self.assertEqual(self.add_edge(provenance=dict(provenance))["provenance"], provenance)
+        self.assertEqual(self.refused_edge(provenance={"kind": "observed", "source_ids": ["intake_deadbeef"]}), "invariant_violation")
+        self.assertIn("not an intake record", self.last_detail)
+
+    def test_extensions_cannot_reach_owner_or_status(self) -> None:
+        edge = self.add_edge(type="causes", status="approved", owner={"id": "user_evil", "kind": "human"},
+                             extensions={"owner": "evil", "status": "approved"})
+        self.assertEqual((edge["owner"], edge["status"]), (OWNER, "proposed"))
+        self.assertEqual(edge["extensions"], {"owner": "evil", "status": "approved"})
+
+    def test_empty_or_absent_extensions_and_a_copy_of_what_was_given(self) -> None:
+        self.assertNotIn("extensions", self.add_edge(extensions=None))
+        self.assertEqual(self.add_edge(extensions={})["extensions"], {})
+        self.assertEqual(self.refused_edge(extensions=False), "schema_invalid")
+        given = {"layer": {"name": "analysed"}}
+        provenance = {"kind": "sourced", "source_ids": ["art_cell_quote"]}
+        stored = self.add_edge(extensions=given, provenance=provenance)
+        given["layer"]["name"] = "changed"
+        provenance["source_ids"].append("art_other")
+        held = self.co.state(self.sid)["graph"]["edges"][-1]
+        self.assertEqual((held["extensions"], held["provenance"]["source_ids"]), ({"layer": {"name": "analysed"}}, ["art_cell_quote"]))
+        self.assertEqual(stored["id"], held["id"])
+
     def test_an_edge_without_provenance_keeps_todays_default(self) -> None:
         edge = self.add_edge()
         self.assertEqual(edge["provenance"], {"kind": "assumed", "source_ids": ["node_001", "node_002"]})
