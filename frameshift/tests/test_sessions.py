@@ -664,6 +664,23 @@ class WithdrawACandidateFrame(Fixture):
         self.assertIn("propose it again as a new candidate", refused.exception.detail)
         self.assertEqual(len(self.co.history(self.sid)), before)
 
+    def test_frame_selection_binds_only_the_working_frame(self) -> None:
+        """ADR-0030: no gate binds a withdrawn frame, nor a candidate that is not working."""
+        self.propose(3)
+        self.co.activate_frame(self.sid, frame_id="frame_001", expected_revision=self.revision())
+        self.withdraw("frame_003")
+        for target in ("frame_003", "frame_002"):
+            with self.subTest(target=target), self.assertRaises(CommandRefused) as refused:
+                self.co.prepare_gate(self.sid, gate="frame_selection", target_id=target)
+            self.assertIn("approves the working frame (frame_001)", refused.exception.detail)
+        self.assertEqual(self.seal("frame_001"), "causal")
+
+    def test_activating_a_non_string_id_is_refused_not_raised(self) -> None:
+        self.propose(2)
+        with self.assertRaises(CommandRefused) as refused:
+            self.co.activate_frame(self.sid, frame_id=["frame_001"], expected_revision=self.revision())
+        self.assertEqual(refused.exception.code, "invariant_violation")
+
     def test_withdrawal_belongs_to_framing(self) -> None:
         self.propose(2)
         self.co.activate_frame(self.sid, frame_id="frame_001", expected_revision=self.revision())

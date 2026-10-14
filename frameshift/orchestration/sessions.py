@@ -614,7 +614,7 @@ class SessionCoordinator:
         """
         state = self._expect(session_id, expected_revision, phase="framing")
         held = {frame["id"]: frame for frame in state["frames"]}
-        if frame_id not in held:
+        if not isinstance(frame_id, str) or frame_id not in held:
             raise CommandRefused(INVARIANT_VIOLATION, f"no frame {frame_id!r} to activate")
         if held[frame_id].get("status") not in LIVE_FRAME_STATUSES:
             # ADR-0030: withdrawal is final; propose the content again instead.
@@ -768,6 +768,12 @@ class SessionCoordinator:
             # ADR-0029: a withdrawn statement no longer counts, so no gate binds it.
             raise CommandRefused(INVARIANT_VIOLATION, f"{target_id!r} is {withdrawn[target_id]}; no gate binds it")
         _require_frame_set(state, gate)
+        if gate == "frame_selection" and target_id != state.get("active_frame_id"):
+            # ADR-0030: frame selection approves the working frame, never a withdrawn or idle candidate.
+            raise CommandRefused(
+                INVARIANT_VIOLATION,
+                f"frame selection approves the working frame ({state.get('active_frame_id')}), not {target_id!r}",
+            )
         # Imported here because `api` re-exports this coordinator.
         from .api import ConfirmationWorkflow
 

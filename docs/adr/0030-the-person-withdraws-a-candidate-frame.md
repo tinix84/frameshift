@@ -44,7 +44,11 @@ frame's digest, re-recorded with its new status, so a digest is never stale
 
 **Withdrawal is final, and carries no reason.** A withdrawn frame cannot be
 activated again: `activate_frame` refuses a frame that is not live. To bring
-its content back, the person proposes it again as a new candidate. Like a
+its content back, the person proposes it again as a new candidate. No gate
+binds a withdrawn frame: `frame_selection` approves the working frame only,
+and the working frame is never withdrawn. Final holds within a session; a
+linked session made by migration resets every decided status to `proposed`
+(ADR-0025), as it does for every other decision. Like a
 supersession (ADR-0029), withdrawal records no actor; that belongs to #230.
 
 **A withdrawn frame no longer counts.** `derived.frame_set` already reads live
@@ -85,5 +89,6 @@ the list the MCP domain-command server (#172) must not expose.
 - the frame keeps its id and text, and its digest is re-recorded;
 - the working frame, a missing frame and a withdrawn frame are refused, with
   nothing written, and a withdrawn frame cannot be activated again;
+- `frame_selection` refuses any target but the working frame;
 - no reasoner-facing boundary names `withdraw_frame`;
 - the manual GUI offers withdrawal on each live candidate that is not working.

@@ -480,12 +480,12 @@ function frameForm(state, derived) {
   const area = (name, label) => el("label", {}, label, el("textarea", { name, placeholder: "One per line" }));
   const form = el("form", { id: "frame-form", onsubmit: ev => { ev.preventDefault();
     const frame = Object.fromEntries(new FormData(form).entries());
-    // No command withdraws a frame yet, so warn before a sixth or a twin
-    // rather than let the session reach a set the gate will refuse.
+    // Warn before a twin rather than let the session reach a set the gate will
+    // refuse; withdrawing one afterwards is final (ADR-0030).
     const twin = state.frames.find(f => derived.frame_set.live.includes(f.id)
       && f.outcome.trim().toLowerCase() === frame.outcome.trim().toLowerCase()
       && f.abstraction_level === frame.abstraction_level && f.system_boundary === frame.system_boundary);
-    if (twin && !confirm(`${twin.id} already has this outcome, level, and boundary. Frame selection will refuse two such frames, and there is no way to withdraw one yet. Propose it anyway?`)) return;
+    if (twin && !confirm(`${twin.id} already has this outcome, level, and boundary. Frame selection will refuse two such frames until you withdraw one. Propose it anyway?`)) return;
     run(() => api("POST", `/api/sessions/${CURRENT}/frames`, { frame, expected_revision: VIEW.state.revision }));
   } },
     el("label", {}, "Question", el("input", { name: "question", required: true, placeholder: "How might we…" })),
@@ -505,8 +505,8 @@ function frameSetNotice(fs) {
   if (fs.selectable) return el("div", { class: "notice ok", role: "status" }, `${n} distinct candidate frames. Frame selection can be sealed.`);
   const lines = [];
   if (n < FRAME_SET.low) lines.push(`Frame selection compares ${FRAME_SET.low} to ${FRAME_SET.high} candidate frames, and this session has ${n}. Propose ${FRAME_SET.low - n} more that differ in outcome, level, or boundary.`);
-  if (n > FRAME_SET.high) lines.push(`Frame selection compares at most ${FRAME_SET.high} candidate frames, and this session has ${n}.`);
-  for (const [a, b] of fs.indistinct_pairs) lines.push(`${a} and ${b} agree on outcome, level, and boundary, so they count as one frame.`);
+  if (n > FRAME_SET.high) lines.push(`Frame selection compares at most ${FRAME_SET.high} candidate frames, and this session has ${n}. Withdraw ${n - FRAME_SET.high} that is not the working frame.`);
+  for (const [a, b] of fs.indistinct_pairs) lines.push(`${a} and ${b} agree on outcome, level, and boundary, so they count as one frame. Withdraw one of them.`);
   return el("div", { class: "notice caution", role: "status" }, ...lines.map(l => el("div", {}, l)));
 }
 

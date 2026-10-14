@@ -152,6 +152,11 @@ class GuiBoundary(unittest.TestCase):
                                  {"expected_revision": coordinator.state(sid)["revision"]})
         self.assertEqual(status, 200, view)
         self.assertEqual(view["state"]["frames"][0]["status"], "rejected")
+        status, body = self.call("POST", f"/api/sessions/{sid}/frames/frame_001/withdraw",
+                                 {"expected_revision": coordinator.state(sid)["revision"]})
+        self.assertEqual((status, body["code"]), (422, "invariant_violation"))
+        status, body = self.call("POST", f"/api/sessions/{sid}/frames/frame_001/withdraw", {})
+        self.assertEqual((status, body["code"]), (409, "revision_conflict"))
 
     def test_intake_is_sealed_through_the_http_confirmation_round_trip(self) -> None:
         sid = self.open()
