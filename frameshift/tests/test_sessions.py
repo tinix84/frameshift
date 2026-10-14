@@ -743,15 +743,26 @@ class AnEdgeKeepsItsProvenanceAndExtensions(InCausal):
         """#259: as for a node (#254); a decided status is a person's, reached through a gate."""
         self.assertEqual(self.add_edge()["status"], "proposed")
         self.assertEqual(self.add_edge(status="draft")["status"], "draft")
-        for status in ("approved", "rejected", "superseded", "archived", "established", "", None):
+        for status in ("approved", "rejected", "superseded", "archived", "established", "", None, ["draft"], {"draft": 1}):
             with self.subTest(status=status):
                 self.assertEqual(self.refused_edge(status=status), "invariant_violation")
                 self.assertIn("a reasoner offers an edge as draft or proposed", self.last_detail)
 
     def test_a_draft_edge_counts_in_no_gate(self) -> None:
-        """#259: no gate reads an edge's status; evidence_sufficiency targets hypothesis nodes only."""
-        self.add_edge(status="draft")
+        """#259: no gate reads an edge's status; evidence_sufficiency targets hypothesis nodes only.
+
+        A draft edge into a proposed hypothesis neither adds a target nor can be one.
+        """
+        edge = self.add_edge(status="draft")
         self.assertEqual(self.co.view(self.sid)["derived"]["gates"], self.view_gates_before)
+        before = len(self.co.history(self.sid))
+        with self.assertRaises(CommandRefused) as refused:
+            self.co.prepare_gate(self.sid, gate="evidence_sufficiency", target_id=edge["id"])
+        self.assertEqual(refused.exception.code, "invariant_violation")
+        self.assertEqual(len(self.co.history(self.sid)), before)
+        request = self.co.prepare_gate(self.sid, gate="evidence_sufficiency", target_id=edge["target"])
+        self.assertEqual(request["target_id"], edge["target"], "the hypothesis is the target, draft edge or not")
+        self.co.cancel(request["id"])
 
     def test_an_edge_without_provenance_keeps_todays_default(self) -> None:
         edge = self.add_edge()
