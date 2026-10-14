@@ -663,6 +663,7 @@ class AnEdgeKeepsItsProvenanceAndExtensions(InCausal):
         super().setUp()
         for label in ("Cell price dominates.", "Cost above target."):
             self.co.add_node(self.sid, node={"type": "hypothesis", "label": label, "confidence": "low"}, expected_revision=self.revision())
+        self.view_gates_before = self.co.view(self.sid)["derived"]["gates"]
 
     def add_edge(self, **fields) -> dict:
         edge = {"source": "node_001", "target": "node_002", "type": "contributes_to", "confidence": "medium"}
@@ -719,7 +720,8 @@ class AnEdgeKeepsItsProvenanceAndExtensions(InCausal):
         self.assertIn("not an intake record", self.last_detail)
 
     def test_extensions_cannot_reach_owner_or_status(self) -> None:
-        edge = self.add_edge(type="causes", status="approved", owner={"id": "user_evil", "kind": "human"},
+        # A top-level `status` is refused (#259); here only `owner` and `extensions` try.
+        edge = self.add_edge(type="causes", owner={"id": "user_evil", "kind": "human"},
                              extensions={"owner": "evil", "status": "approved"})
         self.assertEqual((edge["owner"], edge["status"]), (OWNER, "proposed"))
         self.assertEqual(edge["extensions"], {"owner": "evil", "status": "approved"})
@@ -736,6 +738,31 @@ class AnEdgeKeepsItsProvenanceAndExtensions(InCausal):
         held = self.co.state(self.sid)["graph"]["edges"][-1]
         self.assertEqual((held["extensions"], held["provenance"]["source_ids"]), ({"layer": {"name": "analysed"}}, ["art_cell_quote"]))
         self.assertEqual(stored["id"], held["id"])
+
+    def test_an_edge_is_offered_as_draft_or_proposed_never_decided(self) -> None:
+        """#259: as for a node (#254); a decided status is a person's, reached through a gate."""
+        self.assertEqual(self.add_edge()["status"], "proposed")
+        self.assertEqual(self.add_edge(status="draft")["status"], "draft")
+        for status in ("approved", "rejected", "superseded", "archived", "established", "", None, ["draft"], {"draft": 1}):
+            with self.subTest(status=status):
+                self.assertEqual(self.refused_edge(status=status), "invariant_violation")
+                self.assertIn("a reasoner offers an edge as draft or proposed", self.last_detail)
+
+    def test_a_draft_edge_counts_in_no_gate(self) -> None:
+        """#259: no gate reads an edge's status; evidence_sufficiency targets hypothesis nodes only.
+
+        A draft edge into a proposed hypothesis neither adds a target nor can be one.
+        """
+        edge = self.add_edge(status="draft")
+        self.assertEqual(self.co.view(self.sid)["derived"]["gates"], self.view_gates_before)
+        before = len(self.co.history(self.sid))
+        with self.assertRaises(CommandRefused) as refused:
+            self.co.prepare_gate(self.sid, gate="evidence_sufficiency", target_id=edge["id"])
+        self.assertEqual(refused.exception.code, "invariant_violation")
+        self.assertEqual(len(self.co.history(self.sid)), before)
+        request = self.co.prepare_gate(self.sid, gate="evidence_sufficiency", target_id=edge["target"])
+        self.assertEqual(request["target_id"], edge["target"], "the hypothesis is the target, draft edge or not")
+        self.co.cancel(request["id"])
 
     def test_an_edge_without_provenance_keeps_todays_default(self) -> None:
         edge = self.add_edge()

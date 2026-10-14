@@ -109,6 +109,13 @@ class AFullRun(unittest.TestCase):
                     mine["kind"] = "observed"
                 self.assertEqual(mine, item["provenance"], item["id"])
 
+    def test_the_expansion_layer_stays_draft(self) -> None:
+        """#259: the reference's draft edges are offered as drafts, not put on the analysed graph's footing."""
+        held = {edge["id"]: edge for edge in self.state["graph"]["edges"]}
+        drafts = [edge["id"] for edge in self.ref["graph"]["edges"] if edge["status"] == "draft"]
+        self.assertEqual(len(drafts), 9)
+        self.assertEqual({held[self.sim.ids[edge_id]]["status"] for edge_id in drafts}, {"draft"})
+
     def test_the_comparison_is_pinned(self) -> None:
         summary = {}
         for name, rows in self.report["sections"].items():
@@ -122,7 +129,7 @@ class AFullRun(unittest.TestCase):
                 "ladder": (4, 4, 0, 0),
                 "frames": (4, 3, 0, 0),
                 "nodes": (43, 32, 0, 0),
-                "edges": (52, 31, 0, 0),
+                "edges": (52, 40, 0, 0),
                 # Both deviations, the three-row one included (ADR-0027).
                 "specifications": (2, 2, 0, 0),
             },
@@ -147,7 +154,6 @@ class AFullRun(unittest.TestCase):
                 ("nodes", "status"): 2,  # rejected and superseded: the person's to decide (#254)
                 # Observed in the reference, offered as inferred, as for nodes; extensions all kept (#258).
                 ("edges", "provenance"): 12,
-                ("edges", "status"): 9,
             },
         )
         # The specification is session state now; citation records stay checkpoint artifacts (ADR-0027).

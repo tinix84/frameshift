@@ -68,7 +68,10 @@ exists; a symptom specification names it by `knot_node_id`.
 `correlates_with`, `enables`, `constrains`, `requires`, `supports`,
 `contradicts`, `tests`, `mitigates`, `worsens`, `addresses`, or `derived_from`.
 `causes` is reserved for a supported causal assertion; an unsupported one is
-`contributes_to` or a hypothesis node.
+`contributes_to` or a hypothesis node. A reasoner offers a node or an edge as
+`draft` or `proposed`; a decided status is a person's (#254, #259). No gate
+reads an edge's status, and an edge is never a gate's target, so a draft edge
+counts in no gate.
 
 **Hypothesis** — a testable explanation. Competing hypotheses coexist;
 contradiction is represented explicitly and never deletes the contradicted
