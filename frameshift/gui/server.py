@@ -70,6 +70,7 @@ ROUTES = [
     ("POST", rf"^/api/sessions/{SESSION}/statements/(?P<stid>[A-Za-z0-9._:-]+)/supersede$", "supersede"),
     ("POST", rf"^/api/sessions/{SESSION}/frames$", "propose_frame"),
     ("POST", rf"^/api/sessions/{SESSION}/frames/(?P<fid>[A-Za-z0-9._:-]+)/activate$", "activate_frame"),
+    ("POST", rf"^/api/sessions/{SESSION}/frames/(?P<fid>[A-Za-z0-9._:-]+)/withdraw$", "withdraw_frame"),
     ("POST", rf"^/api/sessions/{SESSION}/rungs$", "record_rung"),
     ("GET", rf"^/api/sessions/{SESSION}/held/(?P<pid>[A-Za-z0-9._:-]+)$", "held_draft"),
     ("POST", rf"^/api/sessions/{SESSION}/nodes$", "add_node"),
@@ -161,6 +162,10 @@ class ManualApp:
 
     def activate_frame(self, body, sid, fid):
         return self.coordinator.activate_frame(sid, frame_id=fid, expected_revision=body.get("expected_revision"))
+
+    def withdraw_frame(self, body, sid, fid):
+        # The operator decides here that a candidate is out (ADR-0030).
+        return self.coordinator.withdraw_frame(sid, frame_id=fid, expected_revision=body.get("expected_revision"))
 
     def record_rung(self, body, sid):
         return self.coordinator.record_rung(

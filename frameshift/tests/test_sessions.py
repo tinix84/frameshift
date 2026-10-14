@@ -580,6 +580,121 @@ class RecordTheLadder(Fixture):
         self.assertEqual(coordinator(self.store).state(self.sid)["ladder"], self.co.state(self.sid)["ladder"])
 
 
+class WithdrawACandidateFrame(Fixture):
+    """#246 (ADR-0030): the person withdraws a candidate, so frame selection cannot dead-end."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.seal_intake()
+
+    def propose(self, count: int) -> None:
+        for index in range(count):
+            frame = dict(_frame(), outcome=f"Pack cost per usable kWh meets target {index + 1}.")
+            self.co.propose_frame(self.sid, frame=frame, expected_revision=self.revision())
+
+    def withdraw(self, frame_id) -> dict:
+        return self.co.withdraw_frame(self.sid, frame_id=frame_id, expected_revision=self.revision())["state"]
+
+    def refused(self, frame_id) -> CommandRefused:
+        before = len(self.co.history(self.sid))
+        with self.assertRaises(CommandRefused) as refused:
+            self.withdraw(frame_id)
+        self.assertEqual(len(self.co.history(self.sid)), before, "a refused withdrawal writes nothing")
+        return refused.exception
+
+    def seal(self, frame_id: str) -> str:
+        approve(self.co, self.co.prepare_gate(self.sid, gate="frame_selection", target_id=frame_id))
+        return self.co.state(self.sid)["phase"]
+
+    def test_withdrawing_keeps_the_frame_and_re_records_its_digest(self) -> None:
+        self.propose(3)
+        before = copy.deepcopy(self.co.state(self.sid)["frames"][1])
+        state = self.withdraw("frame_002")
+        frame = state["frames"][1]
+        self.assertEqual(frame["status"], "rejected")
+        self.assertEqual({k: v for k, v in frame.items() if k not in {"status", "digest"}},
+                         {k: v for k, v in before.items() if k not in {"status", "digest"}})
+        self.assertEqual(frame["digest"], content_digest(frame))
+        self.assertNotEqual(frame["digest"], before["digest"])
+        self.assertEqual([e["type"] for e in self.co.history(self.sid)[-2:]], ["frame.status.changed", "frame.digest.recorded"])
+        self.assertNotIn("frame_002", self.co.view(self.sid)["derived"]["frame_set"]["live"])
+        self.assertEqual(session_violations(state), [])
+        self.assertEqual(coordinator(self.store).state(self.sid), state, "a restarted coordinator folds the same")
+
+    def test_six_candidates_withdraw_one_then_seal(self) -> None:
+        self.propose(6)
+        self.co.activate_frame(self.sid, frame_id="frame_001", expected_revision=self.revision())
+        with self.assertRaises(CommandRefused) as refused:
+            self.co.prepare_gate(self.sid, gate="frame_selection", target_id="frame_001")
+        self.assertIn("holds 6", refused.exception.detail)
+        self.withdraw("frame_006")
+        self.assertEqual(self.seal("frame_001"), "causal")
+
+    def test_a_twin_withdraws_then_seals(self) -> None:
+        self.co.propose_frame(self.sid, frame=_frame(), expected_revision=self.revision())
+        self.co.propose_frame(self.sid, frame=_frame("A twin, worded differently?"), expected_revision=self.revision())
+        self.co.propose_frame(self.sid, frame=_alternative(), expected_revision=self.revision())
+        self.co.activate_frame(self.sid, frame_id="frame_001", expected_revision=self.revision())
+        self.assertFalse(self.co.view(self.sid)["derived"]["frame_set"]["selectable"])
+        self.withdraw("frame_002")
+        self.assertEqual(self.seal("frame_001"), "causal")
+
+    def test_the_working_a_missing_and_a_withdrawn_frame_are_refused(self) -> None:
+        self.propose(3)
+        self.co.activate_frame(self.sid, frame_id="frame_001", expected_revision=self.revision())
+        self.withdraw("frame_002")
+        for frame_id, naming in (
+            ("frame_001", "activate another candidate first"),
+            ("frame_099", "no frame"),
+            ("frame_002", "already rejected"),
+            (["frame_003"], "no frame"),
+        ):
+            with self.subTest(frame_id=frame_id):
+                refused = self.refused(frame_id)
+                self.assertEqual(refused.code, "invariant_violation")
+                self.assertIn(naming, refused.detail)
+        self.assertEqual(self.co.state(self.sid)["active_frame_id"], "frame_001")
+
+    def test_withdrawal_is_final(self) -> None:
+        self.propose(3)
+        self.withdraw("frame_002")
+        before = len(self.co.history(self.sid))
+        with self.assertRaises(CommandRefused) as refused:
+            self.co.activate_frame(self.sid, frame_id="frame_002", expected_revision=self.revision())
+        self.assertIn("propose it again as a new candidate", refused.exception.detail)
+        self.assertEqual(len(self.co.history(self.sid)), before)
+
+    def test_frame_selection_binds_only_the_working_frame(self) -> None:
+        """ADR-0030: no gate binds a withdrawn frame, nor a candidate that is not working."""
+        self.propose(3)
+        self.co.activate_frame(self.sid, frame_id="frame_001", expected_revision=self.revision())
+        self.withdraw("frame_003")
+        for target in ("frame_003", "frame_002"):
+            with self.subTest(target=target), self.assertRaises(CommandRefused) as refused:
+                self.co.prepare_gate(self.sid, gate="frame_selection", target_id=target)
+            self.assertIn("approves the working frame (frame_001)", refused.exception.detail)
+        self.assertEqual(self.seal("frame_001"), "causal")
+
+    def test_activating_a_non_string_id_is_refused_not_raised(self) -> None:
+        self.propose(2)
+        with self.assertRaises(CommandRefused) as refused:
+            self.co.activate_frame(self.sid, frame_id=["frame_001"], expected_revision=self.revision())
+        self.assertEqual(refused.exception.code, "invariant_violation")
+
+    def test_withdrawal_belongs_to_framing(self) -> None:
+        self.propose(2)
+        self.co.activate_frame(self.sid, frame_id="frame_001", expected_revision=self.revision())
+        self.seal("frame_001")
+        with self.assertRaises(CommandRefused) as refused:
+            self.withdraw("frame_002")
+        self.assertIn("phase 'framing'", refused.exception.detail)
+
+    def test_no_reasoner_facing_boundary_names_the_command(self) -> None:
+        for path in sorted((ROOT / "frameshift" / "mcp").rglob("*.py")) + sorted((ROOT / "adapters").rglob("*.py")):
+            with self.subTest(path=path.relative_to(ROOT).as_posix()):
+                self.assertNotIn("withdraw_frame", path.read_text(encoding="utf-8"))
+
+
 class TheShallowJourney(Fixture):
     """#89, as far as the current event vocabulary reaches: intake to solutions."""
 

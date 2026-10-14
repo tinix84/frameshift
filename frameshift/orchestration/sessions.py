@@ -613,8 +613,15 @@ class SessionCoordinator:
         digest a confirmation binds is never a stale one.
         """
         state = self._expect(session_id, expected_revision, phase="framing")
-        if frame_id not in {frame["id"] for frame in state["frames"]}:
+        held = {frame["id"]: frame for frame in state["frames"]}
+        if not isinstance(frame_id, str) or frame_id not in held:
             raise CommandRefused(INVARIANT_VIOLATION, f"no frame {frame_id!r} to activate")
+        if held[frame_id].get("status") not in LIVE_FRAME_STATUSES:
+            # ADR-0030: withdrawal is final; propose the content again instead.
+            raise CommandRefused(
+                INVARIANT_VIOLATION,
+                f"{frame_id!r} is {held[frame_id].get('status')}; propose it again as a new candidate",
+            )
         bodies = [{"type": "frame.activated", "payload": {"id": frame_id}}]
         for frame in state["frames"]:
             # The reducer's rule for `frame.activated`, applied to a copy: the
@@ -632,6 +639,33 @@ class SessionCoordinator:
                         "payload": {"id": frame["id"], "digest": transitions.content_digest(frame)},
                     }
                 )
+        self._commit_next(state, bodies)
+        return self.view(session_id)
+
+    def withdraw_frame(self, session_id: str, *, frame_id: str, expected_revision: int) -> dict:
+        """The person withdraws a candidate frame (ADR-0030): rejected, and its digest re-recorded.
+
+        A decided status is the person's (#254), so only a boundary that
+        speaks for them calls this. Never the working frame: the person
+        activates another first, so `active_frame_id` never names a withdrawn
+        frame.
+        """
+        state = self._expect(session_id, expected_revision, phase="framing")
+        held = {frame["id"]: frame for frame in state["frames"]}
+        if not isinstance(frame_id, str) or frame_id not in held:
+            raise CommandRefused(INVARIANT_VIOLATION, f"no frame {frame_id!r} to withdraw")
+        frame = held[frame_id]
+        if frame.get("status") == "working":
+            raise CommandRefused(
+                INVARIANT_VIOLATION, f"{frame_id!r} is the working frame; activate another candidate first"
+            )
+        if frame.get("status") not in LIVE_FRAME_STATUSES:
+            raise CommandRefused(INVARIANT_VIOLATION, f"{frame_id!r} is already {frame.get('status')}")
+        withdrawn = dict(copy.deepcopy(frame), status="rejected")
+        bodies = [
+            {"type": "frame.status.changed", "payload": {"id": frame_id, "status": "rejected"}},
+            {"type": "frame.digest.recorded", "payload": {"id": frame_id, "digest": transitions.content_digest(withdrawn)}},
+        ]
         self._commit_next(state, bodies)
         return self.view(session_id)
 
@@ -734,6 +768,12 @@ class SessionCoordinator:
             # ADR-0029: a withdrawn statement no longer counts, so no gate binds it.
             raise CommandRefused(INVARIANT_VIOLATION, f"{target_id!r} is {withdrawn[target_id]}; no gate binds it")
         _require_frame_set(state, gate)
+        if gate == "frame_selection" and target_id != state.get("active_frame_id"):
+            # ADR-0030: frame selection approves the working frame, never a withdrawn or idle candidate.
+            raise CommandRefused(
+                INVARIANT_VIOLATION,
+                f"frame selection approves the working frame ({state.get('active_frame_id')}), not {target_id!r}",
+            )
         # Imported here because `api` re-exports this coordinator.
         from .api import ConfirmationWorkflow
 

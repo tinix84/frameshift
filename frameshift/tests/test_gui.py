@@ -133,6 +133,31 @@ class GuiBoundary(unittest.TestCase):
                                  {"superseded_by": "stmt_002", "expected_revision": 3})
         self.assertEqual((status, body["code"]), (422, "invariant_violation"))
 
+    def test_the_person_withdraws_a_frame_in_the_gui(self) -> None:
+        """#246 (ADR-0030): the GUI speaks for the operator, so it may withdraw a candidate."""
+        sid = self.open()
+        coordinator = self.app.coordinator
+        coordinator.admit_result(sid, coordinator.manual_framing_result(sid, [{"statement_id": "stmt_001", "primary_role": "proposal"}]))
+        coordinator.add_operator_statement(sid, text="Usable efficiency meets the target.", primary_role="outcome", expected_revision=coordinator.state(sid)["revision"])
+        _, prepared = self.call("POST", f"/api/sessions/{sid}/gates", {"gate": "intake_correction", "target_id": "stmt_001"})
+        request = prepared["confirmation_request"]
+        self.call("POST", f"/api/confirmations/{request['id']}", {"response": {
+            "request_id": request["id"], "request_digest": request["request_digest"], "status": "submitted",
+            "disposition": "approved", "edited_proposal": None}})
+        frame = {"question": "How might we meet the efficiency target?", "outcome": "Usable efficiency meets the target.",
+                 "abstraction_level": "product", "system_boundary": "product", "included": "", "excluded": "",
+                 "success_measures": "", "constraints": "", "assumptions": ""}
+        coordinator.propose_frame(sid, frame=frame, expected_revision=coordinator.state(sid)["revision"])
+        status, view = self.call("POST", f"/api/sessions/{sid}/frames/frame_001/withdraw",
+                                 {"expected_revision": coordinator.state(sid)["revision"]})
+        self.assertEqual(status, 200, view)
+        self.assertEqual(view["state"]["frames"][0]["status"], "rejected")
+        status, body = self.call("POST", f"/api/sessions/{sid}/frames/frame_001/withdraw",
+                                 {"expected_revision": coordinator.state(sid)["revision"]})
+        self.assertEqual((status, body["code"]), (422, "invariant_violation"))
+        status, body = self.call("POST", f"/api/sessions/{sid}/frames/frame_001/withdraw", {})
+        self.assertEqual((status, body["code"]), (409, "revision_conflict"))
+
     def test_intake_is_sealed_through_the_http_confirmation_round_trip(self) -> None:
         sid = self.open()
         _, built = self.call(

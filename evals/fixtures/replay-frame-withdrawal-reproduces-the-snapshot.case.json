@@ -1,0 +1,9 @@
+{
+  "id": "replay-frame-withdrawal-reproduces-the-snapshot",
+  "check": "replay_equivalence",
+  "artifact": "frame-withdrawal.checkpoint.v2.json",
+  "log": "evals/fixtures/frame-withdrawal.events.jsonl",
+  "expect": {
+    "outcome": "equivalent"
+  }
+}
