@@ -1,0 +1,26 @@
+{
+  "id": "session-superseded-by-itself",
+  "check": "session_invariants",
+  "artifact": "supersession.checkpoint.v2.json",
+  "at": [
+    "state"
+  ],
+  "mutate": [
+    {
+      "path": [
+        "statements",
+        1,
+        "superseded_by"
+      ],
+      "value": "stmt_002"
+    }
+  ],
+  "expect": {
+    "outcome": "invalid",
+    "violations_naming": [
+      "$.statements[1].superseded_by",
+      "invariant_violation",
+      "the statement itself"
+    ]
+  }
+}

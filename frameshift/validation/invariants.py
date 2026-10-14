@@ -145,6 +145,35 @@ def reference_violations(session: dict) -> list[str]:
         else:
             held[level] = index
     violations.extend(symptom_specification_violations(session))
+    violations.extend(supersession_violations(session))
+    return violations
+
+
+def supersession_violations(session: dict) -> list[str]:
+    """ADR-0029: `superseded_by` names another statement, on a superseded one."""
+    violations: list[str] = []
+    statements = {
+        item["id"]
+        for item in session.get("statements", [])
+        if isinstance(item, dict) and isinstance(item.get("id"), str)
+    }
+    for index, statement in enumerate(session.get("statements", [])):
+        if not isinstance(statement, dict) or "superseded_by" not in statement:
+            continue
+        replacement = statement["superseded_by"]
+        path = f"$.statements[{index}].superseded_by"
+        if replacement == statement.get("id"):
+            violations.append(f"{INVARIANT_VIOLATION}: {path} names the statement itself")
+        elif replacement not in statements:
+            violations.append(
+                f"{INVARIANT_VIOLATION}: dangling reference, {path} names {replacement!r}, "
+                "which is not a statement in this session"
+            )
+        if statement.get("status") != "superseded":
+            violations.append(
+                f"{INVARIANT_VIOLATION}: $.statements[{index}] names a replacement but is "
+                f"{statement.get('status')!r}, not 'superseded'"
+            )
     return violations
 
 

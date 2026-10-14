@@ -130,6 +130,18 @@ class FrameContractTests(unittest.TestCase):
         self.assertEqual(migrated["approvals"], [])
         self.assertEqual(schema.validate_against(result["checkpoint"], "checkpoint.v2.schema.json"), [])
 
+    def test_a_v1_source_cannot_carry_a_replacement(self):
+        """ADR-0029: v1 cannot carry `superseded_by`, so none crosses; the reset drops it for any later source."""
+        source = reference()
+        superseded = {
+            "id": "stmt_002", "text": "An earlier answer, since corrected.", "primary_role": "observation",
+            "status": "superseded", "superseded_by": "stmt_001", "provenance": {"kind": "observed", "source_ids": []},
+        }
+        source["state"]["statements"].append(superseded)
+        refused = self.migrate(source)
+        self.assertEqual((refused["outcome"], refused["code"]), ("refused", "schema_invalid"))
+        self.assertIn("superseded_by", refused["detail"])
+
     def test_an_archived_session_and_a_shortlisted_option_reset_too(self):
         source = reference()
         source["state"]["status"] = "archived"

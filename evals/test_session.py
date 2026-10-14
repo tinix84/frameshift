@@ -260,5 +260,33 @@ class TheSymptomSpecificationInvariantAgrees(unittest.TestCase):
         self.assertEqual(session_violations(state), [])
 
 
+class TheSupersessionInvariantAgrees(unittest.TestCase):
+    """#255 (ADR-0029): both validators, and both reducers, agree on `superseded_by`."""
+
+    def state(self) -> dict:
+        return copy.deepcopy(run.load("evals/fixtures/supersession.checkpoint.v2.json")["state"])
+
+    def test_application_and_reference_name_the_same_violations(self) -> None:
+        from frameshift.validation import invariants as application
+
+        state = self.state()
+        self.assertEqual(session.reference_violations(state), [])
+        state["statements"][1]["superseded_by"] = "stmt_099"
+        state["statements"][2]["superseded_by"] = "stmt_003"
+        mine, theirs = application.reference_violations(state), session.reference_violations(state)
+        self.assertEqual(mine, theirs)
+        self.assertEqual(len(mine), 3, mine)
+
+    def test_both_reducers_reach_the_snapshot(self) -> None:
+        from evals.checks import replay as reference
+        from frameshift.orchestration import replay as application
+
+        events = [json.loads(line) for line in (run.ROOT / "evals" / "fixtures" / "supersession.events.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+        self.assertEqual(application.fold(copy.deepcopy(events)), self.state())
+        self.assertEqual(reference.fold(copy.deepcopy(events)), self.state())
+        statuses = [(s["id"], s["status"], s.get("superseded_by")) for s in self.state()["statements"]]
+        self.assertEqual(statuses, [("stmt_001", "proposed", None), ("stmt_002", "superseded", "stmt_003"), ("stmt_003", "proposed", None)])
+
+
 if __name__ == "__main__":
     unittest.main()

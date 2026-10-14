@@ -130,6 +130,8 @@ def migrate_frame_axes(
     for item in [*state.get("statements", []), *graph.get("nodes", []), *graph.get("edges", []), *state.get("options", [])]:
         if item.get("status") in DECIDED_STATUSES:
             item["status"] = "proposed"
+            # ADR-0029: the replacement is part of the supersession it resets.
+            item.pop("superseded_by", None)
     for frame in state["frames"]:
         abstraction_level, system_boundary = _AUTOMATIC_AXES[frame["abstraction_level"]]
         frame["abstraction_level"] = abstraction_level

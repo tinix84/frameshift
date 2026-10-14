@@ -78,7 +78,11 @@ def _apply(state: dict, event: dict) -> dict:
         statement["primary_role"] = payload["primary_role"]
         statement["secondary_roles"] = list(payload["secondary_roles"])
     elif kind == "statement.status.changed":
-        _find(state["statements"], payload["id"])["status"] = payload["status"]
+        statement = _find(state["statements"], payload["id"])
+        statement["status"] = payload["status"]
+        # ADR-0029: a supersession names its replacement.
+        if "superseded_by" in payload:
+            statement["superseded_by"] = payload["superseded_by"]
     elif kind == "graph.node.added":
         state["graph"]["nodes"].append(copy.deepcopy(payload))
     elif kind == "graph.edge.added":

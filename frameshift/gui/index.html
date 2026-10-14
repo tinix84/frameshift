@@ -301,9 +301,14 @@ function intakeSection(state, derived) {
   const live = state.phase === "intake";
   const box = el("div", {}, el("h2", {}, "Bring a request"));
   if (live) box.append(el("p", { class: "hint" }, "Classify what each statement is. A request that names a solution is still worth keeping word for word; the frame comes later."));
+  const reasoned = ["intake", "framing", "causal"].includes(state.phase);
+  const standing = state.statements.filter(st => !WITHDRAWN.includes(st.status));
   for (const st of state.statements) {
-    const card = el("div", { class: "card" }, el("p", { class: "verbatim" }, st.text), el("div", {}, roleChips(st), " ", el("span", { class: "ids" }, st.id)));
+    const status = st.superseded_by ? `${st.status} by ${st.superseded_by}` : st.status;
+    const card = el("div", { class: "card" }, el("p", { class: "verbatim" }, st.text), el("div", {}, roleChips(st), " ", el("span", { class: "ids" }, `${st.id}, ${status}`)));
     if (live) card.append(st.primary_role ? correctionForm(st) : classifyForm(st));
+    const others = standing.filter(other => other.id !== st.id);
+    if (reasoned && !WITHDRAWN.includes(st.status) && others.length) card.append(supersedeForm(st, others));
     box.append(card);
   }
   if (live) box.append(addStatementForm());
@@ -325,6 +330,17 @@ function classifyForm(st) {
     if (out) notice("ok", `Admitted ${out.committed} classification(s). Held: ${out.held_proposal_ids.join(", ") || "none"}.`);
   });
   return el("div", {}, el("p", { class: "hint" }, "You stand in for the framing engine: build its result, read it, then admit it."), form, preview, admit);
+}
+
+// ADR-0029: statements a decision has withdrawn; they no longer count.
+const WITHDRAWN = ["rejected", "superseded", "archived"];
+
+function supersedeForm(st, others) {
+  const form = el("form", { class: "inline", onsubmit: ev => { ev.preventDefault();
+    run(() => api("POST", `/api/sessions/${CURRENT}/statements/${st.id}/supersede`, { superseded_by: form.by.value, expected_revision: VIEW.state.revision }));
+  } }, el("label", {}, "Replaced by", el("select", { name: "by" }, ...others.map(o => el("option", { value: o.id }, `${o.id}: ${o.text.slice(0, 60)}`)))),
+    el("button", { type: "submit" }, "Supersede"));
+  return el("details", {}, el("summary", {}, "Supersede with a later statement"), el("p", { class: "hint" }, "Both statements are kept word for word; this one is marked superseded and names its replacement."), form);
 }
 
 function correctionForm(st) {

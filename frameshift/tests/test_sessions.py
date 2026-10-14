@@ -295,6 +295,99 @@ class OnlyThePersonsWordsAreObserved(Fixture):
                 self.assertEqual(self.refused(provenance), "schema_invalid")
 
 
+class SealingProposesAndThePersonSupersedes(Fixture):
+    """#255 (ADR-0029): sealing intake proposes live classified drafts; the person supersedes."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.classify()
+        for text in ("The bar brewed the same bag badly too.", "The bar brewed the same bag well."):
+            self.co.add_operator_statement(self.sid, text=text, primary_role="observation", expected_revision=self.revision())
+
+    def supersede(self, statement_id: str, superseded_by: str) -> dict:
+        return self.co.supersede_statement(
+            self.sid, statement_id=statement_id, superseded_by=superseded_by, expected_revision=self.revision()
+        )["state"]
+
+    def refused(self, statement_id, superseded_by) -> CommandRefused:
+        before = len(self.co.history(self.sid))
+        with self.assertRaises(CommandRefused) as refused:
+            self.supersede(statement_id, superseded_by)
+        self.assertEqual(len(self.co.history(self.sid)), before, "a refused supersession writes nothing")
+        return refused.exception
+
+    def seal(self) -> dict:
+        approve(self.co, self.co.prepare_gate(self.sid, gate="intake_correction", target_id="stmt_001"))
+        return self.co.state(self.sid)
+
+    def test_superseding_keeps_both_statements_and_names_the_replacement(self) -> None:
+        before = copy.deepcopy(self.co.state(self.sid)["statements"])
+        state = self.supersede("stmt_002", "stmt_003")
+        first, second = state["statements"][1], state["statements"][2]
+        self.assertEqual((first["status"], first["superseded_by"]), ("superseded", "stmt_003"))
+        self.assertEqual(first["text"], before[1]["text"])
+        self.assertEqual(second, before[2], "the replacement is untouched")
+        self.assertEqual(self.co.history(self.sid)[-1]["type"], "statement.status.changed")
+        self.assertEqual(session_violations(state), [])
+        self.assertEqual(coordinator(self.store).state(self.sid), state, "a restarted coordinator folds the same")
+
+    def test_each_refusal_writes_nothing(self) -> None:
+        self.supersede("stmt_002", "stmt_003")
+        for statement_id, superseded_by, naming in (
+            ("stmt_099", "stmt_003", "no statement"),
+            ("stmt_003", "stmt_099", "no replacement"),
+            ("stmt_003", "stmt_003", "cannot supersede itself"),
+            ("stmt_002", "stmt_003", "only a live statement"),
+            ("stmt_003", "stmt_002", "only a live statement"),
+            (["stmt_003"], "stmt_001", "no statement"),
+        ):
+            with self.subTest(statement_id=statement_id, superseded_by=superseded_by):
+                refused = self.refused(statement_id, superseded_by)
+                self.assertEqual(refused.code, "invariant_violation")
+                self.assertIn(naming, refused.detail)
+
+    def test_sealing_proposes_live_classified_drafts_only(self) -> None:
+        self.supersede("stmt_002", "stmt_003")
+        sealed = self.seal()
+        statuses = {statement["id"]: statement["status"] for statement in sealed["statements"]}
+        self.assertEqual(statuses, {"stmt_001": "proposed", "stmt_002": "superseded", "stmt_003": "proposed"})
+        self.assertEqual(session_violations(sealed), [])
+
+    def test_an_unclassified_draft_stays_draft_and_other_gates_change_no_status(self) -> None:
+        """Past draft a statement must be classified (#226); the commands never leave one unclassified,
+        so the rule is checked on a state that holds one."""
+        from frameshift.orchestration.sessions import _sealing_events
+
+        state = self.co.state(self.sid)
+        unclassified = {"id": "stmt_009", "text": "x", "status": "draft", "provenance": {"kind": "assumed", "source_ids": []}}
+        sealing = _sealing_events(dict(state, statements=state["statements"] + [unclassified]), "intake_correction")
+        self.assertEqual([event["payload"]["id"] for event in sealing], ["stmt_001", "stmt_002", "stmt_003"])
+        self.assertEqual(_sealing_events(state, "frame_selection"), [])
+
+    def test_a_superseded_statement_no_longer_counts(self) -> None:
+        """abstraction_required reads live statements only: a superseded outcome serves nothing."""
+        self.co.add_statement(self.sid, text="Pack cost meets the target.", primary_role="outcome", expected_revision=self.revision())
+        self.assertFalse(self.co.view(self.sid)["derived"]["abstraction_required"])
+        state = self.supersede("stmt_004", "stmt_003")
+        self.assertEqual(state["statements"][3]["status"], "superseded")
+        self.assertTrue(self.co.view(self.sid)["derived"]["abstraction_required"])
+
+    def test_superseding_belongs_to_intake_framing_and_causal(self) -> None:
+        self.seal()
+        self.assertEqual(self.supersede("stmt_002", "stmt_003")["phase"], "framing")
+        state = self.co.state(self.sid)
+        self.co.state = lambda sid: dict(state, phase="solutions")  # noqa: E731
+        with self.assertRaises(CommandRefused) as refused:
+            self.co.supersede_statement(self.sid, statement_id="stmt_003", superseded_by="stmt_001", expected_revision=state["revision"])
+        del self.co.state
+        self.assertIn("'intake' or 'framing' or 'causal'", refused.exception.detail)
+
+    def test_no_reasoner_facing_boundary_names_the_command(self) -> None:
+        for path in sorted((ROOT / "frameshift" / "mcp").rglob("*.py")) + sorted((ROOT / "adapters").rglob("*.py")):
+            with self.subTest(path=path.relative_to(ROOT).as_posix()):
+                self.assertNotIn("supersede_statement", path.read_text(encoding="utf-8"))
+
+
 class SealIntakeThroughTheGate(Fixture):
     """#229."""
 
@@ -305,8 +398,13 @@ class SealIntakeThroughTheGate(Fixture):
         out = approve(self.co, request)
         state = self.co.state(self.sid)
         self.assertEqual((out["outcome"], state["phase"], state["revision"]), ("accepted", "framing", 2))
+        # The approval binds what the person saw; sealing then proposes it in the same commit (ADR-0029).
         self.assertEqual(state["approvals"][0]["target_digest"], content_digest(statement))
-        self.assertEqual([e["type"] for e in self.co.history(self.sid)[-2:]], ["approval.recorded", "phase.changed"])
+        self.assertEqual(
+            [e["type"] for e in self.co.history(self.sid)[-3:]],
+            ["approval.recorded", "phase.changed", "statement.status.changed"],
+        )
+        self.assertEqual(state["statements"][0]["status"], "proposed")
 
     def test_a_forged_request_digest_appends_nothing(self) -> None:
         self.classify()

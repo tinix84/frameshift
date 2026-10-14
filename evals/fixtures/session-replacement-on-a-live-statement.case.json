@@ -1,0 +1,26 @@
+{
+  "id": "session-replacement-on-a-live-statement",
+  "check": "session_invariants",
+  "artifact": "supersession.checkpoint.v2.json",
+  "at": [
+    "state"
+  ],
+  "mutate": [
+    {
+      "path": [
+        "statements",
+        1,
+        "status"
+      ],
+      "value": "proposed"
+    }
+  ],
+  "expect": {
+    "outcome": "invalid",
+    "violations_naming": [
+      "$.statements[1]",
+      "invariant_violation",
+      "not 'superseded'"
+    ]
+  }
+}

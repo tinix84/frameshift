@@ -22,6 +22,8 @@ from frameshift.tests.test_sessions import approve, coordinator  # noqa: E402
 from frameshift.validation import session_violations  # noqa: E402
 
 GATE_METHODS = ("prepare_gate", "confirm", "cancel")
+# Commands only the person's boundary calls (ADR-0028, ADR-0029); the script plays the reasoner.
+PERSON_METHODS = ("add_operator_statement", "supersede_statement")
 
 
 class GateSpy:
@@ -32,7 +34,7 @@ class GateSpy:
         self.gate_calls: list[str] = []
 
     def __getattr__(self, name):
-        if name in GATE_METHODS:
+        if name in GATE_METHODS + PERSON_METHODS:
             self.gate_calls.append(name)
         return getattr(self._co, name)
 
@@ -53,6 +55,12 @@ class AFullRun(unittest.TestCase):
         cls.sim = simulation.Simulation(store)
         cls.ref = simulation.reference()
         simulation.stage_intake(cls.spy, cls.sim, cls.ref)
+        # The person corrects their first answer, as they seal the gates (ADR-0029).
+        sid = cls.sim.session_id
+        cls.co.supersede_statement(
+            sid, statement_id=cls.sim.ids["stmt_espresso_006"], superseded_by=cls.sim.ids["stmt_espresso_007"],
+            expected_revision=cls.co.state(sid)["revision"],
+        )
         seal(cls.co, cls.sim, "intake_correction", cls.ref["statements"][0]["id"])
         simulation.stage_framing(cls.spy, cls.sim, cls.ref)
         seal(cls.co, cls.sim, "frame_selection", cls.ref["active_frame_id"])
@@ -125,7 +133,7 @@ class AFullRun(unittest.TestCase):
         self.assertEqual(
             summary,
             {
-                "statements": (12, 0, 0, 0),
+                "statements": (12, 2, 0, 0),
                 "ladder": (4, 4, 0, 0),
                 "frames": (4, 3, 0, 0),
                 "nodes": (43, 32, 0, 0),
@@ -146,7 +154,6 @@ class AFullRun(unittest.TestCase):
                 # The script is a reasoner (ADR-0028): nine observed statements come out assumed, and the
                 # request differs in its intake id and note. The two inferred ones reproduce.
                 ("statements", "provenance"): 10,
-                ("statements", "status"): 12,
                 ("frames", "status"): 1,
                 # Observed in the reference, offered as inferred: the script's statements are not the
                 # person's, so they cannot earn observed (ADR-0028). Every other kind is kept (ADR-0026).
