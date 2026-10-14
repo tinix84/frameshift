@@ -645,9 +645,18 @@ class SessionCoordinator:
         """A reasoner-supplied edge: proposed, and its declared provenance earned (ADR-0026, #258).
 
         Without a declared provenance the edge is `assumed` and cites its two
-        ends, as before. Extensions are stored as given.
+        ends, as before. Extensions are stored as given. Like a node, an edge
+        is offered as `draft` or `proposed`, never decided (#254, #259); no
+        gate reads an edge's status, so a draft edge counts in none.
         """
         state = self._expect(session_id, expected_revision, phase="causal")
+        status = edge.get("status", "proposed")
+        if status not in REASONER_NODE_STATUSES:
+            raise CommandRefused(
+                INVARIANT_VIOLATION,
+                f"a reasoner offers an edge as {' or '.join(REASONER_NODE_STATUSES)}, not {status!r}: "
+                "a decided status is a person's, reached through a gate",
+            )
         if edge.get("provenance") is None:
             provenance = {
                 "kind": "assumed",
@@ -660,7 +669,7 @@ class SessionCoordinator:
             "source": edge.get("source", ""),
             "target": edge.get("target", ""),
             "type": edge.get("type", ""),
-            "status": "proposed",
+            "status": status,
             "confidence": edge.get("confidence", "unknown"),
             "provenance": provenance,
         }

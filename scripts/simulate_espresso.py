@@ -247,6 +247,7 @@ def stage_causal(co, sim: Simulation, ref: dict) -> list[str]:
             "source": sim.ids[edge["source"]],
             "target": sim.ids[edge["target"]],
             "type": edge["type"],
+            "status": _offered(edge["status"]),
             "confidence": edge["confidence"],
             "provenance": _declared(sim, edge["provenance"]),
         }

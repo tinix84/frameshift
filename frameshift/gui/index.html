@@ -526,7 +526,7 @@ function causalSection(state) {
   const nodes = state.graph.nodes, edges = state.graph.edges;
   if (!nodes.length && !live) box.append(el("p", { class: "empty" }, "No graph recorded."));
   for (const n of nodes) box.append(el("div", { class: "card" }, el("strong", {}, n.label), el("div", { class: "ids" }, `${n.id}, ${n.type}, ${n.status}, confidence ${n.confidence}${n.extensions && n.extensions.collected === false ? ", not yet collected" : ""}`)));
-  for (const e of edges) box.append(el("div", { class: "ids" }, `${e.source} ${e.type.replace(/_/g, " ")} ${e.target} (${e.id})`));
+  for (const e of edges) box.append(el("div", { class: "ids" }, `${e.source} ${e.type.replace(/_/g, " ")} ${e.target} (${e.id}, ${e.status})`));
   if (live) {
     const v = META.vocabulary;
     const nform = el("form", { class: "inline", onsubmit: ev => { ev.preventDefault();
