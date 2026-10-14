@@ -47,7 +47,9 @@ current and desired state, stakeholders, abstraction level, boundary, scope,
 exclusions, success measures, constraints, assumptions, and open questions.
 
 **Working frame** — the single frame a human has approved as the one being
-solved. Candidate frames may coexist; only approval makes one working.
+solved. Candidate frames may coexist; only approval makes one working. A
+candidate frame the person withdraws becomes `rejected` and no longer counts;
+withdrawal is final, and the working frame is never withdrawn (ADR-0030).
 
 ## Causal model
 

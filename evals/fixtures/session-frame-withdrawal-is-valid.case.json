@@ -1,0 +1,11 @@
+{
+  "id": "session-frame-withdrawal-is-valid",
+  "check": "session_invariants",
+  "artifact": "frame-withdrawal.checkpoint.v2.json",
+  "at": [
+    "state"
+  ],
+  "expect": {
+    "outcome": "valid"
+  }
+}

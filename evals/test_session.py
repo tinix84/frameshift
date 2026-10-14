@@ -299,5 +299,21 @@ class TheSupersessionInvariantAgrees(unittest.TestCase):
         self.assertEqual(statuses, [("stmt_001", "proposed", None), ("stmt_002", "superseded", "stmt_003"), ("stmt_003", "proposed", None)])
 
 
+class TheFrameWithdrawalFoldsInBothReducers(unittest.TestCase):
+    """#246 (ADR-0030): `frame.status.changed` folds to the same state in both reducers."""
+
+    def test_both_reducers_reach_the_snapshot(self) -> None:
+        from evals.checks import replay as reference
+        from frameshift.orchestration import replay as application
+
+        snapshot = run.load("evals/fixtures/frame-withdrawal.checkpoint.v2.json")["state"]
+        events = [json.loads(line) for line in (run.ROOT / "evals" / "fixtures" / "frame-withdrawal.events.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+        self.assertEqual(application.fold(copy.deepcopy(events)), snapshot)
+        self.assertEqual(reference.fold(copy.deepcopy(events)), snapshot)
+        self.assertEqual([(f["id"], f["status"]) for f in snapshot["frames"]],
+                         [("frame_001", "working"), ("frame_002", "rejected"), ("frame_003", "proposed")])
+        self.assertEqual(session.reference_violations(snapshot), [])
+
+
 if __name__ == "__main__":
     unittest.main()

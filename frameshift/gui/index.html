@@ -413,8 +413,15 @@ function frameCard(f, live) {
   for (const key of FRAME_LISTS) {
     if ((f[key] || []).length) card.append(el("div", {}, el("span", { class: "ids" }, words(key) + ": "), f[key].join("; ")));
   }
-  if (live && f.status !== "working") card.append(el("p", {}, el("button", { type: "button", onclick: () =>
-    run(() => api("POST", `/api/sessions/${CURRENT}/frames/${f.id}/activate`, { expected_revision: VIEW.state.revision })) }, "Make working frame")));
+  // ADR-0030: a withdrawn frame is final, so only a live candidate can be activated or withdrawn.
+  if (live && f.status === "proposed") card.append(el("p", {},
+    el("button", { type: "button", onclick: () =>
+      run(() => api("POST", `/api/sessions/${CURRENT}/frames/${f.id}/activate`, { expected_revision: VIEW.state.revision })) }, "Make working frame"),
+    " ",
+    el("button", { type: "button", onclick: () => {
+      if (!confirm(`Withdraw ${f.id}? This is final: to use it again, propose it as a new candidate.`)) return;
+      run(() => api("POST", `/api/sessions/${CURRENT}/frames/${f.id}/withdraw`, { expected_revision: VIEW.state.revision }));
+    } }, "Withdraw")));
   return card;
 }
 

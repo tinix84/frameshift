@@ -43,6 +43,7 @@ EVENT_TYPES = frozenset(
         "graph.edge.added",
         "frame.added",
         "frame.activated",
+        "frame.status.changed",
         "frame.digest.recorded",
         "ladder.rung.recorded",
         "symptom.specification.recorded",
@@ -169,6 +170,9 @@ def _apply(state: dict, event: dict) -> None:
                 frame["status"] = "proposed"
         _named(state["frames"], payload["id"])["status"] = "working"
         state["active_frame_id"] = payload["id"]
+    elif kind == "frame.status.changed":
+        # ADR-0030: a frame's status moves in place; withdrawal sets rejected.
+        _named(state["frames"], payload["id"])["status"] = payload["status"]
     elif kind == "frame.digest.recorded":
         _named(state["frames"], payload["id"])["digest"] = payload["digest"]
     elif kind == "ladder.rung.recorded":
