@@ -23,7 +23,12 @@ side effect.
 **Statement** — a unit of authored content carrying exactly one primary semantic
 role: `observation`, `need`, `outcome`, `problem`, `function`, `requirement`,
 `constraint`, `assumption`, `proposal`, or `question`. Human wording is
-preserved; classification is correctable.
+preserved; classification is correctable. A statement is `draft` while intake is open and
+`proposed` once intake is sealed, if classified.
+
+**Superseded statement** — a statement the person has replaced with a later
+one, which `superseded_by` names (ADR-0029). Both are kept word for word; the
+superseded one no longer counts as live.
 
 **Solution in disguise** — a request that names a component, topology, vendor,
 or action while omitting the outcome it serves. Detecting one triggers upward

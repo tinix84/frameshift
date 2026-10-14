@@ -118,6 +118,21 @@ class GuiBoundary(unittest.TestCase):
         self.assertTrue(source.startswith("intake_"))
         self.assertNotEqual(source, request["provenance"]["source_ids"][0])
 
+    def test_the_person_supersedes_a_statement_in_the_gui(self) -> None:
+        """#255 (ADR-0029): the GUI speaks for the operator, so it may supersede."""
+        sid = self.open()
+        for revision, text in ((0, "The bar brewed it badly too."), (1, "The bar brewed it well.")):
+            self.call("POST", f"/api/sessions/{sid}/statements",
+                      {"text": text, "primary_role": "observation", "expected_revision": revision})
+        status, view = self.call("POST", f"/api/sessions/{sid}/statements/stmt_002/supersede",
+                                 {"superseded_by": "stmt_003", "expected_revision": 2})
+        self.assertEqual(status, 200, view)
+        first = view["state"]["statements"][1]
+        self.assertEqual((first["status"], first["superseded_by"]), ("superseded", "stmt_003"))
+        status, body = self.call("POST", f"/api/sessions/{sid}/statements/stmt_003/supersede",
+                                 {"superseded_by": "stmt_002", "expected_revision": 3})
+        self.assertEqual((status, body["code"]), (422, "invariant_violation"))
+
     def test_intake_is_sealed_through_the_http_confirmation_round_trip(self) -> None:
         sid = self.open()
         _, built = self.call(

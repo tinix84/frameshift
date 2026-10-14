@@ -166,6 +166,9 @@ def stage_intake(co, sim: Simulation, ref: dict) -> list[str]:
     sim.save()
     return [
         f"Session {sid} holds {len(statements)} statements and is in intake.",
+        # The person's correction of their first answer is theirs to record (ADR-0029).
+        f"In the GUI, supersede {sim.ids['stmt_espresso_006']} with {sim.ids['stmt_espresso_007']}, "
+        "the person's corrected answer, if you are reproducing the reference.",
         f"Seal intake in the GUI: gate intake_correction on {sim.ids[first['id']]}.",
     ]
 

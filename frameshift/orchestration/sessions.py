@@ -67,6 +67,10 @@ ADMITTED_KINDS = frozenset({"statement_classification"})
 # person's, reached through a gate, never a field a caller sets.
 REASONER_NODE_STATUSES = ("draft", "proposed")
 SPECIFICATION_PHASES = ("intake", "framing", "causal")
+# ADR-0029: where statements are reasoned over, and so may be replaced.
+SUPERSESSION_PHASES = ("intake", "framing", "causal")
+# Statements that no longer count: withdrawn by a decision.
+WITHDRAWN_STATUSES = frozenset({"rejected", "superseded", "archived"})
 SPECIFICATION_FIELDS = (
     "object", "deviation", "rows", "reference", "actual", "knot_node_id", "method_source_ids", "provenance",
 )
@@ -263,6 +267,34 @@ class SessionCoordinator:
             "status": "draft",
             "provenance": provenance,
         }
+
+    def supersede_statement(
+        self, session_id: str, *, statement_id: str, superseded_by: str, expected_revision: int
+    ) -> dict:
+        """The person replaces a statement with another, both kept word for word (ADR-0029).
+
+        A decided status is the person's (#254), so only a boundary that
+        speaks for them calls this; a reasoner-facing boundary never exposes
+        it. The replacement must be another live statement, so a chain of
+        supersessions never closes into a cycle.
+        """
+        state = self._expect(session_id, expected_revision, phase=SUPERSESSION_PHASES)
+        held = {item["id"]: item for item in state["statements"]}
+        for role, named in (("statement", statement_id), ("replacement", superseded_by)):
+            if not isinstance(named, str) or named not in held:
+                raise CommandRefused(INVARIANT_VIOLATION, f"no {role} {named!r} in this session")
+            if held[named].get("status") in WITHDRAWN_STATUSES:
+                raise CommandRefused(
+                    INVARIANT_VIOLATION, f"{named!r} is {held[named]['status']}; only a live statement takes part"
+                )
+        if statement_id == superseded_by:
+            raise CommandRefused(INVARIANT_VIOLATION, f"{statement_id!r} cannot supersede itself")
+        if "primary_role" not in held[statement_id]:
+            # Past draft a statement must be classified (#226): classify it first.
+            raise CommandRefused(INVARIANT_VIOLATION, f"{statement_id!r} is unclassified; classify it before superseding it")
+        change = {"id": statement_id, "status": "superseded", "superseded_by": superseded_by}
+        self._commit_next(state, [{"type": "statement.status.changed", "payload": change}])
+        return self.view(session_id)
 
     def manual_framing_result(self, session_id: str, classifications: list[dict]) -> dict:
         """Build the problem-framing result a person authored in place of a model.
@@ -697,6 +729,10 @@ class SessionCoordinator:
             raise CommandRefused(refusal.code, refusal.detail)
         if transitions.find_target(state, target_id) is None:
             raise CommandRefused(INVARIANT_VIOLATION, f"no such target {target_id}")
+        withdrawn = {item["id"]: item["status"] for item in state["statements"] if item.get("status") in WITHDRAWN_STATUSES}
+        if target_id in withdrawn:
+            # ADR-0029: a withdrawn statement no longer counts, so no gate binds it.
+            raise CommandRefused(INVARIANT_VIOLATION, f"{target_id!r} is {withdrawn[target_id]}; no gate binds it")
         _require_frame_set(state, gate)
         # Imported here because `api` re-exports this coordinator.
         from .api import ConfirmationWorkflow
@@ -738,7 +774,7 @@ class SessionCoordinator:
         outcome = transitions.attempt(state, transition, trusted)
         if outcome["outcome"] != "accepted":
             raise CommandRefused(outcome["code"], outcome["detail"])
-        self._commit_next(state, outcome["events"])
+        self._commit_next(state, outcome["events"] + _sealing_events(state, transition["gate"]))
         return {"outcome": "accepted", "phase": outcome["phase"], "view": self.view(session_id)}
 
     def cancel(self, request_id: str) -> None:
@@ -793,7 +829,7 @@ def abstraction_required(state: dict) -> bool:
     Derived from state and never recorded, so it cannot disagree with the
     classifications it is read from.
     """
-    live = [s for s in state.get("statements", []) if s.get("status") not in {"rejected", "superseded", "archived"}]
+    live = [s for s in state.get("statements", []) if s.get("status") not in WITHDRAWN_STATUSES]
     has_proposal = any(s.get("primary_role") == "proposal" for s in live)
     has_outcome = any(s.get("primary_role") == "outcome" for s in live)
     return has_proposal and not has_outcome
@@ -896,7 +932,10 @@ def gates_available(state: dict) -> list[dict]:
 
 def _targets_for(state: dict, gate: str) -> list[str]:
     if gate == "intake_correction":
-        return [s["id"] for s in state.get("statements", []) if "primary_role" in s]
+        return [
+            s["id"] for s in state.get("statements", [])
+            if "primary_role" in s and s.get("status") not in WITHDRAWN_STATUSES
+        ]
     if gate == "frame_selection":
         return [f["id"] for f in state.get("frames", []) if f.get("status") == "working"]
     if gate == "evidence_sufficiency":
@@ -997,6 +1036,21 @@ def _earned(provenance: dict, state: dict, *, observed: Callable[[list[str], dic
             "or an observed statement that cites one",
         )
     return copy.deepcopy(provenance)
+
+
+def _sealing_events(state: dict, gate: str) -> list[dict]:
+    """ADR-0029: sealing intake proposes every live, classified draft, in the gate's commit.
+
+    An unclassified draft stays a draft (#226); a withdrawn statement keeps
+    its status.
+    """
+    if gate != "intake_correction":
+        return []
+    return [
+        {"type": "statement.status.changed", "payload": {"id": statement["id"], "status": "proposed"}}
+        for statement in state["statements"]
+        if statement.get("status") == "draft" and "primary_role" in statement
+    ]
 
 
 def _check_citations(sources: list[str], state: dict) -> None:

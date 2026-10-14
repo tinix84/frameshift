@@ -1,0 +1,9 @@
+{
+  "id": "replay-supersession-reproduces-the-snapshot",
+  "check": "replay_equivalence",
+  "artifact": "supersession.checkpoint.v2.json",
+  "log": "evals/fixtures/supersession.events.jsonl",
+  "expect": {
+    "outcome": "equivalent"
+  }
+}

@@ -34,6 +34,7 @@
         "primary_role": {"type": "string", "enum": ["observation", "need", "outcome", "problem", "function", "requirement", "constraint", "assumption", "proposal", "question"]},
         "secondary_roles": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
         "status": {"type": "string", "enum": ["draft", "proposed", "approved", "rejected", "superseded", "archived"]},
+        "superseded_by": {"$ref": "common.schema.json#/$defs/id"},
         "provenance": {"$ref": "common.schema.json#/$defs/provenance"}
       },
       "additionalProperties": false

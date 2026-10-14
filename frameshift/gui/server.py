@@ -67,6 +67,7 @@ ROUTES = [
     ("POST", rf"^/api/sessions/{SESSION}/engine-result$", "admit_result"),
     ("POST", rf"^/api/sessions/{SESSION}/statements$", "add_statement"),
     ("POST", rf"^/api/sessions/{SESSION}/corrections$", "correct"),
+    ("POST", rf"^/api/sessions/{SESSION}/statements/(?P<stid>[A-Za-z0-9._:-]+)/supersede$", "supersede"),
     ("POST", rf"^/api/sessions/{SESSION}/frames$", "propose_frame"),
     ("POST", rf"^/api/sessions/{SESSION}/frames/(?P<fid>[A-Za-z0-9._:-]+)/activate$", "activate_frame"),
     ("POST", rf"^/api/sessions/{SESSION}/rungs$", "record_rung"),
@@ -132,6 +133,15 @@ class ManualApp:
             sid,
             text=body.get("text", ""),
             primary_role=body.get("primary_role", ""),
+            expected_revision=body.get("expected_revision"),
+        )
+
+    def supersede(self, body, sid, stid):
+        # The operator decides here that a later statement replaces this one (ADR-0029).
+        return self.coordinator.supersede_statement(
+            sid,
+            statement_id=stid,
+            superseded_by=body.get("superseded_by", ""),
             expected_revision=body.get("expected_revision"),
         )
 
