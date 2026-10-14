@@ -271,7 +271,7 @@ class SessionCoordinator:
     def supersede_statement(
         self, session_id: str, *, statement_id: str, superseded_by: str, expected_revision: int
     ) -> dict:
-        """The person replaces a statement with a later one, both kept word for word (ADR-0029).
+        """The person replaces a statement with another, both kept word for word (ADR-0029).
 
         A decided status is the person's (#254), so only a boundary that
         speaks for them calls this; a reasoner-facing boundary never exposes
@@ -289,6 +289,9 @@ class SessionCoordinator:
                 )
         if statement_id == superseded_by:
             raise CommandRefused(INVARIANT_VIOLATION, f"{statement_id!r} cannot supersede itself")
+        if "primary_role" not in held[statement_id]:
+            # Past draft a statement must be classified (#226): classify it first.
+            raise CommandRefused(INVARIANT_VIOLATION, f"{statement_id!r} is unclassified; classify it before superseding it")
         change = {"id": statement_id, "status": "superseded", "superseded_by": superseded_by}
         self._commit_next(state, [{"type": "statement.status.changed", "payload": change}])
         return self.view(session_id)
@@ -726,6 +729,10 @@ class SessionCoordinator:
             raise CommandRefused(refusal.code, refusal.detail)
         if transitions.find_target(state, target_id) is None:
             raise CommandRefused(INVARIANT_VIOLATION, f"no such target {target_id}")
+        withdrawn = {item["id"]: item["status"] for item in state["statements"] if item.get("status") in WITHDRAWN_STATUSES}
+        if target_id in withdrawn:
+            # ADR-0029: a withdrawn statement no longer counts, so no gate binds it.
+            raise CommandRefused(INVARIANT_VIOLATION, f"{target_id!r} is {withdrawn[target_id]}; no gate binds it")
         _require_frame_set(state, gate)
         # Imported here because `api` re-exports this coordinator.
         from .api import ConfirmationWorkflow
@@ -925,7 +932,10 @@ def gates_available(state: dict) -> list[dict]:
 
 def _targets_for(state: dict, gate: str) -> list[str]:
     if gate == "intake_correction":
-        return [s["id"] for s in state.get("statements", []) if "primary_role" in s]
+        return [
+            s["id"] for s in state.get("statements", [])
+            if "primary_role" in s and s.get("status") not in WITHDRAWN_STATUSES
+        ]
     if gate == "frame_selection":
         return [f["id"] for f in state.get("frames", []) if f.get("status") == "working"]
     if gate == "evidence_sufficiency":

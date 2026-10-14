@@ -353,16 +353,38 @@ class SealingProposesAndThePersonSupersedes(Fixture):
         self.assertEqual(statuses, {"stmt_001": "proposed", "stmt_002": "superseded", "stmt_003": "proposed"})
         self.assertEqual(session_violations(sealed), [])
 
-    def test_an_unclassified_draft_stays_draft_and_other_gates_change_no_status(self) -> None:
-        """Past draft a statement must be classified (#226); the commands never leave one unclassified,
-        so the rule is checked on a state that holds one."""
+    def test_an_unclassified_draft_stays_draft_through_the_gate(self) -> None:
+        """Past draft a statement must be classified (#226): sealing leaves an unclassified one as it is."""
+        sid = self.co.open_session(title="", request="Make the coffee better.")["state"]["id"]
+        self.co.add_operator_statement(sid, text="Every cup tastes sour.", primary_role="observation", expected_revision=self.co.state(sid)["revision"])
+        approve(self.co, self.co.prepare_gate(sid, gate="intake_correction", target_id="stmt_002"))
+        statuses = [(s["id"], s["status"]) for s in self.co.state(sid)["statements"]]
+        self.assertEqual(statuses, [("stmt_001", "draft"), ("stmt_002", "proposed")])
+
+    def test_other_gates_change_no_status(self) -> None:
         from frameshift.orchestration.sessions import _sealing_events
 
-        state = self.co.state(self.sid)
-        unclassified = {"id": "stmt_009", "text": "x", "status": "draft", "provenance": {"kind": "assumed", "source_ids": []}}
-        sealing = _sealing_events(dict(state, statements=state["statements"] + [unclassified]), "intake_correction")
-        self.assertEqual([event["payload"]["id"] for event in sealing], ["stmt_001", "stmt_002", "stmt_003"])
-        self.assertEqual(_sealing_events(state, "frame_selection"), [])
+        self.assertEqual(_sealing_events(self.co.state(self.sid), "frame_selection"), [])
+
+    def test_an_unclassified_statement_cannot_be_superseded(self) -> None:
+        sid = self.co.open_session(title="", request="Make the coffee better.")["state"]["id"]
+        self.co.add_operator_statement(sid, text="Every cup tastes sour.", primary_role="observation", expected_revision=self.co.state(sid)["revision"])
+        before = len(self.co.history(sid))
+        with self.assertRaises(CommandRefused) as refused:
+            self.co.supersede_statement(sid, statement_id="stmt_001", superseded_by="stmt_002", expected_revision=self.co.state(sid)["revision"])
+        self.assertEqual(refused.exception.code, "invariant_violation")
+        self.assertIn("classify it before superseding it", refused.exception.detail)
+        self.assertEqual(len(self.co.history(sid)), before)
+
+    def test_no_gate_binds_a_withdrawn_statement(self) -> None:
+        self.supersede("stmt_001", "stmt_002")
+        intake = next(gate for gate in self.co.view(self.sid)["derived"]["gates"] if gate["gate"] == "intake_correction")
+        self.assertEqual(intake["targets"], ["stmt_002", "stmt_003"])
+        with self.assertRaises(CommandRefused) as refused:
+            self.co.prepare_gate(self.sid, gate="intake_correction", target_id="stmt_001")
+        self.assertEqual(refused.exception.code, "invariant_violation")
+        self.assertIn("no gate binds it", refused.exception.detail)
+        self.assertEqual(self.co.state(self.sid)["phase"], "intake")
 
     def test_a_superseded_statement_no_longer_counts(self) -> None:
         """abstraction_required reads live statements only: a superseded outcome serves nothing."""

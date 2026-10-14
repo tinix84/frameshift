@@ -162,6 +162,8 @@ def supersession_violations(session: dict) -> list[str]:
             continue
         replacement = statement["superseded_by"]
         path = f"$.statements[{index}].superseded_by"
+        if not isinstance(replacement, str):
+            continue  # the schema reports a replacement that is not an id
         if replacement == statement.get("id"):
             violations.append(f"{INVARIANT_VIOLATION}: {path} names the statement itself")
         elif replacement not in statements:

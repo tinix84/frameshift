@@ -21,8 +21,9 @@ Two gaps in statement status, found by the espresso simulation (#255):
 
 ADR-0021 forbids rewriting a statement and rejected supersession as the way to
 *correct a classification*. Superseding one statement with another is a
-different act: the person says that a later statement, in its own words,
-replaces an earlier one. Both stay, word for word.
+different act: the person says that another statement, in its own words,
+replaces this one. Both stay, word for word. Usually the replacement came
+later, but the person may also fall back on an earlier one.
 
 ADR-0025 counts `superseded` as a decided status. A decided status needs its
 decision, and only the person decides (#254).
@@ -53,7 +54,9 @@ when:
 
 - either statement does not exist;
 - the replacement is the statement itself;
-- either statement is not live (`rejected`, `superseded` or `archived`).
+- either statement is not live (`rejected`, `superseded` or `archived`);
+- the statement is unclassified: past draft a statement must be classified
+  (#226), so the person classifies it first.
 
 The second rule makes a chain of supersessions impossible to close into a
 cycle: a superseded statement can never supersede another.
@@ -78,7 +81,17 @@ Today's migration converts v1 sources only, and a v1 statement cannot carry
 one now.
 
 **A superseded statement is not live.** Derived intake checks, such as
-`abstraction_required`, already read only live statements.
+`abstraction_required`, already read only live statements, and no gate binds a
+withdrawn statement: `intake_correction` neither offers nor accepts one as its
+target. A superseded statement keeps its provenance, so an `observed` one is
+still the person's words and still earns `observed` (ADR-0026, ADR-0028). Its
+classification can still be corrected; that changes no status.
+
+**No actor is recorded.** Like a statement and its classification (ADR-0021),
+a supersession records no actor in its event. Its authority is the boundary
+that issued it, under the operator attestation, as for
+`add_operator_statement`. Recording who decided belongs to #230, which decides
+how an actor enters the vocabulary for all of them at once.
 
 ## Consequences
 
@@ -114,8 +127,9 @@ the gates. Then `compare` shows no statement-status difference.
 - the command records `superseded` and `superseded_by`, keeps both statements'
   text and id, and refuses each case above with nothing written;
 - both validators agree on `superseded_by`, with a v2 history fixture;
-- a v1 source carrying `superseded_by` is refused, and migration drops it
-  with the status it resets;
+- a v1 source carrying `superseded_by` is refused;
+- no gate binds a withdrawn statement, and an unclassified one cannot be
+  superseded;
 - no reasoner-facing boundary names `supersede_statement`;
 - after the change, the espresso `compare` shows no statement-status
   difference.

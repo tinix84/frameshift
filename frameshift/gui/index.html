@@ -308,7 +308,7 @@ function intakeSection(state, derived) {
     const card = el("div", { class: "card" }, el("p", { class: "verbatim" }, st.text), el("div", {}, roleChips(st), " ", el("span", { class: "ids" }, `${st.id}, ${status}`)));
     if (live) card.append(st.primary_role ? correctionForm(st) : classifyForm(st));
     const others = standing.filter(other => other.id !== st.id);
-    if (reasoned && !WITHDRAWN.includes(st.status) && others.length) card.append(supersedeForm(st, others));
+    if (reasoned && st.primary_role && !WITHDRAWN.includes(st.status) && others.length) card.append(supersedeForm(st, others));
     box.append(card);
   }
   if (live) box.append(addStatementForm());
@@ -340,7 +340,7 @@ function supersedeForm(st, others) {
     run(() => api("POST", `/api/sessions/${CURRENT}/statements/${st.id}/supersede`, { superseded_by: form.by.value, expected_revision: VIEW.state.revision }));
   } }, el("label", {}, "Replaced by", el("select", { name: "by" }, ...others.map(o => el("option", { value: o.id }, `${o.id}: ${o.text.slice(0, 60)}`)))),
     el("button", { type: "submit" }, "Supersede"));
-  return el("details", {}, el("summary", {}, "Supersede with a later statement"), el("p", { class: "hint" }, "Both statements are kept word for word; this one is marked superseded and names its replacement."), form);
+  return el("details", {}, el("summary", {}, "Supersede with another statement"), el("p", { class: "hint" }, "Both statements are kept word for word; this one is marked superseded and names its replacement."), form);
 }
 
 function correctionForm(st) {

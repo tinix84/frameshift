@@ -277,6 +277,17 @@ class TheSupersessionInvariantAgrees(unittest.TestCase):
         self.assertEqual(mine, theirs)
         self.assertEqual(len(mine), 3, mine)
 
+    def test_a_replacement_that_is_not_an_id_is_the_schema_s_to_report(self) -> None:
+        from frameshift.validation import invariants as application
+        from frameshift.validation import session_violations
+
+        for value in ([], {}, 7):
+            with self.subTest(value=value):
+                state = self.state()
+                state["statements"][1]["superseded_by"] = value
+                self.assertEqual(application.reference_violations(state), session.reference_violations(state))
+                self.assertTrue(any("superseded_by" in item for item in session_violations(state)))
+
     def test_both_reducers_reach_the_snapshot(self) -> None:
         from evals.checks import replay as reference
         from frameshift.orchestration import replay as application
