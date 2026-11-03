@@ -1,0 +1,89 @@
+<div id="fs-battery-flow">
+  <style>
+    #fs-battery-flow .flow-graph {width:100%;display:block;margin:12px 0}
+    #fs-battery-flow .flow-graph text {fill:var(--foreground);font-size:12px;font-weight:400}
+    #fs-battery-flow .flow-graph .relation {stroke:var(--border);fill:none;stroke-width:1.5}
+    #fs-battery-flow .flow-graph .counter {stroke:var(--viz-series-2);stroke-dasharray:5 4}
+    #fs-battery-flow .flow-graph .node {fill:var(--background);stroke:var(--border);stroke-width:1}
+    #fs-battery-flow .flow-graph a[aria-current="true"] .node {fill:color-mix(in srgb,var(--viz-series-1) 14%,var(--background));stroke:var(--viz-series-1)}
+    #fs-battery-flow .flow-graph a:focus .node {stroke:var(--ring);stroke-width:2}
+    #fs-battery-flow .flow-graph .kind {fill:var(--muted-foreground);font-size:11px}
+    #fs-battery-flow .flow-detail {overflow-wrap:anywhere;margin:8px 0}
+    #fs-battery-flow [data-summary] {margin:8px 0}
+  </style>
+  <h3>Battery conversation → FrameShift flow</h3>
+  <div class="viz-controls">
+    <label class="form-label">Conversation stage<select class="form-select" data-stage aria-label="Conversation stage"></select></label>
+    <button class="btn" type="button" data-prev>Previous</button>
+    <button class="btn btn-primary" type="button" data-next>Next</button>
+  </div>
+  <p class="text-small" data-summary></p>
+  <svg class="flow-graph" role="group" aria-label="Argument graph for the selected stage"></svg>
+  <div class="text-small">Arrow: proposed typed relation · Dashed: contradiction · Select a node to inspect its source</div>
+  <div id="fs-battery-detail" class="flow-detail" aria-live="polite"></div>
+  <div class="text-small" data-gate></div>
+  <script type="application/json" data-payload>__CASE_DATA__</script>
+  <script>
+  (() => {
+    const root=document.getElementById('fs-battery-flow');
+    const data=JSON.parse(root.querySelector('[data-payload]').textContent);
+    const stages=data.case.stages, graph=data.graph, lookup=new Map(graph.nodes.map(n=>[n.id,n]));
+    const select=root.querySelector('[data-stage]'), svg=root.querySelector('svg');
+    const detail=root.querySelector('#fs-battery-detail');
+    let step=0, selected=stages[0].focus[0];
+    const saved=window.openai?.widgetState?.modelContent;
+    if(Number.isInteger(saved?.stage) && saved.stage>=0 && saved.stage<stages.length) step=saved.stage;
+    if(stages[step].focus.includes(saved?.selected)) selected=saved.selected;
+    else selected=stages[step].focus[0];
+    stages.forEach((s,i)=>{const o=document.createElement('option');o.value=i;o.textContent=s.title;select.append(o);});
+    function el(tag,attrs={},text='') {
+      const n=document.createElementNS('http://www.w3.org/2000/svg',tag);
+      Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,v)); if(text)n.textContent=text; return n;
+    }
+    function save(){window.openai?.setWidgetState?.({modelContent:{stage:step,selected},privateContent:null})?.catch(()=>{});}
+    function draw(){
+      const stage=stages[step]; select.value=step;
+      root.querySelector('[data-prev]').disabled=step===0;root.querySelector('[data-next]').disabled=step===stages.length-1;
+      root.querySelector('[data-summary]').textContent=stage.rationale_summary;
+      root.querySelector('[data-gate]').textContent=stage.checkpoint+' · Preview only; no approvals recorded.';
+      const width=Math.max(280,root.getBoundingClientRect().width), cols=width>=620?3:width>=450?2:1;
+      const rows=Math.ceil(stage.focus.length/cols), slot=width/cols, boxW=slot-22, boxH=86, rowH=132;
+      const height=rows*rowH; svg.setAttribute('viewBox',`0 0 ${width} ${height}`); svg.style.height=height+'px';
+      svg.replaceChildren();
+      const desc=el('desc',{},stage.focus.map(id=>lookup.get(id).label).join('; '));svg.append(desc);
+      const defs=el('defs'), marker=el('marker',{id:'fs-arrow',viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:6,markerHeight:6,orient:'auto-start-reverse'});
+      marker.append(el('path',{d:'M 0 0 L 10 5 L 0 10 z',fill:'var(--muted-foreground)'}));defs.append(marker);svg.append(defs);
+      const positions=new Map(stage.focus.map((id,i)=>[id,{x:(i%cols)*slot+11,y:Math.floor(i/cols)*rowH+22}]));
+      const visible=graph.edges.filter(e=>positions.has(e.source)&&positions.has(e.target));
+      visible.forEach(e=>{
+        const a=positions.get(e.source),b=positions.get(e.target);let d;
+        if(a.y===b.y){const right=b.x>a.x;const x1=a.x+(right?boxW:0),x2=b.x+(right?0:boxW);d=`M ${x1} ${a.y+43} L ${x2} ${b.y+43}`;}
+        else {const down=b.y>a.y,sy=a.y+(down?boxH:0),ty=b.y+(down?0:boxH),x1=a.x+boxW/2,x2=b.x+boxW/2,mid=(sy+ty)/2;d=`M ${x1} ${sy} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${ty}`;}
+        const p=el('path',{d,class:'relation'+(e.type==='contradicts'?' counter':''),'marker-end':'url(#fs-arrow)'});
+        p.append(el('title',{},lookup.get(e.source).label+' '+e.type+' '+lookup.get(e.target).label));svg.append(p);
+      });
+      stage.focus.forEach(id=>{
+        const n=lookup.get(id),p=positions.get(id),a=el('a',{href:'#fs-battery-detail','aria-label':n.label+'; '+n.type+'; proposed','aria-current':id===selected?'true':'false',class:'cursor-interaction'});
+        a.append(el('rect',{x:p.x,y:p.y,width:boxW,height:boxH,rx:7,class:'node'}));
+        a.append(el('text',{x:p.x+10,y:p.y+18,class:'kind'},n.type+' · proposed'));
+        const max=Math.max(15,Math.floor((boxW-20)/6.7)),words=n.label.split(' '),lines=[''];
+        words.forEach(w=>{if((lines.at(-1)+' '+w).trim().length>max)lines.push(w);else lines[lines.length-1]=(lines.at(-1)+' '+w).trim();});
+        lines.forEach((line,i)=>a.append(el('text',{x:p.x+10,y:p.y+39+i*16},line)));
+        a.addEventListener('click',ev=>{ev.preventDefault();selected=id;draw();save();});svg.append(a);
+      });
+      const n=lookup.get(selected);detail.replaceChildren();
+      const heading=document.createElement('strong');heading.textContent=n.label+' · ';detail.append(heading);
+      detail.append(document.createTextNode(n.description+' Source: turn '+n.extensions.source_turns.join(', ')+'. Basis: '+n.provenance.kind+'.'));
+      const connections=graph.edges.filter(e=>e.source===selected||e.target===selected);
+      const list=document.createElement('details'),summary=document.createElement('summary');summary.textContent='Connections across the conversation ('+connections.length+')';list.append(summary);
+      const ul=document.createElement('ul');connections.forEach(e=>{const li=document.createElement('li');li.textContent=lookup.get(e.source).label+' → '+e.type+' → '+lookup.get(e.target).label;ul.append(li);});list.append(ul);detail.append(list);
+    }
+    function move(i){step=i;selected=stages[i].focus[0];draw();save();}
+    select.addEventListener('change',()=>move(Number(select.value)));
+    root.querySelector('[data-prev]').addEventListener('click',()=>move(Math.max(0,step-1)));
+    root.querySelector('[data-next]').addEventListener('click',()=>move(Math.min(stages.length-1,step+1)));
+    window.addEventListener('openai:set_globals',e=>{const s=e.detail?.globals?.widgetState?.modelContent;if(Number.isInteger(s?.stage)&&s.stage>=0&&s.stage<stages.length){step=s.stage;selected=stages[step].focus.includes(s.selected)?s.selected:stages[step].focus[0];draw();}});
+    new ResizeObserver(draw).observe(root);draw();
+  })();
+  </script>
+</div>

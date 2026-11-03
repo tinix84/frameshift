@@ -1,0 +1,41 @@
+{
+  "conflicts": [],
+  "engine": "problem_framing",
+  "execution_id": "exec_codex_battery_intake",
+  "input_revision": 10,
+  "missing_information": [
+    {
+      "id": "missing_oem_evidence",
+      "summary": "OEM quotations, cost basis, performance envelope and accountable owners remain unknown."
+    }
+  ],
+  "proposals": [
+    {
+      "id": "prop_classify_runtime_request",
+      "kind": "statement_classification",
+      "operation": "add",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Codex classifies the current human request to run the trial.",
+        "source_ids": [
+          "stmt_001"
+        ]
+      },
+      "value": {
+        "primary_role": "need",
+        "secondary_roles": [],
+        "statement_id": "stmt_001"
+      }
+    }
+  ],
+  "rationale_summaries": [
+    "Keep the current runtime-test request distinct from imported battery claims. Imported observations remain sourced; no causal explanation or technology is approved."
+  ],
+  "requested_capabilities": [],
+  "required_checkpoints": [
+    "intake_correction"
+  ],
+  "schema_version": "1.0.0",
+  "status": "partial",
+  "uncertainties": []
+}

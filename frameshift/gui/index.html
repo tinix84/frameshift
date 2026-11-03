@@ -37,7 +37,7 @@ header.bar {
 header.bar h1 { font-size: 1.15rem; margin: 0; letter-spacing: -.01em; }
 header.bar .mode { color: var(--muted); }
 header.bar .who { margin-left: auto; color: var(--muted); }
-main { display: grid; grid-template-columns: 15rem minmax(0, 1fr) 22rem; min-height: calc(100vh - 3.2rem); }
+main { display: grid; grid-template-columns: 14rem minmax(0, 1fr); min-height: calc(100vh - 3.2rem); }
 @media (max-width: 1100px) {
   main { grid-template-columns: minmax(0, 1fr); }
   aside.sessions { border-right: 0; border-bottom: 1px solid var(--rule); }
@@ -49,6 +49,41 @@ input, select { max-width: 100%; }
 aside, section.work { padding: 1rem 1.25rem; }
 aside.sessions { border-right: 1px solid var(--rule); }
 aside.log { border-left: 1px solid var(--rule); background: var(--sheet); }
+aside.log { grid-column: 2; border-left: 0; border-top: 1px solid var(--rule); }
+.next-step { background: var(--sheet); border-left: 4px solid var(--steel); padding: 1rem; margin: 1rem 0; }
+.canvas-shell { position: relative; border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; background: var(--paper); }
+.canvas-viewport { position: relative; height: max(540px, calc(100vh - 20rem)); overflow: hidden; touch-action: none; cursor: grab; background-image: radial-gradient(var(--rule) 1px, transparent 1px); background-size: 24px 24px; }
+.canvas-viewport.dragging { cursor: grabbing; }
+.canvas-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; width: 1px; height: 1px; }
+.canvas-card { position: absolute; width: 250px; height: 144px; padding: 14px 16px; text-align: left; white-space: normal; overflow-wrap: anywhere; background: var(--sheet); color: var(--ink); border: 1px solid var(--rule); border-top: 3px solid var(--node-color, var(--steel)); border-radius: 9px; box-shadow: 0 3px 12px rgb(0 0 0 / .08); cursor: grab; touch-action: none; }
+.canvas-card strong { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font-size: 15px; font-weight: 500; line-height: 1.4; margin: 8px 0; }
+.canvas-card small { display: block; color: var(--muted); font-size: 11px; }
+.canvas-card small:first-child { color: var(--node-color, var(--steel)); font-weight: 600; }
+.canvas-card[data-type="outcome"], .canvas-card[data-type="frame"] { --node-color: #8d6ed1; }
+.canvas-card[data-type="evidence"], .canvas-card[data-type="observation"] { --node-color: var(--signed); }
+.canvas-card[data-type="hypothesis"], .canvas-card[data-type="assumption"] { --node-color: var(--caution); }
+.canvas-card[aria-pressed="true"] { outline: 3px solid var(--steel); outline-offset: 3px; }
+.canvas-card.dimmed { opacity: .35; }
+.canvas-card:active { cursor: grabbing; }
+.canvas-edges { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
+.canvas-edges path.connection { fill: none; stroke: var(--muted); stroke-width: 1.5px; }
+.canvas-edges path.contradicts { stroke: var(--refused); stroke-dasharray: 7 5; }
+.canvas-edges .dimmed { opacity: .12; }
+.canvas-edges text { fill: var(--ink); stroke: var(--paper); paint-order: stroke; stroke-width: 5px; font: 11px var(--sans); }
+.canvas-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; padding: .65rem .8rem; border-bottom: 1px solid var(--rule); background: var(--sheet); }
+.canvas-toolbar .canvas-help { margin-left: auto; color: var(--muted); font-size: 12px; }
+.canvas-toolbar output { min-width: 3rem; text-align: center; font-variant-numeric: tabular-nums; }
+.canvas-status { position: absolute; left: 12px; bottom: 10px; font-size: 12px; color: var(--muted); background: var(--sheet); padding: 3px 7px; border-radius: 4px; pointer-events: none; }
+.map-detail { background: var(--sheet); padding: 1rem; border: 1px solid var(--rule); border-radius: 9px; overflow-wrap: anywhere; }
+.canvas-shell > .map-detail { position: absolute; top: 68px; right: 12px; width: min(340px, calc(100% - 24px)); max-height: calc(100% - 95px); overflow: auto; box-shadow: 0 8px 32px rgb(0 0 0 / .15); }
+.map-detail .close-detail { float: right; font-size: 12px; margin-left: .5rem; }
+.map-detail p { white-space: pre-wrap; }
+.map-detail ul { padding-left: 1.2rem; }
+.map-detail:empty { display: none; }
+.review-items { padding-left: 1.2rem; }
+.review-items li { margin: .5rem 0; white-space: pre-wrap; }
+@media (max-width: 1100px) { aside.log { grid-column: 1; } }
+@media (min-width: 900px) { .next-step { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 1rem; padding: .75rem 1rem; } .next-step h2 { margin: 0; } .next-step p { margin: .2rem 0 0; font-size: 13px; max-width: none; } .next-step > button { grid-column: 2; grid-row: 1 / 3; align-self: center; } }
 h2 { font-size: 1rem; margin: 1.25rem 0 .5rem; }
 h2:first-child { margin-top: 0; }
 h3 { font-size: .95rem; margin: 1rem 0 .4rem; }
@@ -128,6 +163,7 @@ dl.binding dd { margin: 0; font-family: var(--mono); font-size: .85rem; word-bre
   <aside class="sessions">
     <h2>Sessions</h2>
     <ul class="plain" id="session-list"></ul>
+    <details><summary>Start another session</summary>
     <h2>Bring a request</h2>
     <form id="open-form">
       <label>Request, exactly as it arrived
@@ -136,26 +172,32 @@ dl.binding dd { margin: 0; font-family: var(--mono); font-size: .85rem; word-bre
       <label>Title (optional)<input name="title" maxlength="300"></label>
       <p><button class="primary" type="submit">Open session</button></p>
     </form>
+    </details>
   </aside>
   <section class="work" id="work">
     <p class="empty">Open a session from a request, or pick one on the left.</p>
   </section>
   <aside class="log">
+    <details><summary>History and technical details</summary>
     <h2>History</h2>
     <p class="hint">The event log is the session. Everything in the middle column is folded from it.</p>
     <ol class="events" id="events"></ol>
     <details><summary>Folded state (JSON)</summary><pre class="json" id="state-json"></pre></details>
     <details id="record-details"><summary>Decision record</summary><pre class="json" id="record"></pre></details>
+    </details>
   </aside>
 </main>
 
 <dialog id="confirm-dialog" aria-labelledby="confirm-title">
   <div class="head"><h2 id="confirm-title">Confirm a gate</h2>
-    <p class="hint">This is the exact content your answer binds to. If anything changes before you answer, the approval is refused as stale.</p>
+    <p class="hint">Review the content below. Your approval applies to this session revision; a later change requires a fresh review.</p>
   </div>
   <div class="body">
-    <dl class="binding" id="confirm-binding"></dl>
-    <pre class="json" id="confirm-proposal"></pre>
+    <div id="confirm-readable"></div>
+    <details><summary>Exact proposal and approval binding</summary>
+      <dl class="binding" id="confirm-binding"></dl>
+      <pre class="json" id="confirm-proposal"></pre>
+    </details>
   </div>
   <div class="foot">
     <button type="button" id="confirm-decline">Decline</button>
@@ -168,7 +210,7 @@ dl.binding dd { margin: 0; font-family: var(--mono); font-size: .85rem; word-bre
 const TOKEN = "__FRAMESHIFT_TOKEN__";
 const PHASES = ["intake", "framing", "causal", "solutions", "decision", "monitoring"];
 const GATE_BETWEEN = { intake: "intake_correction", framing: "frame_selection", causal: "evidence_sufficiency", solutions: "option_set_acceptance", decision: "decision_approval" };
-let META = null, CURRENT = null, VIEW = null, PENDING = null;
+let META = null, CURRENT = null, VIEW = null, PENDING = null, SELECTED = null;
 
 const $ = (sel, root = document) => root.querySelector(sel);
 function el(tag, attrs = {}, ...children) {
@@ -216,9 +258,11 @@ async function refreshSessions() {
   list.replaceChildren(...(sessions.length ? sessions.map(s => el("li", {},
     el("button", { class: "session-link", "aria-current": s.id === CURRENT ? "true" : "false", onclick: () => load(s.id) },
       s.title, el("small", {}, `${s.phase}, revision ${s.revision}`)))) : [el("li", { class: "empty" }, "None yet.")]));
+  if (!CURRENT && sessions.length === 1) await load(sessions[0].id);
 }
 
 async function load(id, quiet = false) {
+  if (CURRENT !== id) SELECTED = null;
   CURRENT = id;
   const view = await api("GET", `/api/sessions/${id}`);
   adopt(view, quiet);
@@ -238,19 +282,21 @@ function render() {
   const transient = $(".notice.transient", work);
   work.replaceChildren();
   if (transient) work.append(transient);
-  work.append(el("h2", {}, state.title), el("div", { class: "ids" }, `${state.id}, revision ${state.revision}, phase ${state.phase}`));
-  work.append(rail(state));
+  work.append(el("h2", {}, state.title), el("p", { class: "hint" }, `Current step: ${words(state.phase)} · revision ${state.revision}`));
+  work.append(nextStep(state, derived), reasoningMap(state));
   if (derived.abstraction_required) {
     work.append(el("div", { class: "notice caution", role: "status" },
       "The request reads as a proposed solution, and no outcome statement says what it is for. ",
       "Add the outcome it serves before sealing intake."));
   }
-  work.append(intakeSection(state, derived));
-  if (reached(state, "framing")) work.append(framingSection(state, derived));
-  if (reached(state, "causal")) work.append(causalSection(state));
+  const tools = el("details", { id: "editing-tools" }, el("summary", {}, "Editing tools and all checkpoint controls"));
+  tools.append(rail(state), intakeSection(state, derived));
+  if (reached(state, "framing")) tools.append(framingSection(state, derived));
+  if (reached(state, "causal")) tools.append(causalSection(state));
   if (reached(state, "solutions")) work.append(el("h2", {}, "Options, criteria and the decision"),
     el("p", { class: "hint" }, "Not available yet. The event log has no vocabulary for options, criteria or a signed decision, so this slice stops here rather than store them somewhere unreplayable."));
-  work.append(gateSection(state, derived));
+  tools.append(gateSection(state, derived));
+  work.append(tools);
 
   $("#events").replaceChildren(...history.map(e => el("li", { value: e.sequence },
     el("span", { class: "type" }, e.type), " ", "revision" in e ? el("span", { class: "rev" }, `r${e.revision}`) : "")));
@@ -295,6 +341,280 @@ function secondaryBoxes(selected = []) {
     ...META.vocabulary.statement_roles.map(r => el("label", { class: "check" }, el("input", { type: "checkbox", name: "secondary", value: r, checked: selected.includes(r) }), r)));
 }
 const checked = form => [...form.querySelectorAll('input[name="secondary"]:checked')].map(i => i.value);
+
+// A view of recorded state only: intake grouping never invents causal edges.
+function nextStep(state, derived) {
+  const box = el("section", { class: "next-step", "aria-label": "Next step" });
+  const gate = derived.gates.find(g => g.gate === GATE_BETWEEN[state.phase]);
+  if (!gate || reached(state, "solutions")) return el("p", { class: "hint" }, "This runtime currently stops at option generation.");
+  const labels = {
+    intake: ["Review what we understood", "Check the statements in the tree. Select any statement to inspect its source or correct its role.", "Review intake and continue"],
+    framing: ["Choose the problem to solve", "Select a candidate frame in the tree, inspect it, then use it as the working frame.", "Review working frame"],
+    causal: ["Check the evidence", "Inspect the hypotheses and their supporting and contradicting links. Continue only when the evidence is sufficient.", "Review evidence sufficiency"],
+  };
+  const [title, text, action] = labels[state.phase];
+  box.append(el("h2", {}, title), el("p", { class: "hint" }, text));
+  let reason = "";
+  if (!gate.authority.includes(META.operator.role)) reason = `This checkpoint needs ${gate.authority.join(" or ")}.`;
+  else if (state.phase === "intake" && derived.unclassified.length) reason = `Choose a role for ${derived.unclassified.length} unclassified statement(s) in the tree.`;
+  else if (state.phase === "intake" && derived.abstraction_required) reason = "Add the outcome this proposed solution serves before continuing.";
+  else if (state.phase === "framing" && !derived.frame_set.selectable) reason = "Record two to five distinct candidate frames before choosing one. Editing tools are below the tree.";
+  else if (!gate.targets.length) reason = state.phase === "framing" ? "No working frame selected yet." : "No eligible hypothesis to review yet.";
+  if (reason) box.append(el("p", { class: "hint", role: "status" }, reason));
+  if (!reason) {
+    // Intake binds to a statement at this revision; framing binds to the
+    // human-selected working frame. Multiple hypotheses require a choice.
+    let target = gate.targets[0];
+    if (gate.targets.length > 1 && state.phase === "causal") {
+      const picker = el("select", { "aria-label": "Hypothesis to review" },
+        el("option", { value: "" }, "Choose a hypothesis…"),
+        ...gate.targets.map(id => el("option", { value: id }, state.graph.nodes.find(n => n.id === id)?.label || id)));
+      const button = el("button", { type: "button", class: "primary", disabled: true, onclick: () => askConfirmation(gate.gate, picker.value) }, action);
+      picker.addEventListener("change", () => { button.disabled = !picker.value; });
+      box.append(picker, " ", button);
+    } else box.append(el("button", { type: "button", class: "primary", onclick: () => askConfirmation(gate.gate, target) }, action));
+  }
+  return box;
+}
+
+// Positions and camera are browser-local presentation, never domain events.
+const CANVAS_VIEWS = new Map();
+function canvasModel(state) {
+  const items = [], edges = state.graph.nodes.length ? state.graph.edges : [];
+  const categories = state.graph.nodes.length ? [
+    ["Evidence & observations", ["evidence", "observation"]],
+    ["Hypotheses & mechanisms", ["hypothesis", "factor", "mechanism", "assumption"]],
+    ["Outcomes", ["outcome"]], ["Options & constraints", ["intervention", "constraint", "risk"]],
+    ["Decision & review", ["decision"]],
+  ] : [
+    ["Desired outcomes", ["outcome", "need", "problem"]], ["Reported observations", ["observation"]],
+    ["Ideas to explore", ["proposal", "function"]], ["Constraints", ["constraint", "requirement"]],
+    ["Assumptions", ["assumption"]], ["Open questions", ["question", undefined]],
+  ];
+  const source = state.graph.nodes.length ? state.graph.nodes : state.statements.filter(s => !WITHDRAWN.includes(s.status));
+  const outcomes = new Set(state.graph.nodes.filter(n => n.type === "outcome").map(n => n.id));
+  categories.forEach(([, types], column) => {
+    const members = source.filter(item => types.includes(item.type || item.primary_role));
+    if (state.graph.nodes.length && column !== 2) {
+      const relevance = item => edges.filter(e => (e.source === item.id && outcomes.has(e.target)) || (e.target === item.id && outcomes.has(e.source))).length;
+      members.sort((a, b) => relevance(b) - relevance(a));
+    }
+    if (!members.length) return;
+    const x = state.graph.nodes.length ? column * 330 : (column % 3) * 330;
+    const y = state.graph.nodes.length ? 55 : Math.floor(column / 3) * 640 + 55;
+    members.forEach((item, i) => items.push({item, kind: state.graph.nodes.length ? "node" : "statement", x, y: y + i * 180}));
+  });
+  // Frames and rungs remain visible as context even before a graph exists.
+  const contextY = Math.max(0, ...items.map(n => n.y + 144)) + 100;
+  state.frames.forEach((item, i) => items.push({item, kind: "frame", x: (i % 3) * 330, y: contextY + Math.floor(i / 3) * 180}));
+  (state.ladder || []).forEach((item, i) => items.push({item, kind: "rung", x: i * 330, y: contextY + Math.ceil(state.frames.length / 3) * 180 + 60}));
+  return {items, edges};
+}
+
+function spatialCanvas(state, world, viewport, shell, inspect) {
+  const model = canvasModel(state), cards = new Map(), lines = [];
+  let view = CANVAS_VIEWS.get(state.id);
+  if (!view) {
+    view = {positions: {}, camera: null};
+    try {
+      const saved = JSON.parse(localStorage.getItem(`frameshift.canvas.${state.id}`));
+      if (saved && typeof saved.positions === "object") view.positions = saved.positions || {};
+      if (saved?.camera && [saved.camera.x, saved.camera.y, saved.camera.scale].every(Number.isFinite)) view.camera = saved.camera;
+    } catch (_) { /* Storage can be disabled; the canvas still works. */ }
+    CANVAS_VIEWS.set(state.id, view);
+  }
+  const save = () => { try { localStorage.setItem(`frameshift.canvas.${state.id}`, JSON.stringify(view)); } catch (_) {} };
+  const svg = (tag, attrs = {}) => {
+    const n = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (const [key, value] of Object.entries(attrs)) n.setAttribute(key, value);
+    return n;
+  };
+  const wires = svg("svg", {class: "canvas-edges", "aria-hidden": "true"});
+  const defs = svg("defs"), marker = svg("marker", {id: "canvas-arrow", viewBox: "0 0 10 10", refX: "9", refY: "5", markerWidth: "7", markerHeight: "7", orient: "auto-start-reverse"});
+  marker.append(svg("path", {d: "M 0 0 L 10 5 L 0 10 z", fill: "var(--muted)"})); defs.append(marker); wires.append(defs); world.append(wires);
+  const positions = new Map();
+  let suppressClick = false, drag = null;
+  model.items.forEach(({item, kind, x, y}) => {
+    const saved = view.positions[item.id];
+    positions.set(item.id, saved && [saved.x, saved.y].every(Number.isFinite) ? {...saved} : {x, y});
+    const type = item.type || item.primary_role || kind;
+    const label = kind === "frame" || kind === "rung" ? item.outcome : kind === "statement" ? item.text : item.label;
+    const card = el("button", {type: "button", class: "canvas-card", "data-item": item.id, "data-type": type,
+      "aria-label": `${label}. ${words(type)}. Select to inspect; arrow keys move this card.`, "aria-pressed": "false",
+      onclick: () => { if (!suppressClick) inspect(item, kind); },
+      ondblclick: () => { inspect(item, kind); focusCard(item.id); },
+      onpointerdown: event => {
+        if (event.button !== 0) return;
+        event.stopPropagation(); suppressClick = false;
+        drag = {id: item.id, x: event.clientX, y: event.clientY, start: {...positions.get(item.id)}, moved: false};
+        event.currentTarget.setPointerCapture(event.pointerId);
+      },
+      onkeydown: event => {
+        const delta = {ArrowLeft: [-24, 0], ArrowRight: [24, 0], ArrowUp: [0, -24], ArrowDown: [0, 24]}[event.key];
+        if (!delta) return;
+        event.preventDefault(); event.stopPropagation();
+        const pos = positions.get(item.id); pos.x += delta[0]; pos.y += delta[1];
+        view.positions[item.id] = {...pos}; paint(); save();
+      }}, el("small", {}, `${words(type)} · ${item.status || "context"}`), el("strong", {}, label),
+      el("small", {}, item.provenance ? `${item.provenance.kind} · ${item.confidence || "unrated"}` : "Recorded context"));
+    cards.set(item.id, card); world.append(card);
+  });
+  for (const edge of model.edges) {
+    if (!positions.has(edge.source) || !positions.has(edge.target)) continue;
+    const path = svg("path", {class: `connection ${edge.type === "contradicts" ? "contradicts" : ""}`, "marker-end": "url(#canvas-arrow)", "data-edge": edge.id});
+    const text = svg("text", {"text-anchor": "middle"}); text.textContent = words(edge.type); text.style.display = "none";
+    wires.append(path, text); lines.push({edge, path, text});
+  }
+  const zoom = el("output", {"aria-label": "Canvas zoom"}, "100%");
+  const status = el("div", {class: "canvas-status", "aria-live": "polite"}, "Moving cards changes layout only");
+  const bounds = () => ({width: viewport.clientWidth || 1000, height: viewport.clientHeight || 600});
+  function paint() {
+    if (!view.camera) return;
+    const c = view.camera;
+    world.style.transform = `translate(${c.x}px, ${c.y}px) scale(${c.scale})`;
+    viewport.style.backgroundSize = `${24 * c.scale}px ${24 * c.scale}px`;
+    viewport.style.backgroundPosition = `${c.x}px ${c.y}px`;
+    zoom.textContent = `${Math.round(c.scale * 100)}%`;
+    for (const [id, card] of cards) {
+      const p = positions.get(id); card.style.left = `${p.x}px`; card.style.top = `${p.y}px`;
+    }
+    for (const {edge, path, text} of lines) {
+      const a = positions.get(edge.source), b = positions.get(edge.target);
+      const right = b.x >= a.x, x1 = a.x + (right ? 250 : 0), x2 = b.x + (right ? 0 : 250), y1 = a.y + 72, y2 = b.y + 72;
+      const bend = Math.max(70, Math.abs(x2 - x1) / 2);
+      path.setAttribute("d", `M ${x1} ${y1} C ${x1 + (right ? bend : -bend)} ${y1}, ${x2 + (right ? -bend : bend)} ${y2}, ${x2} ${y2}`);
+      text.setAttribute("x", (x1 + x2) / 2); text.setAttribute("y", (y1 + y2) / 2 - 9);
+    }
+  }
+  function zoomAt(scale, px, py) {
+    const c = view.camera, next = Math.min(1.8, Math.max(.15, scale));
+    c.x = px - (px - c.x) * next / c.scale; c.y = py - (py - c.y) * next / c.scale; c.scale = next;
+    paint(); save();
+  }
+  function fit() {
+    if (!positions.size) return;
+    const ps = [...positions.values()], minX = Math.min(...ps.map(p => p.x)) - 40, minY = Math.min(...ps.map(p => p.y)) - 55;
+    const width = Math.max(...ps.map(p => p.x)) + 290 - minX, height = Math.max(...ps.map(p => p.y)) + 184 - minY, box = bounds();
+    const scale = Math.min(1, Math.max(.15, Math.min(box.width / width, box.height / height)));
+    view.camera = {x: (box.width - width * scale) / 2 - minX * scale, y: (box.height - height * scale) / 2 - minY * scale, scale}; paint(); save();
+  }
+  const centerZoom = factor => { const b = bounds(); zoomAt(view.camera.scale * factor, b.width / 2, b.height / 2); };
+  function focusCard(id) {
+    const p = positions.get(id); if (!p) return;
+    const b = bounds(), scale = Math.max(.85, view.camera.scale);
+    view.camera = {x: b.width * .44 - (p.x + 125) * scale, y: b.height * .22 - (p.y + 72) * scale, scale}; paint(); save();
+  }
+  const focus = el("button", {type: "button", disabled: true, onclick: () => focusCard(SELECTED)}, "Focus selected");
+  shell.prepend(el("div", {class: "canvas-toolbar"},
+    el("button", {type: "button", "aria-label": "Zoom out", onclick: () => centerZoom(1 / 1.2)}, "−"), zoom,
+    el("button", {type: "button", "aria-label": "Zoom in", onclick: () => centerZoom(1.2)}, "+"),
+    el("button", {type: "button", onclick: fit}, "Fit all"), focus,
+    el("span", {class: "canvas-help"}, "Drag cards · Drag space to pan · Ctrl + wheel to zoom")));
+  shell.append(status);
+  viewport.addEventListener("pointerdown", event => {
+    if (event.button !== 0) return;
+    suppressClick = false; drag = {x: event.clientX, y: event.clientY, start: {...view.camera}, moved: false};
+    viewport.setPointerCapture(event.pointerId); viewport.classList.add("dragging");
+  });
+  viewport.addEventListener("pointermove", event => {
+    if (!drag) return;
+    const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
+    drag.moved ||= Math.abs(dx) + Math.abs(dy) > 4;
+    if (drag.id) positions.set(drag.id, {x: drag.start.x + dx / view.camera.scale, y: drag.start.y + dy / view.camera.scale});
+    else { view.camera.x = drag.start.x + dx; view.camera.y = drag.start.y + dy; }
+    paint();
+  });
+  const release = () => {
+    if (!drag) return;
+    suppressClick = drag.moved;
+    if (drag.id && drag.moved) { view.positions[drag.id] = {...positions.get(drag.id)}; status.textContent = "Card moved. Claims and approvals unchanged."; }
+    drag = null; viewport.classList.remove("dragging"); save();
+    setTimeout(() => { suppressClick = false; }, 0);
+  };
+  viewport.addEventListener("pointerup", release); viewport.addEventListener("pointercancel", release);
+  viewport.addEventListener("wheel", event => {
+    event.preventDefault();
+    if (event.ctrlKey || event.metaKey) { const r = viewport.getBoundingClientRect(); zoomAt(view.camera.scale * Math.exp(-event.deltaY * .008), event.clientX - r.left, event.clientY - r.top); }
+    else { view.camera.x -= event.deltaX; view.camera.y -= event.deltaY; paint(); save(); }
+  }, {passive: false});
+  viewport.addEventListener("keydown", event => {
+    if (event.key === "+" || event.key === "=") { event.preventDefault(); centerZoom(1.2); }
+    if (event.key === "-") { event.preventDefault(); centerZoom(1 / 1.2); }
+    if (event.key === "0") { event.preventDefault(); fit(); }
+  });
+  const initial = () => {
+    if (!view.camera) {
+      const focal = model.items.find(n => n.item.type === "outcome" || n.item.primary_role === "outcome") || model.items[0];
+      if (focal) { const p = positions.get(focal.item.id), b = bounds(); view.camera = {x: b.width * .43 - (p.x + 125) * .85, y: 65 - p.y * .85, scale: .85}; }
+      else view.camera = {x: 30, y: 40, scale: 1};
+    }
+    view.camera.scale = Math.min(1.8, Math.max(.15, view.camera.scale)); paint();
+  };
+  if (typeof requestAnimationFrame === "function") requestAnimationFrame(initial); else initial();
+  return selected => {
+    focus.disabled = !selected;
+    const adjacent = new Set([selected]);
+    for (const {edge} of lines) if (edge.source === selected || edge.target === selected) { adjacent.add(edge.source); adjacent.add(edge.target); }
+    for (const [id, card] of cards) { card.classList.toggle("dimmed", !!selected && !adjacent.has(id)); card.setAttribute("aria-pressed", String(id === selected)); }
+    for (const {edge, path, text} of lines) {
+      const active = edge.source === selected || edge.target === selected;
+      path.classList.toggle("dimmed", !!selected && !active); text.style.display = active ? "" : "none";
+    }
+  };
+}
+
+function reasoningMap(state) {
+  const section = el("section", { "aria-label": "Reasoning canvas" }, el("h2", {}, "Reasoning canvas"));
+  const detail = el("aside", { class: "map-detail", id: "tree-detail", "aria-label": "Selected item", hidden: true });
+  const tree = el("div", { class: "canvas-world" });
+  const viewport = el("div", { class: "canvas-viewport", tabindex: "0", role: "region", "aria-label": "Reasoning canvas. Drag background to pan; use zoom controls. Arrow keys move focused cards." }, tree);
+  const layout = el("div", { class: "canvas-shell" }, viewport, detail);
+  let highlight = () => {};
+  section.append(el("p", { class: "hint" }, state.graph.nodes.length
+    ? "Each card is one recorded node. Lines retain their direction and relation; dashed red lines mark contradictions."
+    : "Intake cards are grouped by role, not causal claims. Connections appear when a causal graph has been recorded."), layout);
+  function inspect(item, kind) {
+    SELECTED = item.id;
+    detail.hidden = false;
+    for (const button of tree.querySelectorAll("[data-item]")) button.setAttribute("aria-pressed", String(button.dataset.item === item.id));
+    detail.replaceChildren(el("h3", {}, kind === "frame" ? "Candidate frame" : kind === "rung" ? "Abstraction ladder" : kind === "statement" ? words(item.primary_role || "Unclassified statement") : words(item.type)),
+      el("p", {}, kind === "frame" ? item.question : kind === "rung" ? item.outcome : kind === "statement" ? item.text : item.label));
+    if (kind === "rung") detail.append(el("p", {}, `${item.abstraction_level} · ${words(item.system_boundary)}`), el("p", {}, item.scope), el("p", {}, `Lost at this level: ${item.loss}`));
+    if (item.description) detail.append(el("p", {}, item.description));
+    if (item.provenance) detail.append(el("p", { class: "hint" }, `Basis: ${item.provenance.kind}. Sources: ${item.provenance.source_ids.join(", ") || "none recorded"}.`));
+    detail.append(el("p", { class: "hint" }, `${item.status ? `Status: ${item.status}` : "Recorded context"}${item.confidence ? ` · Confidence: ${item.confidence}` : ""}`));
+    if (kind === "statement" && state.phase === "intake" && !WITHDRAWN.includes(item.status)) {
+      const select = roleSelect("primary", item.primary_role || "observation");
+      const form = el("form", { onsubmit: async ev => {
+        ev.preventDefault();
+        if (item.primary_role) await run(() => api("POST", `/api/sessions/${CURRENT}/corrections`, { statement_id: item.id, primary_role: select.value, secondary_roles: item.secondary_roles || [], expected_revision: VIEW.state.revision }));
+        else {
+          const built = await run(() => api("POST", `/api/sessions/${CURRENT}/manual-result`, { classifications: [{ statement_id: item.id, primary_role: select.value, secondary_roles: [] }] }));
+          if (built) await run(() => api("POST", `/api/sessions/${CURRENT}/engine-result`, { result: built.result }));
+        }
+      } }, el("label", {}, "Statement role", select), el("p", {}, el("button", { type: "submit" }, "Save role")));
+      detail.append(form);
+    }
+    if (kind === "frame") {
+      detail.append(el("p", {}, `Level: ${item.abstraction_level} · Boundary: ${words(item.system_boundary)}`));
+      for (const key of FRAME_LISTS) if (item[key]?.length) detail.append(el("strong", {}, words(key)), el("ul", {}, ...item[key].map(value => el("li", {}, value))));
+      if (state.phase === "framing" && item.status === "proposed") detail.append(el("button", { type: "button", onclick: () => run(() => api("POST", `/api/sessions/${CURRENT}/frames/${item.id}/activate`, { expected_revision: VIEW.state.revision })) }, "Use this frame"));
+    }
+    if (kind === "node") {
+      const byId = new Map(state.graph.nodes.map(n => [n.id, n]));
+      const edges = state.graph.edges.filter(e => e.source === item.id || e.target === item.id);
+      detail.append(el("h3", {}, "All connections"), el("ul", {}, ...edges.map(e => el("li", {}, `${byId.get(e.source)?.label || e.source} → ${words(e.type)} → ${byId.get(e.target)?.label || e.target} (${e.status})`))));
+    }
+    detail.append(el("details", {}, el("summary", {}, "Exact recorded item"), el("pre", { class: "json" }, JSON.stringify(item, null, 2))));
+    detail.prepend(el("button", { type: "button", class: "close-detail", onclick: () => { detail.hidden = true; SELECTED = null; highlight(null); } }, "Close details"));
+    highlight(item.id);
+  }
+  highlight = spatialCanvas(state, tree, viewport, layout, inspect);
+  const all = [...state.statements.map(item => [item, "statement"]), ...state.frames.map(item => [item, "frame"]), ...state.graph.nodes.map(item => [item, "node"]), ...(state.ladder || []).map(item => [item, "rung"])];
+  const selected = all.find(([item]) => item.id === SELECTED);
+  if (selected) inspect(...selected);
+  return section;
+}
 
 // ------------------------------------------------------------------ intake
 function intakeSection(state, derived) {
@@ -590,13 +910,34 @@ function gateSection(state, derived) {
 }
 
 async function askConfirmation(gate, target) {
+  const reviewState = VIEW.state;
   const out = await run(() => api("POST", `/api/sessions/${CURRENT}/gates`, { gate, target_id: target }));
   if (!out) return;
+  if (out.confirmation_request.session_revision !== reviewState.revision) {
+    await api("DELETE", `/api/confirmations/${out.confirmation_request.id}`);
+    await load(CURRENT);
+    notice("caution", "The session changed. Review the updated tree before continuing.");
+    return;
+  }
   PENDING = out.confirmation_request;
   const r = PENDING;
+  const titles = { intake_correction: "Is this what you meant?", frame_selection: "Solve this problem?", evidence_sufficiency: "Is the evidence sufficient?" };
+  $("#confirm-title").textContent = titles[gate] || "Review checkpoint";
+  const readable = $("#confirm-readable");
+  const proposal = JSON.parse(r.proposal);
+  readable.replaceChildren();
+  if (gate === "intake_correction") {
+    readable.append(el("p", {}, "You are confirming the current statement classifications and continuing to problem framing."),
+      el("ul", { class: "review-items" }, ...reviewState.statements.filter(s => !WITHDRAWN.includes(s.status)).map(s => el("li", {}, el("strong", {}, `${words(s.primary_role || "unclassified")}: `), s.text))));
+  } else {
+    readable.append(el("h3", {}, proposal.question || proposal.label || proposal.title || "Proposal"));
+    if (proposal.outcome) readable.append(el("p", {}, `Desired outcome: ${proposal.outcome}`));
+    if (proposal.description) readable.append(el("p", {}, proposal.description));
+    for (const key of FRAME_LISTS) if (proposal[key]?.length) readable.append(el("strong", {}, words(key)), el("ul", {}, ...proposal[key].map(text => el("li", {}, text))));
+  }
   $("#confirm-binding").replaceChildren(...[["Gate", r.gate], ["Target", r.target_id], ["Content digest", r.target_digest], ["Session revision", r.session_revision], ["Signing as", `${r.actor.id} (${r.actor.role})`], ["Request digest", r.request_digest]]
     .flatMap(([k, v]) => [el("dt", {}, k), el("dd", {}, String(v))]));
-  $("#confirm-proposal").textContent = JSON.stringify(JSON.parse(r.proposal), null, 2);
+  $("#confirm-proposal").textContent = JSON.stringify(proposal, null, 2);
   $("#confirm-dialog").showModal();
 }
 

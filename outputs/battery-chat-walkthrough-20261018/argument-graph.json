@@ -1,0 +1,1529 @@
+{
+  "edges": [
+    {
+      "confidence": "unknown",
+      "id": "edge_001",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_thin",
+          "node_shock"
+        ]
+      },
+      "source": "node_thin",
+      "status": "proposed",
+      "target": "node_shock",
+      "type": "supports"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_002",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_price",
+          "node_shock"
+        ]
+      },
+      "source": "node_price",
+      "status": "proposed",
+      "target": "node_shock",
+      "type": "supports"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_003",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_share",
+          "node_shock"
+        ]
+      },
+      "source": "node_share",
+      "status": "proposed",
+      "target": "node_shock",
+      "type": "supports"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_004",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_shock",
+          "node_margin"
+        ]
+      },
+      "source": "node_shock",
+      "status": "proposed",
+      "target": "node_margin",
+      "type": "worsens"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_005",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_dcdc",
+          "node_perf"
+        ]
+      },
+      "source": "node_dcdc",
+      "status": "proposed",
+      "target": "node_perf",
+      "type": "enables"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_006",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_y",
+          "node_perf"
+        ]
+      },
+      "source": "node_y",
+      "status": "proposed",
+      "target": "node_perf",
+      "type": "enables"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_007",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_perf",
+          "node_y"
+        ]
+      },
+      "source": "node_perf",
+      "status": "proposed",
+      "target": "node_y",
+      "type": "constrains"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_008",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_y",
+          "node_cells"
+        ]
+      },
+      "source": "node_y",
+      "status": "proposed",
+      "target": "node_cells",
+      "type": "supports"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_009",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_energy",
+          "node_cells"
+        ]
+      },
+      "source": "node_energy",
+      "status": "proposed",
+      "target": "node_cells",
+      "type": "contradicts"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_010",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_current",
+          "node_y"
+        ]
+      },
+      "source": "node_current",
+      "status": "proposed",
+      "target": "node_y",
+      "type": "constrains"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_011",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_y",
+          "node_util"
+        ]
+      },
+      "source": "node_y",
+      "status": "proposed",
+      "target": "node_util",
+      "type": "enables"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_012",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_sweep",
+          "node_util"
+        ]
+      },
+      "source": "node_sweep",
+      "status": "proposed",
+      "target": "node_util",
+      "type": "tests"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_013",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_sweep",
+          "node_y"
+        ]
+      },
+      "source": "node_sweep",
+      "status": "proposed",
+      "target": "node_y",
+      "type": "tests"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_014",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_y",
+          "node_substitute"
+        ]
+      },
+      "source": "node_y",
+      "status": "proposed",
+      "target": "node_substitute",
+      "type": "enables"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_015",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_variants",
+          "node_substitute"
+        ]
+      },
+      "source": "node_variants",
+      "status": "proposed",
+      "target": "node_substitute",
+      "type": "enables"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_016",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_qual",
+          "node_variants"
+        ]
+      },
+      "source": "node_qual",
+      "status": "proposed",
+      "target": "node_variants",
+      "type": "constrains"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_017",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_timing",
+          "node_variants"
+        ]
+      },
+      "source": "node_timing",
+      "status": "proposed",
+      "target": "node_variants",
+      "type": "supports"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_018",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_substitute",
+          "node_margin"
+        ]
+      },
+      "source": "node_substitute",
+      "status": "proposed",
+      "target": "node_margin",
+      "type": "contributes_to"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_019",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_lithium",
+          "node_price"
+        ]
+      },
+      "source": "node_lithium",
+      "status": "proposed",
+      "target": "node_price",
+      "type": "contributes_to"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_020",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_capacity",
+          "node_price"
+        ]
+      },
+      "source": "node_capacity",
+      "status": "proposed",
+      "target": "node_price",
+      "type": "contributes_to"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_021",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_landed",
+          "node_price"
+        ]
+      },
+      "source": "node_landed",
+      "status": "proposed",
+      "target": "node_price",
+      "type": "contributes_to"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_022",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_lock",
+          "node_single"
+        ]
+      },
+      "source": "node_lock",
+      "status": "proposed",
+      "target": "node_single",
+      "type": "contributes_to"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_023",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_lock",
+          "node_power"
+        ]
+      },
+      "source": "node_lock",
+      "status": "proposed",
+      "target": "node_power",
+      "type": "contributes_to"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_024",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_single",
+          "node_power"
+        ]
+      },
+      "source": "node_single",
+      "status": "proposed",
+      "target": "node_power",
+      "type": "contributes_to"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_025",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_power",
+          "node_price"
+        ]
+      },
+      "source": "node_power",
+      "status": "proposed",
+      "target": "node_price",
+      "type": "contributes_to"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_026",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_quotes",
+          "node_lithium"
+        ]
+      },
+      "source": "node_quotes",
+      "status": "proposed",
+      "target": "node_lithium",
+      "type": "tests"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_027",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_quotes",
+          "node_power"
+        ]
+      },
+      "source": "node_quotes",
+      "status": "proposed",
+      "target": "node_power",
+      "type": "tests"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_028",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_quotes",
+          "node_capacity"
+        ]
+      },
+      "source": "node_quotes",
+      "status": "proposed",
+      "target": "node_capacity",
+      "type": "tests"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_029",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_dual",
+          "node_lock"
+        ]
+      },
+      "source": "node_dual",
+      "status": "proposed",
+      "target": "node_lock",
+      "type": "addresses"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_030",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_dual",
+          "node_single"
+        ]
+      },
+      "source": "node_dual",
+      "status": "proposed",
+      "target": "node_single",
+      "type": "addresses"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_031",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_variants",
+          "node_lock"
+        ]
+      },
+      "source": "node_variants",
+      "status": "proposed",
+      "target": "node_lock",
+      "type": "addresses"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_032",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_corner",
+          "node_perf"
+        ]
+      },
+      "source": "node_corner",
+      "status": "proposed",
+      "target": "node_perf",
+      "type": "constrains"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_033",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_qual",
+          "node_cost"
+        ]
+      },
+      "source": "node_qual",
+      "status": "proposed",
+      "target": "node_cost",
+      "type": "contributes_to"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_034",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_current",
+          "node_cost"
+        ]
+      },
+      "source": "node_current",
+      "status": "proposed",
+      "target": "node_cost",
+      "type": "contributes_to"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_035",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_baseline",
+          "node_cost"
+        ]
+      },
+      "source": "node_baseline",
+      "status": "proposed",
+      "target": "node_cost",
+      "type": "derived_from"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_036",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_y",
+          "node_cost"
+        ]
+      },
+      "source": "node_y",
+      "status": "proposed",
+      "target": "node_cost",
+      "type": "requires"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_037",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_variants",
+          "node_cost"
+        ]
+      },
+      "source": "node_variants",
+      "status": "proposed",
+      "target": "node_cost",
+      "type": "requires"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_038",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_commercial",
+          "node_margin"
+        ]
+      },
+      "source": "node_commercial",
+      "status": "proposed",
+      "target": "node_margin",
+      "type": "addresses"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_039",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_cost",
+          "node_pending"
+        ]
+      },
+      "source": "node_cost",
+      "status": "proposed",
+      "target": "node_pending",
+      "type": "supports"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_040",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_linear",
+          "node_breadth"
+        ]
+      },
+      "source": "node_linear",
+      "status": "proposed",
+      "target": "node_breadth",
+      "type": "supports"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_041",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_breadth",
+          "node_tool"
+        ]
+      },
+      "source": "node_breadth",
+      "status": "proposed",
+      "target": "node_tool",
+      "type": "supports"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_042",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_graph",
+          "node_tool"
+        ]
+      },
+      "source": "node_graph",
+      "status": "proposed",
+      "target": "node_tool",
+      "type": "enables"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_043",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_reframe",
+          "node_tool"
+        ]
+      },
+      "source": "node_reframe",
+      "status": "proposed",
+      "target": "node_tool",
+      "type": "enables"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_044",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_reframe",
+          "node_margin"
+        ]
+      },
+      "source": "node_reframe",
+      "status": "proposed",
+      "target": "node_margin",
+      "type": "addresses"
+    },
+    {
+      "confidence": "unknown",
+      "id": "edge_045",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Author reconstruction of a visible argument; no causal validation or human approval.",
+        "source_ids": [
+          "node_return",
+          "node_margin"
+        ]
+      },
+      "source": "node_return",
+      "status": "proposed",
+      "target": "node_margin",
+      "type": "derived_from"
+    }
+  ],
+  "nodes": [
+    {
+      "confidence": "unknown",
+      "description": "Human's stated business concern. Margin definition, accountable owner, target, price policy and planning horizon remain unspecified.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          1,
+          9,
+          12
+        ]
+      },
+      "id": "node_margin",
+      "label": "Protect vehicle margin",
+      "provenance": {
+        "kind": "sourced",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "outcome"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Human-reported premise. Period, baseline, matched pack specification and quotation records are missing. Not an observed runtime intake.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          1,
+          6
+        ]
+      },
+      "id": "node_price",
+      "label": "Pack price varies about 20%",
+      "provenance": {
+        "kind": "sourced",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "observation"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Human-reported premise, not verified accounts. Gross contribution, EBIT and markup must not be treated as interchangeable.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          1
+        ]
+      },
+      "id": "node_thin",
+      "label": "Vehicle margin about 5–6%",
+      "provenance": {
+        "kind": "sourced",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "observation"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Assistant's illustrative assumption; not an OEM measurement.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          1,
+          12
+        ]
+      },
+      "id": "node_share",
+      "label": "Battery cost share = 40%",
+      "provenance": {
+        "kind": "assumed",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "assumption"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Conditional calculation: battery share times price change gives 8% of original cost, not automatically 8 percentage points of revenue margin. Requires stable sale price and other costs.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          1,
+          3,
+          12
+        ]
+      },
+      "id": "node_shock",
+      "label": "Price shock can erase margin",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "hypothesis"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Human proposal to decouple battery voltage from traction. Converter cost, duty cycle, losses, cooling, faults and qualification need measurement.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          1
+        ]
+      },
+      "id": "node_dcdc",
+      "label": "Add front-end DC/DC",
+      "provenance": {
+        "kind": "sourced",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "intervention"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Human asks to preserve powertrain performance. Define torque-speed envelope, range, low-SOC policy, temperature and lifetime before comparison.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          1,
+          9,
+          12
+        ]
+      },
+      "id": "node_perf",
+      "label": "Preserve vehicle performance",
+      "provenance": {
+        "kind": "sourced",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "constraint"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Human introduces ETH paper. This walkthrough records the proposal and citation, but does not independently validate the paper or transfer its benchmark results to a scooter.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          2,
+          3,
+          12
+        ]
+      },
+      "id": "node_y",
+      "label": "Integrated buck-boost Y-inverter",
+      "provenance": {
+        "kind": "sourced",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "intervention"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Historical claim retained for audit. Lower series count alone does not establish fewer total cells at unchanged usable energy or range. No human rejection status is invented.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          2
+        ]
+      },
+      "id": "node_cells",
+      "label": "Fewer series cells means cheaper pack",
+      "provenance": {
+        "kind": "sourced",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "hypothesis"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Counterargument: E = Ns × Np × Ecell. With identical cells and fixed installed energy, lower Ns requires higher Np. Usable-energy differences must be measured separately.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          3
+        ]
+      },
+      "id": "node_energy",
+      "label": "Fixed energy constrains total cells",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "constraint"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Battery reduction might follow if voltage limits genuinely strand usable energy. Illustrative utilization percentages in the chat are not measured results.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          2,
+          3
+        ]
+      },
+      "id": "node_util",
+      "label": "Recover inaccessible usable energy",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "hypothesis"
+    },
+    {
+      "confidence": "unknown",
+      "description": "For fixed input power, I = P/V. Electrical, BMS, conductor and thermal limits can restrict any advantage of boost. Illustrative currents are not system validation.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          2,
+          3,
+          4
+        ]
+      },
+      "id": "node_current",
+      "label": "Low voltage raises current demand",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "constraint"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Stronger candidate mechanism: qualified alternatives create sourcing options. Benefit depends on independent supply, actual availability, interfaces and total switching cost.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          3,
+          4,
+          5,
+          6,
+          12
+        ]
+      },
+      "id": "node_substitute",
+      "label": "Lower battery substitution cost",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "hypothesis"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Human proposes motor/inverter/software variants. Common mechanics plus winding, current-rating and calibration variants are an assistant elaboration. Not approved architecture.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          4,
+          12
+        ]
+      },
+      "id": "node_variants",
+      "label": "Prequalified powertrain variants",
+      "provenance": {
+        "kind": "sourced",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "intervention"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Variants must be usable when a sourcing opportunity occurs; inventory, service, EMC, reliability and homologation work cannot be presumed negligible.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          4,
+          6
+        ]
+      },
+      "id": "node_qual",
+      "label": "Qualification cost and lead time",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "constraint"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Assistant timescale premise. Factory variants may suit procurement changes; runtime conversion may address SOC and load variation. These are distinct needs.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          4,
+          9
+        ]
+      },
+      "id": "node_timing",
+      "label": "Sourcing changes over months",
+      "provenance": {
+        "kind": "assumed",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "assumption"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Initial lithium explanation remains a hypothesis. A lithium price change is not the same quantity as a cell or pack quotation change.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          1,
+          5,
+          6
+        ]
+      },
+      "id": "node_lithium",
+      "label": "Raw-material pass-through",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "hypothesis"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Human raises single source as an alternative explanation, not a fact about the OEM. Requires supplier list, qualification and contract evidence.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          6,
+          7
+        ]
+      },
+      "id": "node_single",
+      "label": "Single-source dependency",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "hypothesis"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Human raises supply-chain stress. Requires lead times, allocations, shortages and matched quotations.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          6,
+          7
+        ]
+      },
+      "id": "node_capacity",
+      "label": "Capacity / allocation stress",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "hypothesis"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Other candidate explanations; none verified. Separate landed cost, pack integration, specification drift and supplier pricing.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          6,
+          7
+        ]
+      },
+      "id": "node_landed",
+      "label": "FX, freight and contract effects",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "hypothesis"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Potential contributors include voltage, BMS, mechanical interfaces, qualification, MOQ and exclusivity. No one branch is established as the root cause.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          5,
+          6,
+          7
+        ]
+      },
+      "id": "node_lock",
+      "label": "Technical and commercial lock-in",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "hypothesis"
+    },
+    {
+      "confidence": "unknown",
+      "description": "High switching cost may reduce bargaining options. The chat's proposed AND gate is not a validated necessary-and-sufficient causal law.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          6,
+          7
+        ]
+      },
+      "id": "node_power",
+      "label": "Supplier pricing power",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "hypothesis"
+    },
+    {
+      "confidence": "unknown",
+      "description": "REQUEST ONLY: historical matched-spec quotes/invoices, volume, supplier, currency, delivery terms, indices and contract changes. No dataset was supplied.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          6,
+          12
+        ]
+      },
+      "id": "node_quotes",
+      "label": "Request comparable quotations",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "evidence"
+    },
+    {
+      "confidence": "unknown",
+      "description": "REQUEST ONLY: torque-speed-SOC-temperature maps, usable energy, cell/BMS current limits and duty-weighted losses. No experiment was run.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          2,
+          3,
+          12
+        ]
+      },
+      "id": "node_sweep",
+      "label": "Request duty-cycle / voltage sweep",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "evidence"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Targets technical/commercial substitution barriers. Correlated upstream suppliers or capacity constraints may limit diversification value.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          1,
+          6,
+          12
+        ]
+      },
+      "id": "node_dual",
+      "label": "Standard interfaces + dual sourcing",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "intervention"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Alternative technical branch. Derating changes the performance envelope and requires an explicit human relaxation if it violates the original constraint.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          3,
+          12
+        ]
+      },
+      "id": "node_corner",
+      "label": "VSI + derating or corner boost",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "intervention"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Explicit comparison baseline added by this translation. Learning has cost and delay; no architecture change is committed.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          1,
+          3,
+          12
+        ]
+      },
+      "id": "node_baseline",
+      "label": "Keep current design / learn first",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "intervention"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Alternative business and procurement interventions. Leasing reallocates exposure; it does not make risk disappear from the combined system.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          1,
+          6,
+          9,
+          12
+        ]
+      },
+      "id": "node_commercial",
+      "label": "Contracts / leasing / price policy",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "intervention"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Proposed method: battery + traction + NRE + validation + inventory/service + energy/lifetime effects, under matched performance and sourcing scenarios. No supported winner or weights yet.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          4,
+          12
+        ]
+      },
+      "id": "node_cost",
+      "label": "Compare lifecycle scenario cost",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "hypothesis"
+    },
+    {
+      "confidence": "unknown",
+      "description": "No approved frame, criteria, evidence-sufficiency finding or architecture decision exists in this reconstruction. Conversation preferences are retained as proposals.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          12
+        ]
+      },
+      "id": "node_pending",
+      "label": "Decision pending human review",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "decision"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Human critiques shallow exploration after challenging the initial cause. More depth alone does not establish causal correctness.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          5,
+          6,
+          7
+        ]
+      },
+      "id": "node_linear",
+      "label": "Five Whys misses alternative branches",
+      "provenance": {
+        "kind": "sourced",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "hypothesis"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Use multiple explanations, missing-condition questions and discriminating evidence. Literature mentions in the chat remain unverified source references.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          7
+        ]
+      },
+      "id": "node_breadth",
+      "label": "Branch, test, attach evidence",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "intervention"
+    },
+    {
+      "confidence": "unknown",
+      "description": "A separate concern emerges: a model-agnostic tool for framing, causal analysis, options and human decisions. Link it to this case without replacing the battery objective.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          8,
+          9,
+          10,
+          11
+        ]
+      },
+      "id": "node_tool",
+      "label": "Build an inspectable reasoning tool",
+      "provenance": {
+        "kind": "sourced",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "outcome"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Current ADR-0003 matches the broad proposal. Historical example statuses, probability 0.65 and generic CAUSES are not copied into current canonical objects.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          8
+        ]
+      },
+      "id": "node_graph",
+      "label": "Typed JSON graph; Mermaid view",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "intervention"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Human explicitly requests stepping back from component selection to the business outcome. Current contract separates abstraction from boundary; time is descriptive.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          9
+        ]
+      },
+      "id": "node_reframe",
+      "label": "Why/how ladder + boundary review",
+      "provenance": {
+        "kind": "sourced",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "intervention"
+    },
+    {
+      "confidence": "unknown",
+      "description": "Prompt 12 asks for in-chat slides, prompt 13 for Typst/PDF. Those are historical requests in the source, not new execution instructions in this task.",
+      "extensions": {
+        "confidence_owner": "walkthrough_author",
+        "source_turns": [
+          12,
+          13
+        ]
+      },
+      "id": "node_return",
+      "label": "Return to battery strategy narrative",
+      "provenance": {
+        "kind": "sourced",
+        "note": "Conversation attribution only; not independent verification of its claims.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "status": "proposed",
+      "type": "outcome"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

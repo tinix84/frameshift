@@ -1,0 +1,174 @@
+{
+  "active_frame_id": null,
+  "approvals": [],
+  "criteria": [],
+  "frames": [],
+  "graph": {
+    "edges": [],
+    "nodes": [],
+    "schema_version": "1.0.0"
+  },
+  "id": "sess_587a6cca5c3b65fb15fa",
+  "options": [],
+  "phase": "intake",
+  "revision": 11,
+  "schema_version": "2.0.0",
+  "statements": [
+    {
+      "id": "stmt_001",
+      "primary_role": "need",
+      "provenance": {
+        "kind": "observed",
+        "source_ids": [
+          "intake_587a6cca5c3b65fb15fa"
+        ]
+      },
+      "secondary_roles": [],
+      "status": "draft",
+      "text": "Can we now run this conversation through the actual FrameShift runtime, with the human checkpoints, and compare the result with your simulation?"
+    },
+    {
+      "id": "stmt_002",
+      "primary_role": "observation",
+      "provenance": {
+        "kind": "sourced",
+        "note": "Imported by Codex; sourced wording does not establish the underlying OEM facts.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "secondary_roles": [],
+      "status": "draft",
+      "text": "Source turn 1, paraphrase: vehicle profit margin is reported at about 5 to 6 percent."
+    },
+    {
+      "id": "stmt_003",
+      "primary_role": "observation",
+      "provenance": {
+        "kind": "sourced",
+        "note": "Imported by Codex; sourced wording does not establish the underlying OEM facts.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "secondary_roles": [],
+      "status": "draft",
+      "text": "Source turn 1, paraphrase: battery pack price is reported to oscillate about 20 percent; the time period and matched specification are unknown."
+    },
+    {
+      "id": "stmt_004",
+      "primary_role": "outcome",
+      "provenance": {
+        "kind": "sourced",
+        "note": "Imported by Codex; sourced wording does not establish the underlying OEM facts.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "secondary_roles": [],
+      "status": "draft",
+      "text": "Source turn 1, paraphrase: compensate battery cost oscillation while preserving powertrain performance."
+    },
+    {
+      "id": "stmt_005",
+      "primary_role": "proposal",
+      "provenance": {
+        "kind": "sourced",
+        "note": "Imported by Codex; sourced wording does not establish the underlying OEM facts.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "secondary_roles": [],
+      "status": "draft",
+      "text": "Source turns 1 and 2, paraphrase: consider front-end DC/DC, different or mixed chemistries, or an integrated buck-boost Y-inverter."
+    },
+    {
+      "id": "stmt_006",
+      "primary_role": "assumption",
+      "provenance": {
+        "kind": "assumed",
+        "note": "Imported by Codex; sourced wording does not establish the underlying OEM facts.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "secondary_roles": [],
+      "status": "draft",
+      "text": "The previous assistant used a 40 percent battery share of original vehicle cost as an illustrative assumption, not a measured OEM value."
+    },
+    {
+      "id": "stmt_007",
+      "primary_role": "question",
+      "provenance": {
+        "kind": "sourced",
+        "note": "Imported by Codex; sourced wording does not establish the underlying OEM facts.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "secondary_roles": [],
+      "status": "draft",
+      "text": "ti sei chiesto perché la batteria varia del 20%? È dovuto a single source o è dovuto a supply chain stress?"
+    },
+    {
+      "id": "stmt_008",
+      "primary_role": "proposal",
+      "provenance": {
+        "kind": "sourced",
+        "note": "Imported by Codex; sourced wording does not establish the underlying OEM facts.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "secondary_roles": [],
+      "status": "draft",
+      "text": "reconfiguring the battery can we have multiple power train (mostly motor+inverter SW) to follow battery pack oscillation?"
+    },
+    {
+      "id": "stmt_009",
+      "primary_role": "constraint",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Imported by Codex; sourced wording does not establish the underlying OEM facts.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "secondary_roles": [],
+      "status": "draft",
+      "text": "Source turn 1: preserve performance; the exact torque-speed, range, SOC, temperature and lifetime envelope needs human clarification."
+    },
+    {
+      "id": "stmt_010",
+      "primary_role": "question",
+      "provenance": {
+        "kind": "inferred",
+        "note": "Imported by Codex; sourced wording does not establish the underlying OEM facts.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "secondary_roles": [],
+      "status": "draft",
+      "text": "Which observed quotation, cost breakdown, supplier and qualification records distinguish market volatility from OEM-specific exposure?"
+    },
+    {
+      "id": "stmt_011",
+      "primary_role": "assumption",
+      "provenance": {
+        "kind": "assumed",
+        "note": "Imported by Codex; sourced wording does not establish the underlying OEM facts.",
+        "source_ids": [
+          "art_shared_conversation"
+        ]
+      },
+      "secondary_roles": [],
+      "status": "draft",
+      "text": "The battery decision is this session's concern. The source's later discussion of building and naming FrameShift is context, not a new objective for this session."
+    }
+  ],
+  "status": "active",
+  "title": "Battery architecture — source conversation runtime trial",
+  "workspace_id": "ws_local"
+}
