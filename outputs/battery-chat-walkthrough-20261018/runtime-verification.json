@@ -1,0 +1,21 @@
+{
+  "approval_count": 0,
+  "browser_rendering": "Not inspected: browser tool disallows file URLs.",
+  "event_count": 13,
+  "intake_rerun_idempotent": true,
+  "javascript_syntax_valid": true,
+  "phase": "intake",
+  "phase_guard_refusals": [
+    {
+      "code": "invariant_violation",
+      "detail": "this command belongs to phase 'framing', and the session is in 'intake'"
+    },
+    {
+      "code": "invariant_violation",
+      "detail": "this command belongs to phase 'causal', and the session is in 'intake'"
+    }
+  ],
+  "refusal_appended_nothing": true,
+  "session_valid": true,
+  "standalone_has_populated_data": true
+}

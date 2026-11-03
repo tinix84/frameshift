@@ -1,0 +1,532 @@
+{
+  "active_frame_id": null,
+  "approval_count": 0,
+  "comparison": [
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_margin"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_price"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_thin"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_share"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_shock"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_dcdc"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_perf"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_y"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_cells"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_energy"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_util"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_current"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_substitute"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_variants"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_qual"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_timing"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_lithium"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_single"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_capacity"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_landed"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_lock"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_power"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_quotes"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_sweep"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_dual"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_corner"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_baseline"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_commercial"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_cost"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_pending"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_linear"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_breadth"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_tool"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_graph"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_reframe"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "node_return"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_001"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_002"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_003"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_004"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_005"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_006"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_007"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_008"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_009"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_010"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_011"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_012"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_013"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_014"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_015"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_016"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_017"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_018"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_019"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_020"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_021"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_022"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_023"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_024"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_025"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_026"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_027"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_028"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_029"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_030"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_031"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_032"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_033"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_034"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_035"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_036"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_037"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_038"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_039"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_040"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_041"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_042"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_043"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_044"
+    },
+    {
+      "differences": [
+        "not admitted: awaiting earlier human gate"
+      ],
+      "reference_id": "edge_045"
+    }
+  ],
+  "counts": {
+    "edges": 0,
+    "frames": 0,
+    "nodes": 0,
+    "rungs": 0,
+    "statements": 11
+  },
+  "events": 13,
+  "exact_graph_items": 0,
+  "frame_comparison": [
+    {
+      "admission": "awaiting intake checkpoint",
+      "differences": {},
+      "reference_id": "candidate_business",
+      "runtime_id": null
+    },
+    {
+      "admission": "awaiting intake checkpoint",
+      "differences": {},
+      "reference_id": "candidate_product",
+      "runtime_id": null
+    },
+    {
+      "admission": "awaiting intake checkpoint",
+      "differences": {},
+      "reference_id": "candidate_traction",
+      "runtime_id": null
+    }
+  ],
+  "limits": [
+    "Real coordinator admission and event replay; Codex-authored input, not an independent model reasoning-quality test.",
+    "Comparison normalizes generated IDs only. All semantic field differences are reported.",
+    "The proposed graph includes historical/meta nodes for comparison. They remain context, not a replacement battery objective.",
+    "Options, criteria and signed decision lack command/event coverage in this manual runtime (ADR-0022)."
+  ],
+  "next_step": "Review classifications, then seal intake_correction on stmt_001 in the manual GUI.",
+  "phase": "intake",
+  "revision": 11,
+  "session_id": "sess_587a6cca5c3b65fb15fa",
+  "session_valid": true
+}

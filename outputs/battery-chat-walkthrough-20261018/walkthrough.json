@@ -1,0 +1,354 @@
+{
+  "artifact_type": "conversation_translation_walkthrough",
+  "artifacts": {
+    "art_shared_conversation": {
+      "capture": "Visible conversation read in browser; summaries are paraphrases, not a verbatim transcript.",
+      "kind": "source_reference",
+      "url": "https://chatgpt.com/share/6ad4942b-57a4-83ed-a9a5-5b98591088f2"
+    }
+  },
+  "authority": "All graph objects proposed; all confidence bands unknown. Stage navigation is presentation only, not approval.",
+  "candidate_frames": [
+    {
+      "abstraction_level": "business",
+      "exclusions": "Converter choice is not fixed.",
+      "id": "candidate_business",
+      "lost_detail": "Electrical requirements need a linked technical frame.",
+      "outcome": "Maintain agreed margin and supply continuity under battery price and availability scenarios.",
+      "owner": "OEM business owner to confirm",
+      "status": "proposed",
+      "system_boundary": "supply_chain"
+    },
+    {
+      "abstraction_level": "product",
+      "exclusions": "Customer pricing and leasing policy outside this candidate boundary.",
+      "id": "candidate_product",
+      "lost_detail": "Cannot alone remove correlated market exposure.",
+      "outcome": "Enable economically qualified battery alternatives while preserving agreed customer performance.",
+      "owner": "Platform owner to confirm",
+      "status": "proposed",
+      "system_boundary": "product"
+    },
+    {
+      "abstraction_level": "system",
+      "exclusions": "Supplier and commercial strategy outside this candidate boundary.",
+      "id": "candidate_traction",
+      "lost_detail": "Cannot establish the full business case from electrical performance alone.",
+      "outcome": "Meet agreed torque-speed-range envelope over specified battery and operating limits.",
+      "owner": "Powertrain owner to confirm",
+      "status": "proposed",
+      "system_boundary": "subsystem"
+    }
+  ],
+  "evidence_requests": [
+    {
+      "discriminates": "Whether similar market moves produce different OEM price outcomes; correlation alone does not prove causation.",
+      "id": "request_quotes",
+      "request": "Matched-spec pack/cell quote and invoice history; currency, volume, supplier, contracts, indices, freight and specification changes.",
+      "targets": [
+        "node_lithium",
+        "node_capacity",
+        "node_power",
+        "node_landed"
+      ]
+    },
+    {
+      "discriminates": "Whether the principal substitution barrier is electrical, qualification, commercial or capacity.",
+      "id": "request_switch",
+      "request": "Qualified supplier list; itemized € and weeks to change pack; shared upstream exposure; BMS/mechanical/electrical and validation barriers.",
+      "targets": [
+        "node_lock",
+        "node_single",
+        "node_substitute"
+      ]
+    },
+    {
+      "discriminates": "Whether boost recovers useful energy or chiefly preserves peak performance in a limited operating region.",
+      "id": "request_duty",
+      "request": "Measured battery/motor operating maps and representative duty cycles, temperature and aging conditions.",
+      "targets": [
+        "node_util",
+        "node_y",
+        "node_corner"
+      ]
+    },
+    {
+      "discriminates": "Whether variants, universal conversion, sourcing changes or baseline perform best under the same constraints.",
+      "id": "request_cost",
+      "request": "Volume and lifetime assumptions; BOM/NRE/validation/inventory/service/loss/lifetime costs; named criteria owners and scenario set.",
+      "targets": [
+        "node_cost",
+        "node_variants",
+        "node_pending"
+      ]
+    }
+  ],
+  "execution": "Offline authored reconstruction. No model engine, coordinator command, event log, approval or real session was executed.",
+  "numerical_audit": {
+    "battery_cost": 37.6,
+    "cell_count_warning": "14s8p=112 cells; 12s10p=120 cells. This refutes an automatic cell-count saving at similar installed energy, not every possible usable-energy benefit.",
+    "cost_increase": 7.52,
+    "interpretation": "8% is the increase relative to original cost. It is 7.52 percentage points of revenue here; margin changes from 6% to -1.52%.",
+    "model": "Assume sale price P=100, original revenue-based margin m=0.06, cost C=94, battery share b=0.40 of C, pack price shock d=0.20; hold price and all other costs fixed.",
+    "new_cost": 101.52,
+    "new_margin_fraction": -0.0152,
+    "smaller_pack_warning": "After a 10% reduction of the original battery cost, a subsequent 20% price shock gives C=97.008 and margin 2.992%, before added converter cost. The chat's shortcut omitted the upfront saving. This does not establish a viable hedge.",
+    "warning": "Illustrative premises only; no current price or investment recommendation."
+  },
+  "source_accessed": "2026-10-18",
+  "source_coverage": {
+    "inspected_turn_pairs": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      12,
+      13
+    ],
+    "navigator_only_turns": [
+      10,
+      11
+    ]
+  },
+  "source_title": "Battery Cost Architecture",
+  "source_url": "https://chatgpt.com/share/6ad4942b-57a4-83ed-a9a5-5b98591088f2",
+  "stages": [
+    {
+      "checkpoint": "Intake correction pending",
+      "focus": [
+        "node_margin",
+        "node_thin",
+        "node_price",
+        "node_share",
+        "node_shock",
+        "node_dcdc",
+        "node_perf"
+      ],
+      "next_question": "Which margin measure, pack specification, period and performance envelope are intended?",
+      "rationale_summary": "Preserve the user's business concern and performance constraint; classify DC/DC and chemistry changes as proposals. The 40% share comes from the assistant.",
+      "title": "1 · Intake: outcome versus mechanism",
+      "turns": [
+        1
+      ]
+    },
+    {
+      "checkpoint": "Frame selection pending",
+      "focus": [
+        "node_margin",
+        "node_y",
+        "node_perf",
+        "node_cells",
+        "node_util",
+        "node_current"
+      ],
+      "next_question": "Is the concern voltage-limited performance, inaccessible usable energy, or procurement substitution?",
+      "rationale_summary": "The Y-inverter is introduced. The assistant initially strengthens the cheaper-pack argument, but examples do not prove vehicle-level economics.",
+      "title": "2 · First technical branch",
+      "turns": [
+        2
+      ]
+    },
+    {
+      "checkpoint": "Evidence sufficiency pending",
+      "focus": [
+        "node_y",
+        "node_cells",
+        "node_energy",
+        "node_util",
+        "node_sweep",
+        "node_current"
+      ],
+      "next_question": "How much usable energy is actually inaccessible under the required duty cycle?",
+      "rationale_summary": "Keep the earlier cell-saving claim and connect its counterargument. Separate series count, total energy, usable energy and current limits.",
+      "title": "3 · Contradiction retained",
+      "turns": [
+        3
+      ]
+    },
+    {
+      "checkpoint": "Option-set acceptance pending",
+      "focus": [
+        "node_variants",
+        "node_substitute",
+        "node_qual",
+        "node_timing",
+        "node_current",
+        "node_margin"
+      ],
+      "next_question": "Do switching savings exceed NRE, qualification, inventory and service costs?",
+      "rationale_summary": "Add a distinct intervention: prequalified powertrain families. The assistant preference changes; this is not a human selection.",
+      "title": "4 · Manufacturing alternative",
+      "turns": [
+        4
+      ]
+    },
+    {
+      "checkpoint": "Evidence sufficiency pending",
+      "focus": [
+        "node_margin",
+        "node_price",
+        "node_lithium",
+        "node_lock",
+        "node_single",
+        "node_power"
+      ],
+      "next_question": "What else could explain the same quotation movement?",
+      "rationale_summary": "The explanation gravitates to architectural lock-in. FrameShift should retain that as a hypothesis and seek competing causes before declaring a root cause.",
+      "title": "5 · Five Whys narrows too soon",
+      "turns": [
+        5
+      ]
+    },
+    {
+      "checkpoint": "Evidence sufficiency pending",
+      "focus": [
+        "node_lithium",
+        "node_capacity",
+        "node_landed",
+        "node_quotes",
+        "node_price",
+        "node_lock",
+        "node_single",
+        "node_power",
+        "node_dual"
+      ],
+      "next_question": "Do matched quotes support raw-material, supplier-power, capacity or landed-cost explanations?",
+      "rationale_summary": "The human challenges the assumed cause: single source or supply stress? Introduce alternatives and request evidence; do not record single source as a fact.",
+      "title": "6 · Human expands the causal model",
+      "turns": [
+        6
+      ]
+    },
+    {
+      "checkpoint": "Causal claims remain proposals",
+      "focus": [
+        "node_linear",
+        "node_breadth",
+        "node_lock",
+        "node_single",
+        "node_power",
+        "node_price",
+        "node_lithium",
+        "node_capacity",
+        "node_quotes"
+      ],
+      "next_question": "Which observation would distinguish the competing mechanisms?",
+      "rationale_summary": "Add breadth and causal tests. Treat AND/OR examples and correlation numbers in the conversation as illustrations, not established gates or measured results.",
+      "title": "7 · From a chain to a graph",
+      "turns": [
+        7
+      ]
+    },
+    {
+      "checkpoint": "New concern / frame review pending",
+      "focus": [
+        "node_linear",
+        "node_breadth",
+        "node_tool",
+        "node_graph",
+        "node_margin"
+      ],
+      "next_question": "Are we designing the tool or solving the battery case in this session?",
+      "rationale_summary": "A second concern emerges: build an interactive reasoning system. Link the battery case as motivating evidence; keep its unresolved objective visible.",
+      "title": "8 · A linked product concern",
+      "turns": [
+        8
+      ]
+    },
+    {
+      "checkpoint": "Working-frame approval pending",
+      "focus": [
+        "node_dcdc",
+        "node_perf",
+        "node_substitute",
+        "node_margin",
+        "node_reframe",
+        "node_tool",
+        "node_dual",
+        "node_commercial"
+      ],
+      "next_question": "Who can authorize the business boundary and own success measures?",
+      "rationale_summary": "Separate the why/how ladder from cause/effect. Business framing opens procurement and commercial options; wider scope still needs an accountable owner.",
+      "title": "9 · Explicit reframing",
+      "turns": [
+        9
+      ]
+    },
+    {
+      "checkpoint": "Historical branch only",
+      "focus": [
+        "node_tool",
+        "node_graph",
+        "node_reframe",
+        "node_margin"
+      ],
+      "next_question": "What was actually created and validated, versus merely proposed in the conversation?",
+      "rationale_summary": "The source navigator records naming and a public-repository request. The detailed assistant turns 10–11 were not inspected; no repository execution is inferred from them.",
+      "title": "10 · Naming and repository branch",
+      "turns": [
+        10,
+        11
+      ]
+    },
+    {
+      "checkpoint": "Decision approval pending",
+      "focus": [
+        "node_return",
+        "node_margin",
+        "node_variants",
+        "node_y",
+        "node_dual",
+        "node_commercial",
+        "node_baseline",
+        "node_cost",
+        "node_pending"
+      ],
+      "next_question": "What evidence and human-owned criteria would justify selecting an architecture?",
+      "rationale_summary": "The slide narrative returns to margin. It offers an architecture preference without OEM evidence, approved criteria or a signed decision. A document request is not validation.",
+      "title": "11 · Return to the original outcome",
+      "turns": [
+        12,
+        13
+      ]
+    },
+    {
+      "checkpoint": "Stop before real gate transitions",
+      "focus": [
+        "node_quotes",
+        "node_sweep",
+        "node_baseline",
+        "node_variants",
+        "node_y",
+        "node_dual",
+        "node_cost",
+        "node_pending"
+      ],
+      "next_question": "Which candidate frame should a human approve for a real runtime session?",
+      "rationale_summary": "Proposed next sequence: correct intake; approve one frame; gather evidence; accept an option set including baseline; confirm criteria; compare scenarios; ask for a decision.",
+      "title": "12 · FrameShift handoff",
+      "turns": [
+        1,
+        3,
+        4,
+        6,
+        9,
+        12
+      ]
+    }
+  ],
+  "test_findings": [
+    "Preserve counterarguments instead of overwriting prior claims.",
+    "Human suggestions of single source and capacity stress are not measured OEM facts.",
+    "The assistant repeatedly changes its preferred topology; no approved decision follows.",
+    "A broader frame is a candidate and needs an owner; it is not automatically superior.",
+    "The historical JSON example mixes epistemic type and lifecycle status; use current schema types and ordinal confidence.",
+    "Do not infer causal AND/OR gates or confidence probabilities from illustrative prose.",
+    "Factory sourcing timescales and runtime SOC variation need separate requirements.",
+    "The complete map is a typed directed graph, not a tree: evidence, contradictions and shared interventions create cross-links."
+  ]
+}
