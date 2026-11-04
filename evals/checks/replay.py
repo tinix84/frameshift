@@ -124,6 +124,21 @@ def _apply(state: dict, event: dict) -> dict:
         state["phase"] = payload["phase"]
     elif kind == "approval.recorded":
         state["approvals"].append(copy.deepcopy(payload))
+    elif kind == "challenge.raised":
+        # ADR-0031: a challenge enters open; only the person's boundary closes it.
+        state.setdefault("challenges", []).append(copy.deepcopy(payload))
+    elif kind == "challenge.answered":
+        challenge = _find(state.get("challenges", []), payload["id"])
+        challenge["status"] = "answered"
+        challenge["answer"] = {
+            "source_ids": list(payload["source_ids"]),
+            "actor": copy.deepcopy(payload["actor"]),
+            **({"note": payload["note"]} if "note" in payload else {}),
+        }
+    elif kind == "challenge.conceded":
+        challenge = _find(state.get("challenges", []), payload["id"])
+        challenge["status"] = "conceded"
+        challenge["concession"] = {"actor": copy.deepcopy(payload["actor"])}
     else:
         raise UnknownEvent(f"no reducer for event type {kind!r}")
 

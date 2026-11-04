@@ -39,7 +39,7 @@ def derive(state: dict) -> dict:
     graph = state.get("graph", {})
     nodes = {item["id"]: item for item in graph.get("nodes", [])}
     support = _support(nodes, graph.get("edges", []))
-    challenges = _challenges(graph.get("edges", []))
+    challenges = _challenges(state, graph.get("edges", []))
     profiles = {node_id: _profile(node_id, nodes, support, challenges) for node_id in sorted(nodes)}
     beneath_solid = {
         base
@@ -72,13 +72,41 @@ def _support(nodes: dict, edges: list[dict]) -> dict[str, list[tuple[str, str]]]
     return support
 
 
-def _challenges(edges: list[dict]) -> dict[str, dict[str, list[str]]]:
+def _challenges(state: dict, edges: list[dict]) -> dict[str, dict[str, list[str]]]:
     """The challenges on each node or edge, by state. A live `contradicts` edge is open on its target."""
     found: dict[str, dict[str, list[str]]] = {}
+
+    def on(target: str) -> dict[str, list[str]]:
+        return found.setdefault(target, {name: [] for name in CHALLENGE_STATES})
+
     for item in edges:
         if item.get("type") == "contradicts" and item.get("status") in LIVE_STATUSES:
-            found.setdefault(item["target"], {state: [] for state in CHALLENGE_STATES})["open"].append(item["id"])
+            on(item["target"])["open"].append(item["id"])
+    for challenge in state.get("challenges", []):
+        status = challenge.get("status")
+        if status == "answered":
+            cited = challenge.get("answer", {}).get("source_ids", [])
+            status = "answered_by_fact" if cited and all(_source_class(state, source) == "fact" for source in cited) else "answered_by_opinion"
+        if status in CHALLENGE_STATES:
+            on(challenge["target_id"])[status].append(challenge["id"])
     return found
+
+
+def _source_class(state: dict, source: str) -> str:
+    """The grounding class of one cited source id (ADR-0012 namespaces).
+
+    A referenced artifact and an intake record are fact. A cited item counts
+    by its provenance kind, and an item without one counts as a gap.
+    """
+    if source.startswith(("art_", "intake_")):
+        return "fact"
+    collections = [state.get("graph", {}).get("nodes", [])]
+    collections += [state.get(name, []) for name in ("statements", "frames", "ladder", "symptom_specifications", "options", "criteria")]
+    for items in collections:
+        for item in items:
+            if item.get("id") == source:
+                return CLASS_OF_KIND.get(_kind(item), "gap")
+    return "gap"
 
 
 def _walk(start: str, nodes: dict, support: dict) -> tuple[list[str], list[str]]:

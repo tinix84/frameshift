@@ -75,6 +75,9 @@ ROUTES = [
     ("GET", rf"^/api/sessions/{SESSION}/held/(?P<pid>[A-Za-z0-9._:-]+)$", "held_draft"),
     ("POST", rf"^/api/sessions/{SESSION}/nodes$", "add_node"),
     ("POST", rf"^/api/sessions/{SESSION}/edges$", "add_edge"),
+    ("POST", rf"^/api/sessions/{SESSION}/challenges$", "raise_challenge"),
+    ("POST", rf"^/api/sessions/{SESSION}/challenges/(?P<cid>[A-Za-z0-9._:-]+)/answer$", "answer_challenge"),
+    ("POST", rf"^/api/sessions/{SESSION}/challenges/(?P<cid>[A-Za-z0-9._:-]+)/concede$", "concede_challenge"),
     ("POST", rf"^/api/sessions/{SESSION}/gates$", "prepare_gate"),
     ("POST", r"^/api/confirmations/(?P<rid>[A-Za-z0-9._:-]+)$", "confirm"),
     ("DELETE", r"^/api/confirmations/(?P<rid>[A-Za-z0-9._:-]+)$", "cancel"),
@@ -183,6 +186,29 @@ class ManualApp:
 
     def add_edge(self, body, sid):
         return self.coordinator.add_edge(sid, edge=body.get("edge", {}), expected_revision=body.get("expected_revision"))
+
+    def raise_challenge(self, body, sid):
+        # The operator raises a doubt here, so it is theirs (ADR-0031).
+        return self.coordinator.raise_challenge(
+            sid,
+            target_id=body.get("target_id", ""),
+            objection=body.get("objection", ""),
+            actor=self.coordinator.operator,
+            expected_revision=body.get("expected_revision"),
+        )
+
+    def answer_challenge(self, body, sid, cid):
+        # Only the person closes a challenge (ADR-0031).
+        return self.coordinator.answer_challenge(
+            sid,
+            challenge_id=cid,
+            source_ids=body.get("source_ids", []),
+            note=body.get("note"),
+            expected_revision=body.get("expected_revision"),
+        )
+
+    def concede_challenge(self, body, sid, cid):
+        return self.coordinator.concede_challenge(sid, challenge_id=cid, expected_revision=body.get("expected_revision"))
 
     def prepare_gate(self, body, sid):
         return {

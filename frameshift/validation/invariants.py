@@ -146,6 +146,23 @@ def reference_violations(session: dict) -> list[str]:
             held[level] = index
     violations.extend(symptom_specification_violations(session))
     violations.extend(supersession_violations(session))
+    violations.extend(challenge_violations(session))
+    return violations
+
+
+def challenge_violations(session: dict) -> list[str]:
+    """ADR-0031: a challenge names one graph node or edge in this session."""
+    graph = session.get("graph", {})
+    targets = node_ids(session) | {
+        edge["id"] for edge in graph.get("edges", []) if isinstance(edge, dict) and isinstance(edge.get("id"), str)
+    }
+    violations: list[str] = []
+    for index, challenge in enumerate(session.get("challenges", [])):
+        if isinstance(challenge, dict) and challenge.get("target_id") not in targets:
+            violations.append(
+                f"{INVARIANT_VIOLATION}: dangling reference, $.challenges[{index}].target_id names "
+                f"{challenge.get('target_id')!r}, which is not a node or edge in this graph"
+            )
     return violations
 
 

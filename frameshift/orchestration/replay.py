@@ -49,6 +49,9 @@ EVENT_TYPES = frozenset(
         "symptom.specification.recorded",
         "phase.changed",
         "approval.recorded",
+        "challenge.raised",
+        "challenge.answered",
+        "challenge.conceded",
     }
 )
 
@@ -183,6 +186,17 @@ def _apply(state: dict, event: dict) -> None:
         state["phase"] = payload["phase"]
     elif kind == "approval.recorded":
         state["approvals"].append(copy.deepcopy(payload))
+    elif kind == "challenge.raised":
+        # ADR-0031: a doubt about one graph node or edge, open until the person closes it.
+        state.setdefault("challenges", []).append(copy.deepcopy(payload))
+    elif kind == "challenge.answered":
+        challenge = _named(state.get("challenges", []), payload["id"])
+        challenge["status"] = "answered"
+        challenge["answer"] = {key: copy.deepcopy(item) for key, item in payload.items() if key != "id"}
+    elif kind == "challenge.conceded":
+        challenge = _named(state.get("challenges", []), payload["id"])
+        challenge["status"] = "conceded"
+        challenge["concession"] = {"actor": copy.deepcopy(payload["actor"])}
     else:
         # `_admit` already refuses a type outside EVENT_TYPES; this catches a
         # type admitted there but never given a branch here, so it can still

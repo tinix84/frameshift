@@ -1,0 +1,29 @@
+{
+  "id": "session-challenge-answer-cites-a-missing-node",
+  "check": "session_invariants",
+  "artifact": "challenge.checkpoint.v2.json",
+  "at": [
+    "state"
+  ],
+  "mutate": [
+    {
+      "path": [
+        "challenges",
+        0,
+        "answer",
+        "source_ids"
+      ],
+      "value": [
+        "node_099"
+      ]
+    }
+  ],
+  "expect": {
+    "outcome": "invalid",
+    "violations_naming": [
+      "node_099",
+      "answer.source_ids[0]",
+      "invariant_violation"
+    ]
+  }
+}
