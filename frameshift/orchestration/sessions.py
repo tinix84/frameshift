@@ -46,7 +46,7 @@ from frameshift.validation import (
     validate_against,
 )
 
-from . import phases, proposals, replay, transitions
+from . import grounding, phases, proposals, replay, transitions
 from .ports import EventLog, EventLogRefused
 
 INVARIANT_VIOLATION = errors.INVARIANT_VIOLATION
@@ -164,6 +164,8 @@ class SessionCoordinator:
                 "gates": gates_available(state),
                 "ladder_order": ladder_order(state),
                 "frame_set": frame_set(state),
+                # ADR-0031: derived on read; it orders and highlights, never gates.
+                "grounding": grounding.derive(state),
                 "held": self._held_view(session_id, state),
                 "pending_confirmations": [
                     request_id
