@@ -29,7 +29,7 @@ const context = vm.createContext({document, console, setTimeout});
 vm.runInContext(source + `
 globalThis.ui = { nextStep, reasoningMap, canvasModel, setup(state, derived) {
   SELECTED = null; VIEW = {state, derived}; CURRENT = state.id;
-  META = {operator: {role: 'decision_owner'}, vocabulary: {statement_roles:['observation','question']}};
+  META = {operator: {role: 'decision_owner'}, vocabulary: {statement_roles:['observation','question'], line_reason_codes:['insufficient_evidence','duplicate']}};
 }};`, context);
 const {ui} = context;
 const state = {id:'sess_test', phase:'intake', revision:1, statements:[{id:'stmt_1', text:'<img src=x onerror=alert(1)>', primary_role:'question', status:'draft', provenance:{kind:'sourced', source_ids:['art_chat']}}], frames:[], graph:{nodes:[], edges:[]}, approvals:[]};
@@ -76,4 +76,31 @@ buttons[0].events.keydown({key:'ArrowRight',preventDefault(){},stopPropagation()
 assert.notEqual(buttons[0].style.left, before, 'keyboard movement changes the card position');
 assert.equal(JSON.stringify(causal), saved, 'layout movement must not modify canonical state');
 assert.equal(ui.canvasModel(causal).edges.length, 3);
-console.log('PASS card type labels, no background groups, source-text escaping, blocked continuation, node inspection, cycle edges, disconnected nodes, contradiction links and layout-only movement');
+
+// ADR-0031 and ADR-0032: band, broken and parked ground, solid ground, challenges and lines.
+const profile = (band, extra = {}) => ({band, bases:{fact:[], inference:[], opinion:[], gap:[]}, undecided:[], broken:[], parked:[],
+  challenges:{open:[], answered_by_fact:[], answered_by_opinion:[], conceded:[]}, upstream_open:[], weakest:null, ...extra});
+const grounded = {...causal, status:'active',
+  graph:{nodes:[...causal.graph.nodes.slice(0, 3), {...causal.graph.nodes[3], status:'rejected'}], edges:causal.graph.edges},
+  challenges:[{id:'chal_001', target_id:'node_b', objection:'One supplier only.', actor:{id:'svc_reasoner', kind:'service'}, status:'open'}],
+  lines:[{id:'line_001', anchor_id:'node_a', tip_ids:['node_b'], node_ids:['node_b'], reason_code:'insufficient_evidence', reason:'No quote at volume.', actor:{id:'user_1', kind:'human'}, status:'parked'}]};
+const groundedDerived = {...derived, grounding:{nodes:{node_a:profile('solid'), node_b:profile('weak', {challenges:{open:['chal_001'], answered_by_fact:[], answered_by_opinion:[], conceded:[]}}), node_c:profile('mixed'), node_d:profile('weak', {broken:['node_d']})}, solid_ground:['node_a']}};
+ui.setup(grounded, groundedDerived);
+tree = ui.reasoningMap(grounded);
+const cards = new Map(tree.querySelectorAll('[data-item]').map(b => [b.attrs['data-item'], b]));
+assert.deepEqual(['node_a','node_b','node_c','node_d'].map(id => cards.get(id).attrs['data-band']), ['solid','weak','mixed','weak'], 'each card carries its band');
+assert(cards.get('node_d').className.includes('broken'), 'broken ground is outlined');
+assert(cards.get('node_b').className.includes('parked'), 'a parked line is greyed');
+assert(cards.get('node_a').className.includes('solid-ground'), 'solid ground is highlighted');
+assert.match(cards.get('node_a').attrs['aria-label'], /solid ground, a suggested restart anchor/);
+assert.match(tree.textContent, /Grounding, challenges and parked lines as a list/);
+assert.match(tree.textContent, /Solid ground \(suggested restart anchors\): node_a/);
+assert.match(tree.textContent, /line_001 from node_a to node_b: insufficient evidence/);
+assert.equal(tree.all('button').filter(b => b.textContent.includes('Reopen')).length, 1, 'the list offers Reopen on a parked line');
+cards.get('node_b').events.click();
+for (const text of [/Grounding: weak/, /chal_001 on node_b: One supplier only/, /Raise challenge/, /Answer/, /Concede/, /Park line…/, /Park line/, /Reopen/])
+  assert.match(tree.textContent, text);
+tree.all('button').find(b => b.attrs['data-list-item'] === 'node_c').events.click();
+assert.match(tree.textContent, /Grounding: mixed/, 'the list opens the same inspector');
+assert.equal(JSON.stringify(grounded).includes('"band"'), false, 'grounding is never written into state');
+console.log('PASS card type labels, no background groups, source-text escaping, blocked continuation, node inspection, cycle edges, disconnected nodes, contradiction links, layout-only movement, grounding bands, broken and parked ground, solid ground, challenge and line actions, and the list equivalent');
