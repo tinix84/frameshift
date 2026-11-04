@@ -1,0 +1,19 @@
+{
+  "id": "replay-parked-line-without-the-reopen-diverges",
+  "check": "replay_equivalence",
+  "artifact": "parked-line.checkpoint.v2.json",
+  "log": "evals/fixtures/parked-line.events.jsonl",
+  "mutate": [
+    {
+      "kind": "drop",
+      "sequence": 24
+    }
+  ],
+  "expect": {
+    "outcome": "diverged",
+    "check_sequence": false,
+    "violations_naming": [
+      "replay reached"
+    ]
+  }
+}

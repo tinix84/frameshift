@@ -332,5 +332,23 @@ class TheChallengesFoldInBothReducers(unittest.TestCase):
         self.assertEqual(session.reference_violations(snapshot), [])
 
 
+class TheParkedLinesFoldInBothReducers(unittest.TestCase):
+    """#276 (ADR-0032): `line.parked` and `line.reopened` fold to the same state in both reducers."""
+
+    def test_both_reducers_reach_the_snapshot(self) -> None:
+        from evals.checks import replay as reference
+        from frameshift.orchestration import replay as application
+
+        snapshot = run.load("evals/fixtures/parked-line.checkpoint.v2.json")["state"]
+        events = [json.loads(line) for line in (run.ROOT / "evals" / "fixtures" / "parked-line.events.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+        self.assertEqual(application.fold(copy.deepcopy(events)), snapshot)
+        self.assertEqual(reference.fold(copy.deepcopy(events)), snapshot)
+        self.assertEqual([(line["id"], line["node_ids"], line["status"]) for line in snapshot["lines"]],
+                         [("line_001", ["node_003"], "parked"), ("line_002", ["node_004"], "reopened")])
+        self.assertEqual({node["status"] for node in snapshot["graph"]["nodes"]}, {"proposed"}, "parking keeps every status")
+        self.assertTrue(all("actor" in e["payload"] for e in events if e["type"].startswith("line.")))
+        self.assertEqual(session.reference_violations(snapshot), [])
+
+
 if __name__ == "__main__":
     unittest.main()

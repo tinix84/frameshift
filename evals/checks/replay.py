@@ -139,6 +139,13 @@ def _apply(state: dict, event: dict) -> dict:
         challenge = _find(state.get("challenges", []), payload["id"])
         challenge["status"] = "conceded"
         challenge["concession"] = {"actor": copy.deepcopy(payload["actor"])}
+    elif kind == "line.parked":
+        # ADR-0032: a parked line holds the node ids the person confirmed.
+        state.setdefault("lines", []).append(copy.deepcopy(payload))
+    elif kind == "line.reopened":
+        line = _find(state.get("lines", []), payload["id"])
+        line["status"] = "reopened"
+        line["reopening"] = {"reason": payload["reason"], "actor": copy.deepcopy(payload["actor"])}
     else:
         raise UnknownEvent(f"no reducer for event type {kind!r}")
 

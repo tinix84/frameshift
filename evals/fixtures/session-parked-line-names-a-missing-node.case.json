@@ -1,0 +1,28 @@
+{
+  "id": "session-parked-line-names-a-missing-node",
+  "check": "session_invariants",
+  "artifact": "parked-line.checkpoint.v2.json",
+  "at": [
+    "state"
+  ],
+  "mutate": [
+    {
+      "path": [
+        "lines",
+        0,
+        "tip_ids"
+      ],
+      "value": [
+        "node_099"
+      ]
+    }
+  ],
+  "expect": {
+    "outcome": "invalid",
+    "violations_naming": [
+      "node_099",
+      "$.lines[0].tip_ids[0]",
+      "invariant_violation"
+    ]
+  }
+}

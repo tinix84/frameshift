@@ -78,6 +78,9 @@ ROUTES = [
     ("POST", rf"^/api/sessions/{SESSION}/challenges$", "raise_challenge"),
     ("POST", rf"^/api/sessions/{SESSION}/challenges/(?P<cid>[A-Za-z0-9._:-]+)/answer$", "answer_challenge"),
     ("POST", rf"^/api/sessions/{SESSION}/challenges/(?P<cid>[A-Za-z0-9._:-]+)/concede$", "concede_challenge"),
+    ("POST", rf"^/api/sessions/{SESSION}/lines/proposal$", "line_proposal"),
+    ("POST", rf"^/api/sessions/{SESSION}/lines$", "park_line"),
+    ("POST", rf"^/api/sessions/{SESSION}/lines/(?P<lid>[A-Za-z0-9._:-]+)/reopen$", "reopen_line"),
     ("POST", rf"^/api/sessions/{SESSION}/gates$", "prepare_gate"),
     ("POST", r"^/api/confirmations/(?P<rid>[A-Za-z0-9._:-]+)$", "confirm"),
     ("DELETE", r"^/api/confirmations/(?P<rid>[A-Za-z0-9._:-]+)$", "cancel"),
@@ -209,6 +212,31 @@ class ManualApp:
 
     def concede_challenge(self, body, sid, cid):
         return self.coordinator.concede_challenge(sid, challenge_id=cid, expected_revision=body.get("expected_revision"))
+
+    def line_proposal(self, body, sid):
+        # Read only: the person confirms the exact set before parking (ADR-0032).
+        return {
+            "node_ids": self.coordinator.line_proposal(
+                sid, anchor_id=body.get("anchor_id", ""), tip_ids=body.get("tip_ids", [])
+            )
+        }
+
+    def park_line(self, body, sid):
+        # Only the person parks a line (ADR-0032).
+        return self.coordinator.park_line(
+            sid,
+            anchor_id=body.get("anchor_id", ""),
+            tip_ids=body.get("tip_ids", []),
+            node_ids=body.get("node_ids", []),
+            reason_code=body.get("reason_code", ""),
+            reason=body.get("reason", ""),
+            expected_revision=body.get("expected_revision"),
+        )
+
+    def reopen_line(self, body, sid, lid):
+        return self.coordinator.reopen_line(
+            sid, line_id=lid, reason=body.get("reason", ""), expected_revision=body.get("expected_revision")
+        )
 
     def prepare_gate(self, body, sid):
         return {

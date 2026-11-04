@@ -40,7 +40,8 @@ def derive(state: dict) -> dict:
     nodes = {item["id"]: item for item in graph.get("nodes", [])}
     support = _support(nodes, graph.get("edges", []))
     challenges = _challenges(state, graph.get("edges", []))
-    profiles = {node_id: _profile(node_id, nodes, support, challenges) for node_id in sorted(nodes)}
+    parked = parked_nodes(state)
+    profiles = {node_id: _profile(node_id, nodes, support, challenges, parked) for node_id in sorted(nodes)}
     beneath_solid = {
         base
         for node_id, profile in profiles.items()
@@ -52,6 +53,57 @@ def derive(state: dict) -> dict:
         node_id for node_id, profile in profiles.items() if profile["band"] == "solid" and node_id not in beneath_solid
     ]
     return {"nodes": profiles, "solid_ground": solid_ground}
+
+
+def parked_nodes(state: dict) -> set[str]:
+    """ADR-0032: a node is parked while a parked line holds it."""
+    return {node_id for line in state.get("lines", []) if line.get("status") == "parked" for node_id in line.get("node_ids", [])}
+
+
+def propose_line(state: dict, anchor_id: str, tip_ids: list[str]) -> list[str]:
+    """The nodes the person's boundary proposes for a line from `anchor_id` to `tip_ids` (ADR-0032).
+
+    1. Every node on a live support path between the anchor and a tip: the
+       tips are in the set, the anchor is not.
+    2. Remove each node, other than a tip, that a live node outside the set
+       rests on, until no node is removed. A shared node therefore stays live.
+
+    A proposal only. The person confirms the exact set, and the event records it.
+    """
+    graph = state.get("graph", {})
+    nodes = {item["id"]: item for item in graph.get("nodes", []) if item.get("status") in LIVE_STATUSES}
+    support = _support(nodes, graph.get("edges", []))
+    above: dict[str, set[str]] = {}
+    for resting, held_up in support.items():
+        for _, base in held_up:
+            above.setdefault(base, set()).add(resting)
+    beneath = {resting: {base for _, base in held_up} for resting, held_up in support.items()}
+    over_anchor = _reach(anchor_id, above)
+    chosen = set(tip_ids)
+    for tip in tip_ids:
+        chosen |= over_anchor & _reach(tip, beneath)
+    chosen.discard(anchor_id)
+    while True:
+        shared = {
+            node_id
+            for node_id in chosen - set(tip_ids)
+            if any(resting not in chosen for resting in above.get(node_id, ()))
+        }
+        if not shared:
+            return sorted(chosen)
+        chosen -= shared
+
+
+def _reach(start: str, step: dict[str, set[str]]) -> set[str]:
+    """Every node reachable from `start` by `step`, `start` excluded."""
+    found, stack = set(), [start]
+    while stack:
+        for item in step.get(stack.pop(), ()):
+            if item not in found:
+                found.add(item)
+                stack.append(item)
+    found.discard(start)
+    return found
 
 
 def _support(nodes: dict, edges: list[dict]) -> dict[str, list[tuple[str, str]]]:
@@ -134,8 +186,11 @@ def _walk(start: str, nodes: dict, support: dict) -> tuple[list[str], list[str]]
     return sorted(bases), crossed
 
 
-def _profile(node_id: str, nodes: dict, support: dict, challenges: dict) -> dict:
+def _profile(node_id: str, nodes: dict, support: dict, challenges: dict, parked: set[str]) -> dict:
     bases, crossed = _walk(node_id, nodes, support)
+    # ADR-0032: parked ground is any parked node the walk reaches, the node itself
+    # included. It counts by its class, is never broken, and is never solid.
+    on_parked = sorted(parked.intersection([node_id, *crossed]))
     by_class = {name: [] for name in reversed(CLASS_ORDER)}
     for base in bases:
         by_class[CLASS_OF_KIND.get(_kind(nodes[base]), "gap")].append(base)
@@ -150,7 +205,7 @@ def _profile(node_id: str, nodes: dict, support: dict, challenges: dict) -> dict
         weakest = None
     if broken or own["open"] or own["conceded"] or not by_class["fact"]:
         band = "weak"
-    elif len(by_class["fact"]) == len(bases) and not upstream:
+    elif len(by_class["fact"]) == len(bases) and not upstream and not on_parked:
         band = "solid"
     else:
         band = "mixed"
@@ -159,6 +214,7 @@ def _profile(node_id: str, nodes: dict, support: dict, challenges: dict) -> dict
         "bases": by_class,
         "undecided": [base for base in bases if nodes[base].get("status") in UNDECIDED_STATUSES],
         "broken": broken,
+        "parked": on_parked,
         "challenges": {state: list(own[state]) for state in CHALLENGE_STATES},
         "upstream_open": upstream,
         "weakest": weakest,

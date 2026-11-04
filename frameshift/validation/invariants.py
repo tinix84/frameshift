@@ -147,6 +147,29 @@ def reference_violations(session: dict) -> list[str]:
     violations.extend(symptom_specification_violations(session))
     violations.extend(supersession_violations(session))
     violations.extend(challenge_violations(session))
+    violations.extend(line_violations(session))
+    return violations
+
+
+def line_violations(session: dict) -> list[str]:
+    """ADR-0032: a parked line names graph nodes, and never holds its own anchor."""
+    nodes = node_ids(session)
+    violations: list[str] = []
+    for index, line in enumerate(session.get("lines", [])):
+        if not isinstance(line, dict):
+            continue
+        path = f"$.lines[{index}]"
+        named = [("anchor_id", line.get("anchor_id"))]
+        named += [(f"tip_ids[{at}]", item) for at, item in enumerate(line.get("tip_ids", []))]
+        named += [(f"node_ids[{at}]", item) for at, item in enumerate(line.get("node_ids", []))]
+        for field, item in named:
+            if item not in nodes:
+                violations.append(
+                    f"{INVARIANT_VIOLATION}: dangling reference, {path}.{field} names {item!r}, "
+                    "which is not a node in this graph"
+                )
+        if line.get("anchor_id") in line.get("node_ids", []):
+            violations.append(f"{INVARIANT_VIOLATION}: {path}.node_ids holds the line's own anchor")
     return violations
 
 

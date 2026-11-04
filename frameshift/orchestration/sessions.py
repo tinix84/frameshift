@@ -812,6 +812,68 @@ class SessionCoordinator:
         self._commit_next(state, [{"type": "challenge.conceded", "payload": payload}])
         return self.view(session_id)
 
+    # ----------------------------------------------- parked lines (#276)
+
+    def line_proposal(self, session_id: str, *, anchor_id: str, tip_ids: list[str]) -> list[str]:
+        """The node set the person's boundary proposes for a line (ADR-0032). Nothing is written."""
+        state = self.state(session_id)
+        _named_nodes(state, anchor_id, tip_ids)
+        return grounding.propose_line(state, anchor_id, list(tip_ids))
+
+    def park_line(
+        self,
+        session_id: str,
+        *,
+        anchor_id: str,
+        tip_ids: list[str],
+        node_ids: list[str],
+        reason_code: str,
+        reason: str,
+        expected_revision: int,
+    ) -> dict:
+        """The person parks a line: effort stops, and every status stays (ADR-0032).
+
+        Parking decides where effort goes, so only a boundary that speaks for
+        the person calls this; a reasoner-facing boundary never exposes it. The
+        event records the confirmed node ids, never the proposal rule.
+        """
+        state = self._expect(session_id, expected_revision, phase=None)
+        _named_nodes(state, anchor_id, tip_ids)
+        if not isinstance(node_ids, list) or not node_ids:
+            raise CommandRefused(INVARIANT_VIOLATION, "a parked line holds one or more nodes, and the node set is empty")
+        _named_nodes(state, None, node_ids, role="listed node")
+        if anchor_id in node_ids:
+            raise CommandRefused(INVARIANT_VIOLATION, f"the anchor {anchor_id!r} is where the line grows from, so the line cannot hold it")
+        if reason_code not in LINE_REASON_CODES:
+            raise CommandRefused(
+                INVARIANT_VIOLATION, f"unknown reason code {reason_code!r}; one of {', '.join(LINE_REASON_CODES)}"
+            )
+        line = {
+            "id": _next_id("line", state.get("lines", [])),
+            "anchor_id": anchor_id,
+            "tip_ids": list(dict.fromkeys(tip_ids)),
+            "node_ids": list(dict.fromkeys(node_ids)),
+            "reason_code": reason_code,
+            "reason": _reason(reason, "a park"),
+            "actor": self.operator,
+            "status": "parked",
+        }
+        self._commit_next(state, [{"type": "line.parked", "payload": line}])
+        return self.view(session_id)
+
+    def reopen_line(self, session_id: str, *, line_id: str, reason: str, expected_revision: int) -> dict:
+        """The person reopens a parked line; a reopened line is final (ADR-0032)."""
+        state = self._expect(session_id, expected_revision, phase=None)
+        text = _reason(reason, "a reopen")
+        held = {item["id"]: item for item in state.get("lines", [])}
+        if not isinstance(line_id, str) or line_id not in held:
+            raise CommandRefused(INVARIANT_VIOLATION, f"no parked line {line_id!r} in this session")
+        if held[line_id]["status"] != "parked":
+            raise CommandRefused(INVARIANT_VIOLATION, f"{line_id!r} is already reopened; park a new line instead")
+        payload = {"id": line_id, "reason": text, "actor": self.operator}
+        self._commit_next(state, [{"type": "line.reopened", "payload": payload}])
+        return self.view(session_id)
+
     # ------------------------------------------------------ gates (#229, #205)
 
     def prepare_gate(self, session_id: str, *, gate: str, target_id: str) -> dict:
@@ -1161,6 +1223,29 @@ def _sealing_events(state: dict, gate: str) -> list[dict]:
         for statement in state["statements"]
         if statement.get("status") == "draft" and "primary_role" in statement
     ]
+
+
+# ADR-0032: why a line is parked (from #92).
+LINE_REASON_CODES = ("insufficient_evidence", "low_decision_value", "contradicted", "duplicate", "out_of_scope")
+
+
+def _named_nodes(state: dict, anchor_id, node_ids, *, role: str = "tip") -> None:
+    """Refuse an anchor or a node id that is not a node of this graph (ADR-0032)."""
+    held = {item["id"] for item in state["graph"]["nodes"]}
+    if anchor_id is not None and (not isinstance(anchor_id, str) or anchor_id not in held):
+        raise CommandRefused(INVARIANT_VIOLATION, f"no graph node {anchor_id!r} to anchor the line")
+    if not isinstance(node_ids, list) or not node_ids:
+        raise CommandRefused(INVARIANT_VIOLATION, f"a line names one or more {role}s")
+    for node_id in node_ids:
+        if not isinstance(node_id, str) or node_id not in held:
+            raise CommandRefused(INVARIANT_VIOLATION, f"no graph node {node_id!r} for the line's {role}")
+
+
+def _reason(text, act: str) -> str:
+    """The one-sentence reason a park or a reopen needs (ADR-0032)."""
+    if not isinstance(text, str) or not text.strip():
+        raise CommandRefused(INVARIANT_VIOLATION, f"{act} states its reason")
+    return text.strip()
 
 
 def _open_challenge(state: dict, challenge_id) -> dict:

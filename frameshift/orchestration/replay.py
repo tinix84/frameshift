@@ -52,6 +52,8 @@ EVENT_TYPES = frozenset(
         "challenge.raised",
         "challenge.answered",
         "challenge.conceded",
+        "line.parked",
+        "line.reopened",
     }
 )
 
@@ -197,6 +199,13 @@ def _apply(state: dict, event: dict) -> None:
         challenge = _named(state.get("challenges", []), payload["id"])
         challenge["status"] = "conceded"
         challenge["concession"] = {"actor": copy.deepcopy(payload["actor"])}
+    elif kind == "line.parked":
+        # ADR-0032: the confirmed node ids, as recorded; a reducer never recomputes the set.
+        state.setdefault("lines", []).append(copy.deepcopy(payload))
+    elif kind == "line.reopened":
+        line = _named(state.get("lines", []), payload["id"])
+        line["status"] = "reopened"
+        line["reopening"] = {"reason": payload["reason"], "actor": copy.deepcopy(payload["actor"])}
     else:
         # `_admit` already refuses a type outside EVENT_TYPES; this catches a
         # type admitted there but never given a branch here, so it can still

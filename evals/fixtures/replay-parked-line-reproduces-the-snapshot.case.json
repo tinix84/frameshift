@@ -1,0 +1,9 @@
+{
+  "id": "replay-parked-line-reproduces-the-snapshot",
+  "check": "replay_equivalence",
+  "artifact": "parked-line.checkpoint.v2.json",
+  "log": "evals/fixtures/parked-line.events.jsonl",
+  "expect": {
+    "outcome": "equivalent"
+  }
+}

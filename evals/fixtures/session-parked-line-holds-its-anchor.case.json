@@ -1,0 +1,28 @@
+{
+  "id": "session-parked-line-holds-its-anchor",
+  "check": "session_invariants",
+  "artifact": "parked-line.checkpoint.v2.json",
+  "at": [
+    "state"
+  ],
+  "mutate": [
+    {
+      "path": [
+        "lines",
+        0,
+        "node_ids"
+      ],
+      "value": [
+        "node_001",
+        "node_003"
+      ]
+    }
+  ],
+  "expect": {
+    "outcome": "invalid",
+    "violations_naming": [
+      "$.lines[0].node_ids holds the line's own anchor",
+      "invariant_violation"
+    ]
+  }
+}
