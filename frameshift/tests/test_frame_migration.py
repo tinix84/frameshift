@@ -142,6 +142,49 @@ class FrameContractTests(unittest.TestCase):
         self.assertEqual((refused["outcome"], refused["code"]), ("refused", "schema_invalid"))
         self.assertIn("superseded_by", refused["detail"])
 
+    def test_a_closed_challenge_reopens_and_loses_its_answer_or_concession(self):
+        """ADR-0033 (#284): the answer and the concession are the person's; the raise is not."""
+        person = {"id": "operator_001", "kind": "human"}
+        reasoner = {"id": "reasoner_001", "kind": "service"}
+        raised = {"target_id": "node_factor_001", "objection": "The quote is a single supplier.", "actor": reasoner}
+        state = copy.deepcopy(reference()["state"])
+        state["challenges"] = [
+            {"id": "chal_001", **raised, "status": "answered",
+             "answer": {"source_ids": ["node_outcome_001"], "note": "Two quotes agree.", "actor": person}},
+            {"id": "chal_002", **raised, "status": "conceded", "concession": {"actor": person}},
+            {"id": "chal_003", **raised, "status": "open"},
+        ]
+        migration.reset_decisions(state)
+        self.assertEqual(state["challenges"], [
+            {"id": "chal_001", **raised, "status": "open"},
+            {"id": "chal_002", **raised, "status": "open"},
+            {"id": "chal_003", **raised, "status": "open"},
+        ])
+
+    def test_a_parked_or_reopened_line_crosses_unchanged(self):
+        """ADR-0033 (#284): parking is a disposition about effort and holds no authority."""
+        person = {"id": "operator_001", "kind": "human"}
+        line = {"anchor_id": "node_outcome_001", "tip_ids": ["node_factor_001"], "node_ids": ["node_factor_001"],
+                "reason_code": "insufficient_evidence", "reason": "No second quote is available.", "actor": person}
+        lines = [
+            {"id": "line_001", **line, "status": "parked"},
+            {"id": "line_002", **line, "status": "reopened",
+             "reopening": {"reason": "A second quote arrived.", "actor": person}},
+        ]
+        state = copy.deepcopy(reference()["state"])
+        state["lines"] = copy.deepcopy(lines)
+        migration.reset_decisions(state)
+        self.assertEqual(state["lines"], lines)
+
+    def test_a_v1_source_cannot_carry_challenges_or_lines(self):
+        """ADR-0033: v1 has neither, so none crosses today; the reset covers any later source."""
+        for kind in ("challenges", "lines"):
+            source = reference()
+            source["state"][kind] = []
+            refused = self.migrate(source)
+            self.assertEqual((refused["outcome"], refused["code"], refused["checkpoint"]), ("refused", "schema_invalid", None))
+            self.assertIn(kind, refused["detail"])
+
     def test_an_archived_session_and_a_shortlisted_option_reset_too(self):
         source = reference()
         source["state"]["status"] = "archived"

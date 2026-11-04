@@ -124,14 +124,7 @@ def migrate_frame_axes(
             "approvals": [],
         }
     )
-    if state.get("status") in DECIDED_SESSION_STATUSES:
-        state["status"] = "active"
-    graph = state.get("graph", {})
-    for item in [*state.get("statements", []), *graph.get("nodes", []), *graph.get("edges", []), *state.get("options", [])]:
-        if item.get("status") in DECIDED_STATUSES:
-            item["status"] = "proposed"
-            # ADR-0029: the replacement is part of the supersession it resets.
-            item.pop("superseded_by", None)
+    reset_decisions(state)
     for frame in state["frames"]:
         abstraction_level, system_boundary = _AUTOMATIC_AXES[frame["abstraction_level"]]
         frame["abstraction_level"] = abstraction_level
@@ -176,6 +169,29 @@ def migrate_frame_axes(
         "detail": "",
         "checkpoint": migrated,
     }
+
+
+def reset_decisions(state: dict) -> None:
+    """Remove from a linked session's state every decision it holds no record of.
+
+    ADR-0025: decided statuses become `proposed`, a decided or archived session
+    becomes `active`. ADR-0033: an answered or conceded challenge reopens and
+    loses its answer or concession; parked lines cross unchanged. A v1 source
+    holds no `superseded_by`, challenge or line, so those resets serve any
+    later source.
+    """
+    if state.get("status") in DECIDED_SESSION_STATUSES:
+        state["status"] = "active"
+    graph = state.get("graph", {})
+    for item in [*state.get("statements", []), *graph.get("nodes", []), *graph.get("edges", []), *state.get("options", [])]:
+        if item.get("status") in DECIDED_STATUSES:
+            item["status"] = "proposed"
+            # ADR-0029: the replacement is part of the supersession it resets.
+            item.pop("superseded_by", None)
+    for challenge in state.get("challenges", []):
+        challenge["status"] = "open"
+        challenge.pop("answer", None)
+        challenge.pop("concession", None)
 
 
 def _refused(code: str, detail: str) -> dict:
