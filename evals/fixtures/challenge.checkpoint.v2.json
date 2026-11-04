@@ -1,0 +1,281 @@
+{
+  "artifacts": [],
+  "capability_profile": {
+    "adapter": {
+      "id": "frameshift.generic",
+      "version": "0.1.0"
+    },
+    "capabilities": [
+      {
+        "approval": "never",
+        "available": true,
+        "data_classes": [
+          "user-provided"
+        ],
+        "id": "artifact.read",
+        "limitations": [
+          "Only artifacts provided in the current context."
+        ],
+        "operations": [
+          "read-inline"
+        ],
+        "side_effect": "none",
+        "version": "1"
+      }
+    ],
+    "profile_id": "generic-conversation-only",
+    "schema_version": "1.0.0"
+  },
+  "checkpoint_digest": "sha256:82d07638f9211ae88eb28ef171971ed4240cbc6a116fa9c03e1439a549eec96c",
+  "contracts": {
+    "engines": {
+      "problem_framing": "1.0.0"
+    },
+    "prompts": {
+      "problem_framing": {
+        "digest": "sha256:bb57c98a14c2fd82ae287787c19cc079266a28160650326df33daf2cd685bea2",
+        "id": "frameshift.problem-framing.v2",
+        "version": "2.0.0"
+      }
+    }
+  },
+  "created_at": "2026-10-06T09:00:00Z",
+  "event_cursor": 23,
+  "execution_summaries": [],
+  "id": "ckpt_challenge_001",
+  "pending_proposals": [],
+  "phase": "causal",
+  "prior_checkpoint_digest": null,
+  "prompt_version_changes": [],
+  "schema_version": "2.0.0",
+  "session_id": "sess_t0001",
+  "session_revision": 16,
+  "state": {
+    "active_frame_id": "frame_001",
+    "approvals": [
+      {
+        "actor": {
+          "id": "user_lead_eng",
+          "kind": "human",
+          "role": "decision_owner"
+        },
+        "created_at": "2026-10-06T09:00:00Z",
+        "disposition": "approved",
+        "id": "appr_confirm_t0004",
+        "profile_id": "approval-profile-frameshift-manual-gui-local-0.1.0",
+        "session_revision": 2,
+        "target_digest": "sha256:619e0d3cc5ce615fe3bab79ea981b458a23ffc4a881da07f0321d89412ab6c37",
+        "target_id": "stmt_001"
+      },
+      {
+        "actor": {
+          "id": "user_lead_eng",
+          "kind": "human",
+          "role": "decision_owner"
+        },
+        "created_at": "2026-10-06T09:00:00Z",
+        "disposition": "approved",
+        "id": "appr_confirm_t0005",
+        "profile_id": "approval-profile-frameshift-manual-gui-local-0.1.0",
+        "session_revision": 6,
+        "target_digest": "sha256:46409c3a8094e11f74ee1b7e8aa0affaee9f45d2457e2ec5e6f37815daec5ec7",
+        "target_id": "frame_001"
+      }
+    ],
+    "challenges": [
+      {
+        "actor": {
+          "id": "svc_reasoner",
+          "kind": "service"
+        },
+        "answer": {
+          "actor": {
+            "id": "user_lead_eng",
+            "kind": "human",
+            "role": "decision_owner"
+          },
+          "note": "Two suppliers quote the same price.",
+          "source_ids": [
+            "node_001",
+            "art_second_quote"
+          ]
+        },
+        "id": "chal_001",
+        "objection": "The quote is from a single supplier.",
+        "status": "answered",
+        "target_id": "node_003"
+      },
+      {
+        "actor": {
+          "id": "svc_reasoner",
+          "kind": "service"
+        },
+        "id": "chal_002",
+        "objection": "A quote does not show the price dominates.",
+        "status": "open",
+        "target_id": "edge_001"
+      },
+      {
+        "actor": {
+          "id": "user_lead_eng",
+          "kind": "human",
+          "role": "decision_owner"
+        },
+        "concession": {
+          "actor": {
+            "id": "user_lead_eng",
+            "kind": "human",
+            "role": "decision_owner"
+          }
+        },
+        "id": "chal_003",
+        "objection": "Volume fell last year.",
+        "status": "conceded",
+        "target_id": "node_002"
+      }
+    ],
+    "criteria": [],
+    "frames": [
+      {
+        "abstraction_level": "product",
+        "assumptions": [],
+        "constraints": [],
+        "digest": "sha256:46409c3a8094e11f74ee1b7e8aa0affaee9f45d2457e2ec5e6f37815daec5ec7",
+        "excluded": [],
+        "id": "frame_001",
+        "included": [
+          "cell sourcing",
+          "pack architecture"
+        ],
+        "open_questions": [],
+        "outcome": "Pack cost per usable kWh meets the 2027 target.",
+        "question": "How might we reach the pack cost target without losing range?",
+        "status": "working",
+        "success_measures": [
+          "USD per usable kWh"
+        ],
+        "system_boundary": "supply_chain"
+      },
+      {
+        "abstraction_level": "business",
+        "assumptions": [],
+        "constraints": [],
+        "digest": "sha256:7663075d89eb5e3babd9b706b150cd06f6c124f498c4b3470c8f4aa1023864f5",
+        "excluded": [],
+        "id": "frame_002",
+        "included": [
+          "cell sourcing",
+          "pack architecture"
+        ],
+        "open_questions": [],
+        "outcome": "Pack cost per usable kWh meets the 2027 target.",
+        "question": "How might we lower the cost of a usable kWh across the pack's whole life?",
+        "status": "proposed",
+        "success_measures": [
+          "USD per usable kWh"
+        ],
+        "system_boundary": "lifecycle"
+      }
+    ],
+    "graph": {
+      "edges": [
+        {
+          "confidence": "unknown",
+          "id": "edge_001",
+          "provenance": {
+            "kind": "assumed",
+            "source_ids": [
+              "node_001",
+              "node_003"
+            ]
+          },
+          "source": "node_001",
+          "status": "proposed",
+          "target": "node_003",
+          "type": "supports"
+        }
+      ],
+      "nodes": [
+        {
+          "confidence": "unknown",
+          "id": "node_001",
+          "label": "Quote at volume.",
+          "provenance": {
+            "kind": "sourced",
+            "source_ids": [
+              "art_quote"
+            ]
+          },
+          "status": "proposed",
+          "type": "evidence"
+        },
+        {
+          "confidence": "unknown",
+          "id": "node_002",
+          "label": "Volume holds next year.",
+          "provenance": {
+            "kind": "assumed",
+            "note": "Supplied by the reasoner; not established.",
+            "source_ids": []
+          },
+          "status": "proposed",
+          "type": "assumption"
+        },
+        {
+          "confidence": "unknown",
+          "id": "node_003",
+          "label": "Cell price dominates.",
+          "provenance": {
+            "kind": "inferred",
+            "source_ids": [
+              "node_001"
+            ]
+          },
+          "status": "proposed",
+          "type": "hypothesis"
+        }
+      ],
+      "schema_version": "1.0.0"
+    },
+    "id": "sess_t0001",
+    "options": [],
+    "phase": "causal",
+    "revision": 16,
+    "schema_version": "2.0.0",
+    "statements": [
+      {
+        "id": "stmt_001",
+        "primary_role": "proposal",
+        "provenance": {
+          "kind": "observed",
+          "source_ids": [
+            "intake_t0001"
+          ]
+        },
+        "secondary_roles": [
+          "need"
+        ],
+        "status": "proposed",
+        "text": "Switch the pack to prismatic cells so we hit the cost target."
+      },
+      {
+        "id": "stmt_002",
+        "primary_role": "outcome",
+        "provenance": {
+          "kind": "observed",
+          "note": "Typed by the operator during intake.",
+          "source_ids": [
+            "intake_t0003"
+          ]
+        },
+        "secondary_roles": [],
+        "status": "proposed",
+        "text": "Pack cost per usable kWh meets the 2027 target."
+      }
+    ],
+    "status": "active",
+    "title": "Pack cost per kWh at the 2027 volume step",
+    "workspace_id": "ws_local"
+  },
+  "state_digest": "sha256:4e6e90af63582edeead8df97abf4e412fcd1aca7879664dd69022ca44e9db787"
+}

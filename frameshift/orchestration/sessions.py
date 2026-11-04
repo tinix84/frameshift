@@ -751,6 +751,67 @@ class SessionCoordinator:
         self._commit_next(state, [{"type": "graph.edge.added", "payload": payload}])
         return self.view(session_id)
 
+    # ------------------------------------------------- challenges (#275)
+
+    def raise_challenge(
+        self, session_id: str, *, target_id: str, objection: str, actor: dict, expected_revision: int
+    ) -> dict:
+        """Record a doubt about one graph node or edge (ADR-0031).
+
+        Any boundary may call this, a reasoner-facing one included: doubt
+        decides nothing. The caller names the actor that raises it.
+        """
+        state = self._expect(session_id, expected_revision, phase=None)
+        graph = state["graph"]
+        if not isinstance(target_id, str) or target_id not in {item["id"] for item in graph["nodes"] + graph["edges"]}:
+            raise CommandRefused(INVARIANT_VIOLATION, f"no graph node or edge {target_id!r} to challenge")
+        if not isinstance(objection, str) or not objection.strip():
+            raise CommandRefused(INVARIANT_VIOLATION, "a challenge states its objection")
+        challenge = {
+            "id": _next_id("chal", state.get("challenges", [])),
+            "target_id": target_id,
+            "objection": objection.strip(),
+            "actor": copy.deepcopy(actor),
+            "status": "open",
+        }
+        self._commit_next(state, [{"type": "challenge.raised", "payload": challenge}])
+        return self.view(session_id)
+
+    def answer_challenge(
+        self,
+        session_id: str,
+        *,
+        challenge_id: str,
+        source_ids: list[str],
+        expected_revision: int,
+        note: str | None = None,
+    ) -> dict:
+        """The person answers an open challenge, citing sources that resolve (ADR-0031, ADR-0012).
+
+        Closing a challenge is a judgement, so only a boundary that speaks for
+        the person calls this; a reasoner-facing boundary never exposes it.
+        """
+        state = self._expect(session_id, expected_revision, phase=None)
+        _open_challenge(state, challenge_id)
+        if not isinstance(source_ids, list):
+            raise CommandRefused(SCHEMA_INVALID, "an answer's source_ids are a list of source ids")
+        if not source_ids:
+            raise CommandRefused(INVARIANT_VIOLATION, "an answer cites one or more sources")
+        _check_citations(source_ids, state)
+        payload = {"id": challenge_id, "source_ids": list(dict.fromkeys(source_ids)), "actor": self.operator}
+        if isinstance(note, str) and note.strip():
+            payload["note"] = note.strip()
+        self._commit_next(state, [{"type": "challenge.answered", "payload": payload}])
+        return self.view(session_id)
+
+    def concede_challenge(self, session_id: str, *, challenge_id: str, expected_revision: int) -> dict:
+        """The person concedes an open challenge: a known weakness, and no status changes (ADR-0031)."""
+        state = self._expect(session_id, expected_revision, phase=None)
+        _open_challenge(state, challenge_id)
+        payload = {"id": challenge_id, "actor": self.operator}
+        self._commit_next(state, [{"type": "challenge.conceded", "payload": payload}])
+        return self.view(session_id)
+
     # ------------------------------------------------------ gates (#229, #205)
 
     def prepare_gate(self, session_id: str, *, gate: str, target_id: str) -> dict:
@@ -824,7 +885,8 @@ class SessionCoordinator:
 
     # ----------------------------------------------------------- the commit
 
-    def _expect(self, session_id: str, expected_revision: int, *, phase: str | tuple[str, ...]) -> dict:
+    def _expect(self, session_id: str, expected_revision: int, *, phase: str | tuple[str, ...] | None) -> dict:
+        """The state a command may act on. `phase=None` accepts any phase of an active session."""
         state = self.state(session_id)
         if type(expected_revision) is not int or expected_revision != state["revision"]:
             raise CommandRefused(
@@ -832,6 +894,12 @@ class SessionCoordinator:
                 f"command was formed against revision {expected_revision!r} and the session is at "
                 f"{state['revision']}; re-read before acting",
             )
+        if phase is None:
+            if state.get("status") != "active":
+                raise CommandRefused(
+                    INVARIANT_VIOLATION, f"this command needs an active session, and the session is {state.get('status')!r}"
+                )
+            return state
         phases = (phase,) if isinstance(phase, str) else phase
         if state["phase"] not in phases:
             named = repr(phase) if isinstance(phase, str) else " or ".join(repr(item) for item in phase)
@@ -1093,6 +1161,16 @@ def _sealing_events(state: dict, gate: str) -> list[dict]:
         for statement in state["statements"]
         if statement.get("status") == "draft" and "primary_role" in statement
     ]
+
+
+def _open_challenge(state: dict, challenge_id) -> dict:
+    """The open challenge a person's command closes, or a refusal."""
+    held = {item["id"]: item for item in state.get("challenges", [])}
+    if not isinstance(challenge_id, str) or challenge_id not in held:
+        raise CommandRefused(INVARIANT_VIOLATION, f"no challenge {challenge_id!r} in this session")
+    if held[challenge_id]["status"] != "open":
+        raise CommandRefused(INVARIANT_VIOLATION, f"{challenge_id!r} is already {held[challenge_id]['status']}")
+    return held[challenge_id]
 
 
 def _check_citations(sources: list[str], state: dict) -> None:

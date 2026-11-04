@@ -315,5 +315,22 @@ class TheFrameWithdrawalFoldsInBothReducers(unittest.TestCase):
         self.assertEqual(session.reference_violations(snapshot), [])
 
 
+class TheChallengesFoldInBothReducers(unittest.TestCase):
+    """#275 (ADR-0031): the three challenge events fold to the same state in both reducers."""
+
+    def test_both_reducers_reach_the_snapshot(self) -> None:
+        from evals.checks import replay as reference
+        from frameshift.orchestration import replay as application
+
+        snapshot = run.load("evals/fixtures/challenge.checkpoint.v2.json")["state"]
+        events = [json.loads(line) for line in (run.ROOT / "evals" / "fixtures" / "challenge.events.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+        self.assertEqual(application.fold(copy.deepcopy(events)), snapshot)
+        self.assertEqual(reference.fold(copy.deepcopy(events)), snapshot)
+        self.assertEqual([(c["id"], c["target_id"], c["status"]) for c in snapshot["challenges"]],
+                         [("chal_001", "node_003", "answered"), ("chal_002", "edge_001", "open"), ("chal_003", "node_002", "conceded")])
+        self.assertTrue(all("actor" in e["payload"] for e in events if e["type"].startswith("challenge.")))
+        self.assertEqual(session.reference_violations(snapshot), [])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,26 @@
+{
+  "id": "session-challenge-target-is-not-in-the-graph",
+  "check": "session_invariants",
+  "artifact": "challenge.checkpoint.v2.json",
+  "at": [
+    "state"
+  ],
+  "mutate": [
+    {
+      "path": [
+        "challenges",
+        0,
+        "target_id"
+      ],
+      "value": "stmt_001"
+    }
+  ],
+  "expect": {
+    "outcome": "invalid",
+    "violations_naming": [
+      "challenges[0].target_id",
+      "stmt_001",
+      "invariant_violation"
+    ]
+  }
+}
