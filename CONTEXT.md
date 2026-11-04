@@ -108,6 +108,43 @@ change the focal outcome.
 A band always names its basis and its owner. Numeric probabilities are used
 only when a calibrated method supplies them.
 
+## Grounding and parked lines
+
+**Grounding class** — what a node's provenance kind makes it worth as ground:
+`fact` (`observed`, `sourced`), `inference` (`inferred`), `opinion`
+(`assumed`), or `gap` (`unknown`) (ADR-0031).
+
+**Ground set** — the distinct bases a node rests on, found by walking back
+along support edges through inferences. Each base counts once.
+
+**Grounding profile** — what a node's ground set and challenges show: bases
+by grounding class, undecided, broken and parked bases, challenges on the
+node and upstream, and the weakest base. Derived, never recorded.
+
+**Weakest base** — the base of the lowest grounding class in a ground set;
+a broken base comes first.
+
+**Broken ground** — a base that is no longer live: `rejected`, `superseded`
+or `archived`.
+
+**Parked ground** — a base that a parked line holds. It counts by its
+grounding class and is never broken.
+
+**Grounding band** — the coarse colour of a node: `solid`, `mixed`, or
+`weak`. It orders and highlights, and never gates.
+
+**Solid ground** — a solid node that no other solid node rests on. The
+suggested anchor for a restart.
+
+**Challenge** — a recorded doubt about one graph node or edge (`chal_`):
+`open`, `answered`, or `conceded`. Anyone may raise one. Only the person
+answers or concedes it, and an answer cites its sources (ADR-0031).
+
+**Parked line** — a set of graph nodes the person stops working on, from an
+anchor to one or more tips, with a reason (`line_`, ADR-0032). A disposition
+about effort, not a verdict on truth: every status stays. The person may
+reopen it. What the person calls a dead end.
+
 ## Provenance
 
 **Provenance** — where a claim came from: a kind (`observed`, `sourced`,
