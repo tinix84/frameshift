@@ -15,7 +15,47 @@
     "proposal": {"type": "string", "minLength": 2, "maxLength": 20000},
     "actor": {"$ref": "common.schema.json#/$defs/actor"},
     "permitted_dispositions": {"type": "array", "items": {"type": "string", "enum": ["approved", "edited", "rejected", "deferred", "evidence_requested"]}, "minItems": 5, "uniqueItems": true},
-    "request_digest": {"$ref": "common.schema.json#/$defs/digest"}
+    "request_digest": {"$ref": "common.schema.json#/$defs/digest"},
+    "grounding": {"$ref": "#/$defs/grounding"}
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "$defs": {
+    "ids": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/id"}},
+    "grounding": {
+      "description": "ADR-0031: the target node's grounding profile, derived on read. It informs the person and never refuses the gate.",
+      "type": "object",
+      "required": ["band", "bases", "undecided", "broken", "parked", "challenges", "upstream_open", "weakest"],
+      "properties": {
+        "band": {"type": "string", "enum": ["solid", "mixed", "weak"]},
+        "bases": {
+          "type": "object",
+          "required": ["fact", "inference", "opinion", "gap"],
+          "properties": {
+            "fact": {"$ref": "#/$defs/ids"},
+            "inference": {"$ref": "#/$defs/ids"},
+            "opinion": {"$ref": "#/$defs/ids"},
+            "gap": {"$ref": "#/$defs/ids"}
+          },
+          "additionalProperties": false
+        },
+        "undecided": {"$ref": "#/$defs/ids"},
+        "broken": {"$ref": "#/$defs/ids"},
+        "parked": {"$ref": "#/$defs/ids"},
+        "challenges": {
+          "type": "object",
+          "required": ["open", "answered_by_fact", "answered_by_opinion", "conceded"],
+          "properties": {
+            "open": {"$ref": "#/$defs/ids"},
+            "answered_by_fact": {"$ref": "#/$defs/ids"},
+            "answered_by_opinion": {"$ref": "#/$defs/ids"},
+            "conceded": {"$ref": "#/$defs/ids"}
+          },
+          "additionalProperties": false
+        },
+        "upstream_open": {"$ref": "#/$defs/ids"},
+        "weakest": {"anyOf": [{"$ref": "common.schema.json#/$defs/id"}, {"type": "null"}]}
+      },
+      "additionalProperties": false
+    }
+  }
 }
