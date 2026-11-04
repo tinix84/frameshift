@@ -935,10 +935,24 @@ async function askConfirmation(gate, target) {
     if (proposal.description) readable.append(el("p", {}, proposal.description));
     for (const key of FRAME_LISTS) if (proposal[key]?.length) readable.append(el("strong", {}, words(key)), el("ul", {}, ...proposal[key].map(text => el("li", {}, text))));
   }
+  if (r.grounding) readable.append(groundingSummary(r.grounding));
   $("#confirm-binding").replaceChildren(...[["Gate", r.gate], ["Target", r.target_id], ["Content digest", r.target_digest], ["Session revision", r.session_revision], ["Signing as", `${r.actor.id} (${r.actor.role})`], ["Request digest", r.request_digest]]
     .flatMap(([k, v]) => [el("dt", {}, k), el("dd", {}, String(v))]));
   $("#confirm-proposal").textContent = JSON.stringify(proposal, null, 2);
   $("#confirm-dialog").showModal();
+}
+
+// ADR-0031: how much of a graph node rests on fact. It informs; the person decides.
+function groundingSummary(g) {
+  const ids = list => list.length ? list.join(", ") : "none";
+  return el("section", { class: "grounding", "aria-label": "Grounding" },
+    el("h4", {}, `Grounding: ${g.band}`),
+    el("p", { class: "hint" }, "Shown to inform your decision. It never blocks the gate."),
+    el("ul", {},
+      el("li", {}, `Weakest base: ${g.weakest || "none"}`),
+      el("li", {}, `Facts: ${ids(g.bases.fact)}. Inferences: ${ids(g.bases.inference)}. Opinions: ${ids(g.bases.opinion)}. Gaps: ${ids(g.bases.gap)}.`),
+      el("li", {}, `Broken: ${ids(g.broken)}. Parked: ${ids(g.parked)}. Undecided: ${ids(g.undecided)}.`),
+      el("li", {}, `Open challenges: ${ids(g.challenges.open)}. Conceded: ${ids(g.challenges.conceded)}. Open upstream: ${ids(g.upstream_open)}.`)));
 }
 
 async function answer(disposition) {

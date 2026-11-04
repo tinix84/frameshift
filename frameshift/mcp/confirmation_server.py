@@ -118,6 +118,7 @@ def elicitation_parameters(request: dict) -> dict:
             f"Target digest: {request['target_digest']}",
             f"Actor authority: {request['actor']['id']} ({request['actor'].get('role', '')})",
             "Permitted dispositions: " + ", ".join(dispositions),
+            *_grounding_lines(request.get("grounding")),
             "Exact proposal:",
             request["proposal"],
             "Selecting edited requires edited_proposal and never approves the edit.",
@@ -143,6 +144,25 @@ def elicitation_parameters(request: dict) -> dict:
             "additionalProperties": False,
         },
     }
+
+
+def _grounding_lines(profile: dict | None) -> list[str]:
+    """ADR-0031: how much of the target rests on fact. It informs; it never refuses."""
+    if profile is None:
+        return []
+    listed = lambda ids: ", ".join(ids) or "none"  # noqa: E731
+    bases = profile["bases"]
+    challenges = profile["challenges"]
+    return [
+        f"Grounding band: {profile['band']}",
+        f"Weakest base: {profile['weakest'] or 'none'}",
+        "Bases: " + "; ".join(f"{name} {listed(bases[name])}" for name in ("fact", "inference", "opinion", "gap")),
+        f"Broken bases: {listed(profile['broken'])}",
+        f"Parked bases: {listed(profile['parked'])}",
+        f"Undecided bases: {listed(profile['undecided'])}",
+        f"Open challenges: {listed(challenges['open'])}; conceded: {listed(challenges['conceded'])}; "
+        f"open upstream: {listed(profile['upstream_open'])}",
+    ]
 
 
 def translate_elicitation_response(request: dict, native: dict) -> dict:

@@ -14,7 +14,7 @@ from frameshift.broker.confirmation import bind_confirmation_response, build_req
 from frameshift.contracts import errors
 from frameshift.validation import validate_against
 
-from . import transitions
+from . import grounding, transitions
 
 
 class ConfirmationWorkflow:
@@ -45,6 +45,8 @@ class ConfirmationWorkflow:
             target_digest=transitions.content_digest(target),
             proposal=json.dumps(target, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
             actor=actor,
+            # ADR-0031: a graph node shows its grounding profile; it informs, never refuses.
+            grounding=grounding.derive(self._session)["nodes"].get(transition["target_id"]),
         )
         self._pending[request_id] = (
             request,

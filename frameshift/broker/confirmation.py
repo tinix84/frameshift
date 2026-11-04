@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass
 import json
 from pathlib import Path
@@ -107,8 +108,14 @@ def build_request(
     target_digest: str,
     proposal: str,
     actor: dict,
+    grounding: dict | None = None,
 ) -> dict:
-    """Build the exact, provider-neutral content a client must display."""
+    """Build the exact, provider-neutral content a client must display.
+
+    `grounding` is the target's grounding profile when the target is a graph
+    node (ADR-0031). The request digest covers it, so what the person saw is
+    what the response binds.
+    """
     request = {
         "schema_version": "1.0.0",
         "id": request_id,
@@ -127,6 +134,8 @@ def build_request(
             "evidence_requested",
         ],
     }
+    if grounding is not None:
+        request["grounding"] = copy.deepcopy(grounding)
     request["request_digest"] = request_digest(request)
     violations = validate_against(request, "confirmation-request.schema.json")
     if violations:
