@@ -22,13 +22,14 @@
     "evals/fixtures/symptom.checkpoint.v2.json": "checkpoint.v2.schema.json",
     "evals/fixtures/supersession.checkpoint.v2.json": "checkpoint.v2.schema.json",
     "evals/fixtures/frame-withdrawal.checkpoint.v2.json": "checkpoint.v2.schema.json",
-    "evals/fixtures/challenge.checkpoint.v2.json": "checkpoint.v2.schema.json"
+    "evals/fixtures/challenge.checkpoint.v2.json": "checkpoint.v2.schema.json",
+    "evals/fixtures/parked-line.checkpoint.v2.json": "checkpoint.v2.schema.json"
   },
   "deliberately_invalid": {
     "evals/fixtures/repair/unnamed-engine.repaired.json": "the repair-unrepairable-output corpus case needs an attempt that still fails validation"
   },
   "expect": {
     "outcome": "valid",
-    "min_artifacts": 23
+    "min_artifacts": 24
   }
 }
