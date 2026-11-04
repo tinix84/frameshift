@@ -154,6 +154,7 @@ def gui_vocabulary() -> dict:
         "node_types": graph["node"]["properties"]["type"]["enum"],
         "edge_types": graph["edge"]["properties"]["type"]["enum"],
         "confidence": common["confidence"]["enum"],
+        "line_reason_codes": session["line"]["properties"]["reason_code"]["enum"],
     }
 
 

@@ -64,6 +64,15 @@ aside.log { grid-column: 2; border-left: 0; border-top: 1px solid var(--rule); }
 .canvas-card[data-type="hypothesis"], .canvas-card[data-type="assumption"] { --node-color: var(--caution); }
 .canvas-card[aria-pressed="true"] { outline: 3px solid var(--steel); outline-offset: 3px; }
 .canvas-card.dimmed { opacity: .35; }
+.canvas-card[data-band="solid"] { border-left: 6px solid var(--signed); }
+.canvas-card[data-band="mixed"] { border-left: 6px solid var(--caution); }
+.canvas-card[data-band="weak"] { border-left: 6px solid var(--refused); }
+.canvas-card.broken { border: 2px solid var(--refused); border-left-width: 6px; }
+.canvas-card.parked { opacity: .5; filter: grayscale(1); }
+.canvas-card.solid-ground { box-shadow: 0 0 0 4px rgb(30 116 102 / .35), 0 3px 12px rgb(0 0 0 / .08); }
+.grounding-list li { margin: .2rem 0; }
+.grounding-panel fieldset label { display: flex; flex-direction: row; align-items: flex-start; gap: .45rem; }
+.grounding-panel fieldset input[type="checkbox"] { width: auto; flex: none; margin-top: .2rem; }
 .canvas-card:active { cursor: grabbing; }
 .canvas-edges { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
 .canvas-edges path.connection { fill: none; stroke: var(--muted); stroke-width: 1.5px; }
@@ -411,6 +420,25 @@ function canvasModel(state) {
   return {items, edges};
 }
 
+// ADR-0031 and ADR-0032: what the canvas shows about a node's ground. Derived on read; it never gates.
+const GROUNDING = () => VIEW?.derived?.grounding || { nodes: {}, solid_ground: [] };
+const parkedLines = state => (state.lines || []).filter(line => line.status === "parked");
+
+function groundingMarks(state, node) {
+  const profile = GROUNDING().nodes[node.id];
+  const broken = WITHDRAWN.includes(node.status);
+  const parked = parkedLines(state).some(line => line.node_ids.includes(node.id));
+  const solid = GROUNDING().solid_ground.includes(node.id);
+  const band = profile ? profile.band : null;
+  const notes = [band && `grounding ${band}`, broken && "broken ground", parked && "parked", solid && "solid ground, a suggested restart anchor"].filter(Boolean);
+  return {
+    band,
+    classes: [broken && "broken", parked && "parked", solid && "solid-ground"].filter(Boolean),
+    badge: [band, broken && "broken", parked && "parked", solid && "solid ground"].filter(Boolean).join(" · "),
+    spoken: notes.join(", "),
+  };
+}
+
 function spatialCanvas(state, world, viewport, shell, inspect) {
   const model = canvasModel(state), cards = new Map(), lines = [];
   let view = CANVAS_VIEWS.get(state.id);
@@ -439,8 +467,10 @@ function spatialCanvas(state, world, viewport, shell, inspect) {
     positions.set(item.id, saved && [saved.x, saved.y].every(Number.isFinite) ? {...saved} : {x, y});
     const type = item.type || item.primary_role || kind;
     const label = kind === "frame" || kind === "rung" ? item.outcome : kind === "statement" ? item.text : item.label;
-    const card = el("button", {type: "button", class: "canvas-card", "data-item": item.id, "data-type": type,
-      "aria-label": `${label}. ${words(type)}. Select to inspect; arrow keys move this card.`, "aria-pressed": "false",
+    const ground = kind === "node" ? groundingMarks(state, item) : null;
+    const card = el("button", {type: "button", class: ["canvas-card", ...(ground ? ground.classes : [])].join(" "), "data-item": item.id, "data-type": type,
+      "data-band": ground ? ground.band : null,
+      "aria-label": `${label}. ${words(type)}.${ground ? ` ${ground.spoken}.` : ""} Select to inspect; arrow keys move this card.`, "aria-pressed": "false",
       onclick: () => { if (!suppressClick) inspect(item, kind); },
       ondblclick: () => { inspect(item, kind); focusCard(item.id); },
       onpointerdown: event => {
@@ -456,7 +486,7 @@ function spatialCanvas(state, world, viewport, shell, inspect) {
         const pos = positions.get(item.id); pos.x += delta[0]; pos.y += delta[1];
         view.positions[item.id] = {...pos}; paint(); save();
       }}, el("small", {}, `${words(type)} · ${item.status || "context"}`), el("strong", {}, label),
-      el("small", {}, item.provenance ? `${item.provenance.kind} · ${item.confidence || "unrated"}` : "Recorded context"));
+      el("small", {}, item.provenance ? `${item.provenance.kind} · ${item.confidence || "unrated"}${ground ? ` · ${ground.badge}` : ""}` : "Recorded context"));
     cards.set(item.id, card); world.append(card);
   });
   for (const edge of model.edges) {
@@ -571,7 +601,7 @@ function reasoningMap(state) {
   const layout = el("div", { class: "canvas-shell" }, viewport, detail);
   let highlight = () => {};
   section.append(el("p", { class: "hint" }, state.graph.nodes.length
-    ? "Each card is one recorded node. Lines retain their direction and relation; dashed red lines mark contradictions."
+    ? "Each card is one recorded node. Lines retain their direction and relation; dashed red lines mark contradictions. The left edge shows grounding: green solid, amber mixed, red weak. A red outline marks broken ground, a grey card is parked, and a halo marks solid ground to restart from."
     : "Intake cards are grouped by role, not causal claims. Connections appear when a causal graph has been recorded."), layout);
   function inspect(item, kind) {
     SELECTED = item.id;
@@ -604,6 +634,7 @@ function reasoningMap(state) {
       const byId = new Map(state.graph.nodes.map(n => [n.id, n]));
       const edges = state.graph.edges.filter(e => e.source === item.id || e.target === item.id);
       detail.append(el("h3", {}, "All connections"), el("ul", {}, ...edges.map(e => el("li", {}, `${byId.get(e.source)?.label || e.source} → ${words(e.type)} → ${byId.get(e.target)?.label || e.target} (${e.status})`))));
+      detail.append(groundingPanel(state, item));
     }
     detail.append(el("details", {}, el("summary", {}, "Exact recorded item"), el("pre", { class: "json" }, JSON.stringify(item, null, 2))));
     detail.prepend(el("button", { type: "button", class: "close-detail", onclick: () => { detail.hidden = true; SELECTED = null; highlight(null); } }, "Close details"));
@@ -613,7 +644,112 @@ function reasoningMap(state) {
   const all = [...state.statements.map(item => [item, "statement"]), ...state.frames.map(item => [item, "frame"]), ...state.graph.nodes.map(item => [item, "node"]), ...(state.ladder || []).map(item => [item, "rung"])];
   const selected = all.find(([item]) => item.id === SELECTED);
   if (selected) inspect(...selected);
+  if (state.graph.nodes.length) section.append(groundingList(state, item => inspect(item, "node")));
   return section;
+}
+
+// ADR-0031 and ADR-0032: the canvas's information and actions as a list, for a reader without the canvas.
+function groundingList(state, inspect) {
+  const g = GROUNDING();
+  const box = el("details", { class: "grounding-list", open: true }, el("summary", {}, "Grounding, challenges and parked lines as a list"));
+  box.append(el("p", { class: "hint" }, `Solid ground (suggested restart anchors): ${g.solid_ground.length ? g.solid_ground.join(", ") : "none yet"}.`));
+  box.append(el("ul", {}, ...state.graph.nodes.map(node => {
+    const marks = groundingMarks(state, node), profile = g.nodes[node.id];
+    const open = (state.challenges || []).filter(c => c.target_id === node.id && c.status === "open").length;
+    return el("li", {}, el("button", { type: "button", "data-list-item": node.id, onclick: () => inspect(node) }, node.label),
+      ` ${node.id} · ${marks.badge || "no band"}${profile ? ` · weakest base ${profile.weakest || "none"}` : ""} · ${open} open challenge(s)`);
+  })));
+  const lines = state.lines || [];
+  box.append(el("h4", {}, "Lines"), lines.length
+    ? el("ul", {}, ...lines.map(line => lineItem(line, state.status === "active")))
+    : el("p", { class: "empty" }, "No line is parked."));
+  return box;
+}
+
+function groundingPanel(state, node) {
+  const active = state.status === "active";
+  const box = el("section", { class: "grounding-panel", "aria-label": "Grounding and challenges" });
+  const profile = GROUNDING().nodes[node.id];
+  if (profile) box.append(groundingSummary(profile));
+  if (GROUNDING().solid_ground.includes(node.id)) box.append(el("p", { class: "hint" }, "Solid ground: a suggested anchor to restart from."));
+  const edges = state.graph.edges.filter(e => e.source === node.id || e.target === node.id);
+  const targets = [node.id, ...edges.map(e => e.id)];
+  const challenges = (state.challenges || []).filter(c => targets.includes(c.target_id));
+  box.append(el("h4", {}, "Challenges"), challenges.length
+    ? el("ul", {}, ...challenges.map(c => challengeItem(c, active)))
+    : el("p", { class: "empty" }, "No challenge on this node or its connections."));
+  if (active) box.append(raiseForm(node, edges));
+  const lines = (state.lines || []).filter(line => line.anchor_id === node.id || line.node_ids.includes(node.id));
+  if (lines.length) box.append(el("h4", {}, "Lines"), el("ul", {}, ...lines.map(line => lineItem(line, active))));
+  if (active) box.append(parkForm(state, node));
+  return box;
+}
+
+function challengeItem(c, active) {
+  const item = el("li", {}, `${c.id} on ${c.target_id}: ${c.objection} (${c.status}; raised by ${c.actor.id})`);
+  if (c.answer) item.append(el("div", { class: "hint" }, `Answer cites ${c.answer.source_ids.join(", ")}${c.answer.note ? `: ${c.answer.note}` : ""}`));
+  if (!active || c.status !== "open") return item;
+  const sources = el("input", { "aria-label": `Source ids that answer ${c.id}`, placeholder: "node_001, art_quote", required: true, size: 28 });
+  const note = el("input", { "aria-label": `Answer note for ${c.id}`, placeholder: "Optional note", size: 28 });
+  item.append(el("form", { class: "inline", onsubmit: ev => { ev.preventDefault();
+      const source_ids = sources.value.split(/[\s,]+/).filter(Boolean);
+      run(() => api("POST", `/api/sessions/${CURRENT}/challenges/${c.id}/answer`, { source_ids, note: note.value || null, expected_revision: VIEW.state.revision }));
+    } }, sources, note, el("button", { type: "submit" }, "Answer")),
+    el("button", { type: "button", onclick: () => {
+      if (confirm(`Concede ${c.id}? It stays on its target as a known weakness.`))
+        run(() => api("POST", `/api/sessions/${CURRENT}/challenges/${c.id}/concede`, { expected_revision: VIEW.state.revision }));
+    } }, "Concede"));
+  return item;
+}
+
+function raiseForm(node, edges) {
+  const target = el("select", { "aria-label": "What the challenge targets" }, el("option", { value: node.id }, `This node (${node.id})`),
+    ...edges.map(e => el("option", { value: e.id }, `Connection ${e.id}: ${e.source} ${words(e.type)} ${e.target}`)));
+  const objection = el("input", { "aria-label": "Objection", placeholder: "What do you doubt, and why?", required: true, size: 40 });
+  return el("form", { class: "inline", onsubmit: ev => { ev.preventDefault();
+      run(() => api("POST", `/api/sessions/${CURRENT}/challenges`, { target_id: target.value, objection: objection.value, expected_revision: VIEW.state.revision }));
+    } }, target, objection, el("button", { type: "submit" }, "Raise challenge"));
+}
+
+function lineItem(line, active) {
+  const item = el("li", {}, `${line.id} from ${line.anchor_id} to ${line.tip_ids.join(", ")}: ${words(line.reason_code)}. ${line.reason} (${line.status}; holds ${line.node_ids.join(", ")})`);
+  if (line.reopening) item.append(el("div", { class: "hint" }, `Reopened: ${line.reopening.reason}`));
+  if (!active || line.status !== "parked") return item;
+  const reason = el("input", { "aria-label": `Why reopen ${line.id}`, placeholder: "Why reopen it?", required: true, size: 32 });
+  item.append(el("form", { class: "inline", onsubmit: ev => { ev.preventDefault();
+    run(() => api("POST", `/api/sessions/${CURRENT}/lines/${line.id}/reopen`, { reason: reason.value, expected_revision: VIEW.state.revision }));
+  } }, reason, el("button", { type: "submit" }, "Reopen")));
+  return item;
+}
+
+// ADR-0032: the person names an anchor and tips, the boundary proposes the nodes, the person confirms the exact set.
+function parkForm(state, anchor) {
+  const others = state.graph.nodes.filter(n => n.id !== anchor.id);
+  const tips = others.map(n => el("input", { type: "checkbox", value: n.id, "aria-label": `Tip ${n.id}: ${n.label}` }));
+  const chosen = el("fieldset", {}, el("legend", {}, "Nodes the line holds (confirm the exact set)"));
+  const members = [];
+  const code = el("select", { "aria-label": "Reason code" }, ...(META?.vocabulary?.line_reason_codes || []).map(x => el("option", { value: x }, words(x))));
+  const reason = el("input", { "aria-label": "Reason", placeholder: "One sentence: why stop this line?", required: true, size: 40 });
+  const propose = el("button", { type: "button", onclick: async () => {
+    const tip_ids = tips.filter(t => t.checked).map(t => t.value);
+    const out = await run(() => api("POST", `/api/sessions/${CURRENT}/lines/proposal`, { anchor_id: anchor.id, tip_ids }));
+    if (!out) return;
+    members.length = 0;
+    chosen.replaceChildren(el("legend", {}, "Nodes the line holds (confirm the exact set)"), ...others.map(n => {
+      const box = el("input", { type: "checkbox", value: n.id, checked: out.node_ids.includes(n.id) });
+      members.push(box);
+      return el("label", {}, box, ` ${n.id}: ${n.label}`);
+    }));
+  } }, "Propose the line's nodes");
+  return el("details", {}, el("summary", {}, "Park line…"),
+    el("p", { class: "hint" }, `Anchor: ${anchor.id}. Parking stops effort on the line and changes no status.`),
+    el("fieldset", {}, el("legend", {}, "Tips (where the line ends)"), ...tips.map((t, i) => el("label", {}, t, ` ${others[i].id}: ${others[i].label}`))),
+    propose, chosen,
+    el("form", { class: "inline", onsubmit: ev => { ev.preventDefault();
+      const node_ids = members.filter(m => m.checked).map(m => m.value);
+      const tip_ids = tips.filter(t => t.checked).map(t => t.value);
+      run(() => api("POST", `/api/sessions/${CURRENT}/lines`, { anchor_id: anchor.id, tip_ids, node_ids, reason_code: code.value, reason: reason.value, expected_revision: VIEW.state.revision }));
+    } }, code, reason, el("button", { type: "submit" }, "Park line")));
 }
 
 // ------------------------------------------------------------------ intake
