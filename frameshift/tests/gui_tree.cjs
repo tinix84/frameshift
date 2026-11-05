@@ -27,7 +27,7 @@ const page = fs.readFileSync(path.join(__dirname, '../gui/index.html'), 'utf8');
 const source = page.match(/<script>([\s\S]*?)<\/script>/)[1].split('// -------------------------------------------------------------------- boot')[0];
 const context = vm.createContext({document, console, setTimeout});
 vm.runInContext(source + `
-globalThis.ui = { nextStep, reasoningMap, canvasModel, setup(state, derived) {
+globalThis.ui = { nextStep, reasoningMap, canvasModel, refreshAction, dirty, setup(state, derived) {
   SELECTED = null; VIEW = {state, derived}; CURRENT = state.id;
   META = {operator: {role: 'decision_owner'}, vocabulary: {statement_roles:['observation','question'], line_reason_codes:['insufficient_evidence','duplicate']}};
 }};`, context);
@@ -103,4 +103,15 @@ for (const text of [/Grounding: weak/, /chal_001 on node_b: One supplier only/, 
 tree.all('button').find(b => b.attrs['data-list-item'] === 'node_c').events.click();
 assert.match(tree.textContent, /Grounding: mixed/, 'the list opens the same inspector');
 assert.equal(JSON.stringify(grounded).includes('"band"'), false, 'grounding is never written into state');
+// #286: live refresh redraws on a new revision, and holds while the person edits.
+assert.equal(ui.refreshAction(3, 3, false), 'none', 'an unchanged revision draws nothing');
+assert.equal(ui.refreshAction(3, 4, false), 'redraw', 'a commit by another process is drawn');
+assert.equal(ui.refreshAction(3, 4, true), 'hold', 'an edit in progress is never thrown away');
+assert.equal(ui.refreshAction(undefined, 4, false), 'none', 'nothing is drawn before a session is open');
+assert.equal(ui.dirty({type:'text', value:'typed', defaultValue:''}), true);
+assert.equal(ui.dirty({type:'text', value:'', defaultValue:''}), false);
+assert.equal(ui.dirty({type:'checkbox', checked:true, defaultChecked:false}), true);
+assert.equal(ui.dirty({tagName:'SELECT', selectedIndex:0, options:[{defaultSelected:false}, {defaultSelected:false}]}), false, 'a select left on its first option is untouched');
+assert.equal(ui.dirty({tagName:'SELECT', selectedIndex:0, options:[{defaultSelected:false}, {defaultSelected:true}]}), true);
+assert.equal(ui.dirty({tagName:'SELECT', selectedIndex:-1, options:[]}), false, 'an empty select holds no entry');
 console.log('PASS card type labels, no background groups, source-text escaping, blocked continuation, node inspection, cycle edges, disconnected nodes, contradiction links, layout-only movement, grounding bands, broken and parked ground, solid ground, challenge and line actions, and the list equivalent');

@@ -62,6 +62,7 @@ ROUTES = [
     ("GET", r"^/api/sessions$", "list_sessions"),
     ("POST", r"^/api/sessions$", "open_session"),
     ("GET", rf"^/api/sessions/{SESSION}$", "view"),
+    ("GET", rf"^/api/sessions/{SESSION}/revision$", "revision"),
     ("GET", rf"^/api/sessions/{SESSION}/record$", "record"),
     ("POST", rf"^/api/sessions/{SESSION}/manual-result$", "manual_result"),
     ("POST", rf"^/api/sessions/{SESSION}/engine-result$", "admit_result"),
@@ -124,6 +125,11 @@ class ManualApp:
 
     def view(self, body, sid):
         return self.coordinator.view(sid)
+
+    def revision(self, body, sid):
+        # #286: another process may commit to this session (the reasoner's
+        # MCP server). The page polls this and redraws when it moves.
+        return {"revision": self.coordinator.state(sid)["revision"]}
 
     def record(self, body, sid):
         return {"markdown": self._record(self.coordinator.state(sid))}
