@@ -1112,7 +1112,80 @@ async function showRecord() {
 }
 $("#record-details").addEventListener("toggle", ev => { if (ev.target.open) showRecord(); });
 
+// ------------------------------------------------------------ live refresh
+// #286: another process, such as the reasoner's MCP server, may commit to the
+// open session. Poll its revision and redraw when it moves. Hold the redraw
+// while the person is editing, dragging or reviewing a confirmation, so that
+// nothing they are typing is thrown away.
+const POLL_MS = 3000;
+let POLLING = false, HELD_AT = null, POINTER_DOWN = false;
+
+function refreshAction(seen, latest, busy) {
+  if (seen == null || latest == null || seen === latest) return "none";
+  return busy ? "hold" : "redraw";
+}
+
+function dirty(field) {
+  if (field.type === "checkbox" || field.type === "radio") return field.checked !== field.defaultChecked;
+  if (field.tagName === "SELECT") {
+    if (!field.options.length) return false;
+    const initial = [...field.options].findIndex(option => option.defaultSelected);
+    return field.selectedIndex !== (initial < 0 ? 0 : initial);
+  }
+  return field.value !== field.defaultValue;
+}
+
+function editing() {
+  if ($("#confirm-dialog").open || POINTER_DOWN) return true;
+  const active = document.activeElement;
+  if (active && active.closest && active.closest("#work") && ["INPUT", "TEXTAREA", "SELECT"].includes(active.tagName)) return true;
+  return [...document.querySelectorAll("#work input, #work textarea, #work select")].some(dirty);
+}
+
+// The camera and the selection survive a render already (CANVAS_VIEWS, SELECTED);
+// disclosure states and the scroll position are kept here.
+async function redraw() {
+  const opened = new Map([...document.querySelectorAll("#work details")].map(d => [d.querySelector("summary")?.textContent, d.open]));
+  const y = window.scrollY;
+  HELD_AT = null;
+  await load(CURRENT, true);
+  for (const d of document.querySelectorAll("#work details")) {
+    const key = d.querySelector("summary")?.textContent;
+    if (opened.has(key)) d.open = opened.get(key);
+  }
+  window.scrollTo(0, y);
+}
+
+// Not `transient`: render keeps a transient notice, and any render shows the
+// latest revision, so this one must go with it.
+function heldNotice(revision) {
+  const work = $("#work");
+  const old = $(".notice.held-refresh", work);
+  if (old) old.remove();
+  work.prepend(el("div", { class: "notice caution held-refresh", role: "status" },
+    `The session moved to revision ${revision} while you were editing. Your entry stays on screen, but a save from it will be refused as stale. `,
+    el("button", { type: "button", onclick: () => redraw() }, "Show the latest revision")));
+}
+
+async function poll() {
+  if (POLLING || document.hidden || !META) return;
+  POLLING = true;
+  try {
+    if (!CURRENT) { await refreshSessions(); return; }
+    const { revision } = await api("GET", `/api/sessions/${CURRENT}/revision`);
+    const action = refreshAction(VIEW?.state.revision, revision, editing());
+    if (action === "redraw") await redraw();
+    else if (action === "hold" && HELD_AT !== revision) { HELD_AT = revision; heldNotice(revision); }
+  } catch (_) {
+    // A missed poll is retried on the next tick; a command still reports its own refusal.
+  } finally { POLLING = false; }
+}
+
 // -------------------------------------------------------------------- boot
+document.addEventListener("pointerdown", () => { POINTER_DOWN = true; });
+for (const end of ["pointerup", "pointercancel"]) document.addEventListener(end, () => { POINTER_DOWN = false; });
+setInterval(poll, POLL_MS);
+
 $("#open-form").addEventListener("submit", ev => {
   ev.preventDefault();
   const f = ev.target;

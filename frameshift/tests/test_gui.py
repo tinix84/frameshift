@@ -277,6 +277,23 @@ class GuiBoundary(unittest.TestCase):
         status, view = self.call("POST", f"/api/sessions/{sid}/nodes", {"node": dict(node, status="draft"), "expected_revision": before})
         self.assertEqual((status, view["state"]["graph"]["nodes"][0]["status"]), (200, "draft"))
 
+    def test_the_revision_route_shows_a_commit_made_by_another_process(self) -> None:
+        """#286: the reasoner's server writes the same store; the page polls this route to redraw."""
+        sid = self.open()
+        self.assertEqual(self.call("GET", f"/api/sessions/{sid}/revision"), (200, {"revision": 0}))
+        # A second coordinator on the same store stands in for the other process.
+        other = manual_coordinator(Path(self._dir.name), OWNER, clock=lambda: "2026-11-05T09:00:00Z", new_suffix=lambda: "x0001")
+        other.add_statement(sid, text="Cells are most of the pack cost.", primary_role="observation", expected_revision=0)
+        self.assertEqual(self.call("GET", f"/api/sessions/{sid}/revision"), (200, {"revision": 1}))
+        status, view = self.call("GET", f"/api/sessions/{sid}")
+        self.assertEqual((status, view["state"]["statements"][-1]["text"]), (200, "Cells are most of the pack cost."))
+        self.assertEqual(self.call("GET", f"/api/sessions/{sid}/revision", token=None)[0], 403)
+
+    def test_the_page_polls_the_open_sessions_revision(self) -> None:
+        _, page = self.call("GET", "/", token=None)
+        self.assertIn("/revision`", page)
+        self.assertIn("setInterval(poll, POLL_MS)", page)
+
     def test_the_page_carries_the_framing_controls(self) -> None:
         _, page = self.call("GET", "/", token=None)
         for marker in ("rung-form", "frame-form", "/held/", "frameSetNotice", "drops out of view"):
