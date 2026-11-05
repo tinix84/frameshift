@@ -84,6 +84,47 @@ is a useful starting point for understanding the expected reasoning behaviour.
 
 The first implementation milestone is a vertical slice that accepts an intake, produces a framing ladder, asks for human approval, and writes a portable checkpoint — milestone [`M1`](https://github.com/tinix84/frameshift/milestone/2).
 
+## Work in tandem with a reasoner
+
+FrameShift calls no model ([ADR-0009](docs/adr/0009-mcp-server-runtime-boundary.md)). A reasoner, such as Claude Code, connects to FrameShift as an MCP client. The reasoner proposes and challenges. You judge in the manual GUI. Both processes write the same event log for each session, and a stale write from either one is refused ([#286](https://github.com/tinix84/frameshift/issues/286)).
+
+The reasoner server has nine tools. Three read: list the sessions, read one session with its grounding, and read its event history. Six write: add a statement, propose a frame, record a ladder rung, offer a node or an edge, and raise a challenge. It has no tool that decides. Only the GUI opens a session, records your own words, activates or withdraws a frame, answers or concedes a challenge, parks or reopens a line, and approves a gate.
+
+Try it in five steps. Run each command from the repository root.
+
+1. Start the GUI. It opens `http://127.0.0.1:8765/` and stores sessions in `.frameshift/sessions`. Open a session from your request on the page.
+
+   ```sh
+   python -m frameshift.bootstrap gui
+   ```
+
+2. Register the reasoner server with Claude Code. The server reads the same store. `--actor` is the id that its challenges and causal edges record.
+
+   ```sh
+   claude mcp add frameshift -- python -m frameshift.bootstrap reasoner --store .frameshift/sessions --actor reasoner_local
+   ```
+
+   The project-scoped equivalent in `.mcp.json` is:
+
+   ```json
+   {
+     "mcpServers": {
+       "frameshift": {
+         "command": "python",
+         "args": ["-m", "frameshift.bootstrap", "reasoner", "--store", ".frameshift/sessions", "--actor", "reasoner_local"]
+       }
+     }
+   }
+   ```
+
+3. Start Claude Code in the repository root. Make sure that `claude mcp list` shows `frameshift` as connected.
+4. Ask Claude to read your session and add the statements it infers in intake. Seal intake in the GUI. Then ask for two to five candidate frames that differ in outcome, level or boundary. Activate one and seal frame selection in the GUI.
+5. In the causal step, ask Claude to add hypotheses, evidence and the edges between them, and to challenge the weakest node. The GUI draws each change within about three seconds. Answer or concede each challenge, and park a dead-end line, in the GUI.
+
+The GUI holds a redraw while you type in a form. A notice then offers the latest revision. A save from that form is refused as stale, so copy your entry first.
+
+**Limit.** The GUI's approvals rest on your attestation that no agent runs under your account while it is open ([ADR-0022](docs/adr/0022-manual-gui-boundary.md)). Claude Code in the same account breaks that attestation. The reasoner server exposes no approval, but Claude Code can reach the loopback page through its other tools. An approval made during a tandem run still records the local manual profile, so the log does not show that an agent was running. Do not count such an approval as evidence of a trusted human confirmation. Whether a tandem run gets its own approval profile is not decided yet. How to install and start the server and the GUI for other users is open in [#189](https://github.com/tinix84/frameshift/issues/189).
+
 ## Runtime portability
 
 The canonical state is JSON, never provider-specific chat history. Every engine consumes and emits versioned contracts, tools are discovered through a capability manifest, and checkpoints include normalized outputs plus hashes.
