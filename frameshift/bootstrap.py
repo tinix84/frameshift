@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -239,6 +240,8 @@ def manual_coordinator(
 
 
 MIN_PASSWORD_LENGTH = 16
+# The local store the GUI and the reasoner server share by default (#286).
+LOCAL_STORE = Path(".frameshift") / "sessions"
 
 
 def gui_main(argv: list[str] | None = None, environ: dict | None = None) -> int:
@@ -287,7 +290,7 @@ def gui_main(argv: list[str] | None = None, environ: dict | None = None) -> int:
     else:
         password, bind, public_hosts = None, "127.0.0.1", ()
         port = args.port or 8765
-        default_store = Path(".frameshift") / "sessions"
+        default_store = LOCAL_STORE
     store = args.store or (Path(env["FRAMESHIFT_STORE"]) if env.get("FRAMESHIFT_STORE") else default_store)
 
     coordinator = manual_coordinator(store, operator, bind=bind, public_hosts=public_hosts)
@@ -318,6 +321,90 @@ def gui_main(argv: list[str] | None = None, environ: dict | None = None) -> int:
     return 0
 
 
+REASONER_CLIENT_ID = "frameshift-reasoner"
+REASONER_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{2,127}$")
+
+
+def reasoner_coordinator(store: Path, actor: dict, *, clock=None, new_suffix=None):
+    """The reasoner's coordinator over the shared store (#286).
+
+    Its attestation names the runtime actor, so a causal edge it adds is owned
+    by the reasoner that claimed it. Its approval profile is never validated:
+    the server exposes no gate, and this coordinator could not bind one.
+    """
+    import secrets
+
+    from frameshift.orchestration.api import SessionCoordinator
+    from frameshift.persistence import canonical
+    from frameshift.persistence.events import JsonlEventLog
+
+    clock = clock or _utc_now
+    configuration = {"client_id": REASONER_CLIENT_ID, "store": str(Path(store).resolve()), "actor": dict(actor)}
+    digest = canonical.digest(configuration)
+    profile_id = f"approval-profile-{REASONER_CLIENT_ID}"
+    profile = {
+        "schema_version": "1.0.0",
+        "id": profile_id,
+        "client_id": REASONER_CLIENT_ID,
+        "client_version": "0.1.0",
+        "config_digest": digest,
+        "validated": False,
+    }
+    attestation = {
+        "schema_version": "1.0.0",
+        "profile_id": profile_id,
+        "client_id": REASONER_CLIENT_ID,
+        "client_version": "0.1.0",
+        "config_digest": digest,
+        "operator": dict(actor),
+        "attested_at": clock(),
+    }
+
+    def suffix() -> str:
+        return datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S") + secrets.token_hex(2)
+
+    return SessionCoordinator(
+        JsonlEventLog(store),
+        approval_profile=profile,
+        attestation=attestation,
+        clock=clock,
+        new_suffix=new_suffix or suffix,
+    )
+
+
+def reasoner_parser() -> argparse.ArgumentParser:
+    def actor_id(value: str) -> str:
+        if not REASONER_ID.match(value):
+            raise argparse.ArgumentTypeError(f"{value!r} is not an id (letters, digits, . _ : -, 3 to 128 characters)")
+        return value
+
+    parser = argparse.ArgumentParser(description="Serve reasoner-safe FrameShift commands over MCP stdio")
+    parser.add_argument("--store", type=Path, default=None,
+                        help=f"directory for session event logs (default: FRAMESHIFT_STORE or ./{LOCAL_STORE.as_posix()})")
+    parser.add_argument("--actor", type=actor_id, default="reasoner_local",
+                        help="the runtime actor id that challenges and causal edges record")
+    return parser
+
+
+def reasoner_main(argv: list[str] | None = None, environ: dict | None = None) -> int:
+    """Serve the reasoner's MCP tools on stdio over the GUI's store (#286)."""
+    import os
+
+    from frameshift.mcp.reasoner_server import ReasonerMcpServer, run_stdio
+
+    env = os.environ if environ is None else environ
+    args = reasoner_parser().parse_args(argv)
+    store = args.store or (Path(env["FRAMESHIFT_STORE"]) if env.get("FRAMESHIFT_STORE") else LOCAL_STORE)
+    actor = {"id": args.actor, "kind": "runtime"}
+    server = ReasonerMcpServer(reasoner_coordinator(store, actor), actor, vocabulary=gui_vocabulary())
+    # stdout carries the protocol; anything for a person goes to stderr.
+    print(f"FrameShift reasoner server on stdio (store: {store.resolve()}; actor: {args.actor})", file=sys.stderr, flush=True)
+    sys.stdin.reconfigure(encoding="utf-8")
+    sys.stdout.reconfigure(encoding="utf-8", newline="\n")
+    run_stdio(server, sys.stdin, sys.stdout)
+    return 0
+
+
 def _load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -331,4 +418,6 @@ if __name__ == "__main__":
         raise SystemExit(confirmation_server_main(sys.argv[2:]))
     if len(sys.argv) >= 2 and sys.argv[1] == "gui":
         raise SystemExit(gui_main(sys.argv[2:]))
-    raise SystemExit("usage: python -m frameshift.bootstrap {confirmation|gui} [options]")
+    if len(sys.argv) >= 2 and sys.argv[1] == "reasoner":
+        raise SystemExit(reasoner_main(sys.argv[2:]))
+    raise SystemExit("usage: python -m frameshift.bootstrap {confirmation|gui|reasoner} [options]")
