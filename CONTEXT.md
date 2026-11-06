@@ -225,6 +225,10 @@ and configuration satisfy it.
 which native confirmation may grant approval authority. A changed or
 unsupported profile suspends approval until it is validated again.
 
+**Tandem run** — a session worked by a person in the manual GUI and a reasoner
+at the same time, on one store. Its approvals bind under their own approval
+profile, never under the local manual-GUI profile (ADR-0034).
+
 **Checkpoint gate** — a phase boundary that cannot advance without an approval:
 intake correction, frame selection, evidence sufficiency, option-set
 acceptance, criteria confirmation, decision approval, external action, and
