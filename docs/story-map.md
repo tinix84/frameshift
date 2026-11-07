@@ -36,7 +36,8 @@ A release that moves neither measure did not move the North Star.
 
 **The lone reasoner.** An engineer or technical strategist who arrives with a
 fuzzy, half-formed problem and supplies the domain knowledge no model can
-infer. Nobody else is in the session.
+infer. Nobody else is in the session. They often hold several
+sessions open at once and return to each after days.
 
 The accountable decision-owner, the collaborating team, and the integrator are
 real and secondary. They hang off this backbone; they do not define it.
