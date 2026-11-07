@@ -44,6 +44,7 @@ flowchart LR
 5. **Keep the human accountable.** The tool structures judgment; it does not launder model output into authority.
 6. **Make reasoning portable.** A session survives a change of model, provider, interface, or agent runtime.
 7. **Earn complexity.** The first useful product is a narrow vertical slice, not a universal ontology.
+8. **The person sets the pace.** The model drafts fast. The person decides in their own words, at the pace of their own understanding ([ADR-0035](docs/adr/0035-the-person-authors-the-deciding-words.md), [ADR-0036](docs/adr/0036-the-person-attempts-before-the-reasoner-proposes.md)).
 
 ## Non-goals
 

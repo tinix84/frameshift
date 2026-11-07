@@ -237,6 +237,30 @@ knowledge promotion.
 **Stale approval** — an approval whose target digest or revision no longer
 matches current state. It does not carry forward.
 
+**Selection rationale** — the person's own words, carried on a
+`frame_selection` approval, for why this frame and what the other candidates
+miss. Required for `approved` and `edited`, never pre-filled from a reasoner's
+text. The `decision_approval` gate requires the same of the decision's
+rationale (ADR-0035).
+
+**Own attempt** — an `observed` statement the person records in a slow column
+before the reasoner's first proposal for the same step. Derived from the
+log's order, never recorded as a flag (ADR-0036).
+
+**Skipped attempt** — a slow-column step where the reasoner's proposal came
+before any own attempt. Not an error, and no gate reads it.
+
+**Slow column** — a story-map column where the person's own attempt comes
+first: reframe, causes, compare (for criteria only), and decide.
+
+**Companion mode** — one of four ways the tool keeps the person's
+understanding ahead of the reasoner: own attempt, explain-back at the two hard
+gates, challenge, and re-entry (ADR-0036).
+
+**Re-entry trail** — what a returning person sees first: their own `observed`
+statements, the working frame with its selection rationale, open challenges,
+and parked lines with their reasons. Reasoner content is one action away.
+
 **Rationale summary** — the concise, user-auditable account of inputs used,
 transformation applied, alternatives retained, uncertainties, and what would
 change the result. It is not chain-of-thought, which is never requested,
