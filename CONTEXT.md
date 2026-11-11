@@ -206,8 +206,6 @@ rather than an assumed external reference.
 | `node_` | a graph node | yes |
 | `opt_` | an option | yes |
 | `crit_` | a criterion | yes |
-| `src_` | a source document | yes |
-| `hl_` | a highlight | yes |
 | `intake_` | an intake record, as it arrived | no |
 | `art_` | a referenced artifact, carried by a checkpoint | no |
 
