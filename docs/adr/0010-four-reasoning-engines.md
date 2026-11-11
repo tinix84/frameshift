@@ -1,6 +1,6 @@
 # ADR-0010: Four reasoning engines, framing first
 
-- Status: accepted
+- Status: accepted; superseded in part by ADR-0039 (graph nodes and edges can be recorded under the person's question before a working frame exists; the order still binds from framing onward on the decision path)
 - Date: 2026-08-19
 - Deciders: initial maintainers
 - Supersedes: none
