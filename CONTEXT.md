@@ -185,6 +185,17 @@ about truth (ADR-0038).
 signed to close a session in understanding. Its record lists the leaves that
 have no disposition.
 
+**Vault** — a session written as a folder of notes and canvases that other
+tools can open (ADR-0040). A projection: the event log stays canonical, and
+only layout lives in the vault alone.
+
+**Front end** — any tool the person uses to see or change a session. It
+reads the vault and writes through commands. FrameShift names none as its
+own.
+
+**Approval console** — the manual GUI page, kept for gates and
+confirmations.
+
 ## Provenance
 
 **Provenance** — where a claim came from: a kind (`observed`, `sourced`,
