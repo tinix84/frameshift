@@ -145,6 +145,46 @@ anchor to one or more tips, with a reason (`line_`, ADR-0032). A disposition
 about effort, not a verdict on truth: every status stays. The person may
 reopen it. What the person calls a dead end.
 
+## Source pages and understanding
+
+**Source document** — a text by an author other than the person: a
+transcript, an article, a failure report (`src_`, ADR-0037). Immutable; a new
+version supersedes it. A statement taken from it is `sourced`, never
+`observed`.
+
+**Highlight** — a span the person marks in a source document or in their own
+description (`hl_`): the text's digest, a character range, the quoted text,
+and one highlight intent. Only the person records one.
+
+**Highlight intent** — what a highlight is for: `deep_more`,
+`ask_for_source`, `unclear_term`, `crosslink`, or `disagree`. The first three
+ask a reasoner for something; the last two are the person's own acts.
+
+**Open highlight** — a highlight with an asking intent that no proposal has
+cited and the person has not closed. It is the request a reasoner answers.
+
+**Orphaned highlight** — a highlight whose quoted text is not found in the
+version that superseded its source document. It stays on the old version.
+
+**Note** — the person's own words on a span or a node. It enters as an intake
+record.
+
+**Deep dive** — the answer to one `deep_more` highlight: at most seven
+proposals, one level below the span.
+
+**Opening question** — the one sentence in which the person says what they
+want to understand. It bounds each deep dive (ADR-0039).
+
+**Leaf** — a live graph node that no other live node supports.
+
+**Leaf disposition** — the person's mark on a leaf: `understood`,
+`accepted_as_assumption`, or `parked`. About the person's understanding, not
+about truth (ADR-0038).
+
+**Closing statement** — the person's own words on what they now understand,
+signed to close a session in understanding. Its record lists the leaves that
+have no disposition.
+
 ## Provenance
 
 **Provenance** — where a claim came from: a kind (`observed`, `sourced`,
@@ -231,8 +271,8 @@ profile, never under the local manual-GUI profile (ADR-0034).
 
 **Checkpoint gate** — a phase boundary that cannot advance without an approval:
 intake correction, frame selection, evidence sufficiency, option-set
-acceptance, criteria confirmation, decision approval, external action, and
-knowledge promotion.
+acceptance, criteria confirmation, decision approval, closing in
+understanding, external action, and knowledge promotion.
 
 **Stale approval** — an approval whose target digest or revision no longer
 matches current state. It does not carry forward.
